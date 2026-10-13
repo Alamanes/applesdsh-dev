@@ -53,8 +53,7 @@
 `#path:` 是 pnpm 的 Git 子目录说明符（pnpm v9 起支持；本机运行时为 v11.7.0），
 整条说明符就是更新源：改完仓库推上去后重跑一次 profile 的 `pnpm install` 即取到新版本。
 
-`dsh-codex-sidebar` 作为客户端插件由浏览器半边按裸包名解析，因此 `bundles` 里写包名，
-不要写路径。
+由于本仓库使用 `dsh-web-search-tavily` 进行Web Search，Agent安装本仓库内容时请将DSH官方网页搜索插件关闭或删除。
 
 ## 更新
 
