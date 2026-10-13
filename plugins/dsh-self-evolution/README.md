@@ -45,7 +45,7 @@ DSH 的 `desktop` profile 由桌面应用独占管理，命令行不能直接写
 | 候选隔离区 | `lib/candidates.js` | `candidates/<slug>/` 的读写、机械预检、启用/并入/淘汰的裁决与留档 |
 | 技能供给 | `lib/skills.js` | 通过 `ctx.skills.registerProvider()` 只提供 `skills/` 下的技能与内置流程技能；启用与归档即文件移动 + 重新发布 |
 | 反馈回路 | `lib/usage.js`、`lib/health.js` | 纯规则扫描轨迹记录技能使用与结果归因；三维打分与六类分级 |
-| 手动流程与表面 | `lib/evolve.js`、`lib/tools.js`、`lib/commands.js`、`lib/api.js`、`client.js` | brief / preflight / enable / merge / reject / archive / restore / health / usage / dream / models / trail / collect / doctor / finish；一个 `evolve` 工具、一族 `/evolve` 命令、一条只读 HTTP 路由、一个状态条 |
+| 手动流程与表面 | `lib/evolve.js`、`lib/tools.js`、`lib/commands.js`、`lib/api.js`、`client.js` | brief / preflight / enable / merge / reject / archive / restore / health / usage / dream / models / trail / collect / doctor / finish；一个 `evolve` 工具、一族 `/evolve` 命令、一条只读 HTTP 路由；浏览器半边不注册任何界面 |
 | 账目与检查 | `lib/state.js`、`lib/doctor.js`、`lib/docs.js` | 两条水位与增量合并写盘、完整性检查（含文章结构校验）、细则文档与流程技能的绝对路径 |
 
 ## 使用
@@ -86,7 +86,7 @@ evolve action="collect"  |  doctor
 evolve action="finish" summary="…" updated=N repaired=N rejected=N merged=N
 ```
 
-浏览器半边在输入框下方显示一行状态：候选 / 收件箱 / 技能数 / 上次 Dream 与上次进化时间，数据来自只读路由 `/api/self-evolution/overview`。
+浏览器半边不注册任何界面：原先在输入框下方的那行状态条（候选 / 收件箱 / 技能数 / 上次 Dream 与上次进化时间）已按用户要求删除，`client.js` 只保留一个空的 `apply()`，包清单与启动图因此不变。数据仍由只读路由 `/api/self-evolution/overview` 提供，需要时用 `curl` 或 `/evolve` 命令查看。
 
 ## 数据目录
 
@@ -249,9 +249,9 @@ evolve action="finish" summary="…" updated=N repaired=N rejected=N merged=N
 
 ## 已知局限与未验证项
 
-- **运行时接线部分验证。** 首次安装暴露了一个真实缺陷：`apply()` 里读 `ctx.llm` 触发了 Cordis 的 `cannot get property "llm" without inject`，整个插件未激活。原因是 Cordis 的服务访问器对未 `inject` 的服务直接抛错。现在所有可选服务都通过 `ctx.get()` 惰性读取，且每个可选组件的注册都带局部容错：一个组件失败只降级它自己，不再拖垮整个插件。真机已确认的是：插件激活、技能 provider 生效（技能目录出现 `self-evolve`）、投影折出轨迹并写出 `state.json`、自我管理熔断按预期跳过本插件自身的施工会话。仍未经真实运行验证的是：`sessionQuery.readSession()` 的实际返回形状（清扫据此折叠历史会话）、工具 schema 被注册表接受的全部动作、面板槽位是否落位。
+- **运行时接线部分验证。** 首次安装暴露了一个真实缺陷：`apply()` 里读 `ctx.llm` 触发了 Cordis 的 `cannot get property "llm" without inject`，整个插件未激活。原因是 Cordis 的服务访问器对未 `inject` 的服务直接抛错。现在所有可选服务都通过 `ctx.get()` 惰性读取，且每个可选组件的注册都带局部容错：一个组件失败只降级它自己，不再拖垮整个插件。真机已确认的是：插件激活、技能 provider 生效（技能目录出现 `self-evolve`）、投影折出轨迹并写出 `state.json`、自我管理熔断按预期跳过本插件自身的施工会话。仍未经真实运行验证的是：`sessionQuery.readSession()` 的实际返回形状（清扫据此折叠历史会话）、工具 schema 被注册表接受的全部动作。`conversation.composer.dock` 槽位那条已随状态条一并删除：浏览器半边现在不注册任何界面，无需再核对槽位落位。
 - **`file:` 安装是复制而非软链。** 桌面应用安装时把包复制进 `$DSH_PROFILE_DIR/node_modules/`（硬链接到 pnpm store）。改了仓库之后必须重装，或同步那一份副本，并重启 `dsh web` 才会加载新代码。
-- **面板位置。** 状态条落在 `conversation.composer.dock`；DSH 的槽位清单需要 `cordis_inspect_query` 才能核对，这里按插件开发指南推荐的稳妥槽位选择。想要完整页面时，应该换到一个真正分配了空间的槽位。
+- **状态条已删除。** 原先落在 `conversation.composer.dock` 的那行状态（候选 / 收件箱 / 技能数 / 上次 Dream 与上次进化时间）按用户要求移除，`client.js` 的 `apply()` 现在什么都不注册。要完整页面时再挑一个真正分配了空间的槽位重新实现，而不是复活这行。
 - **采集模型排序只是代理指标。** DSH 不给价格元数据，`auto` 按上下文窗口排序；真正在意成本就钉扎 `collector.models`。
 - **结果归因是启发式的。** 失败/成功信号来自轨迹中的错误与用户措辞，可能误判；体检报告明确要求回查原始轨迹后再决定处置。
 - **轨迹保留上限 600 条记录。** 投影保留有界尾部；所有轮次都会推进游标，所以正常使用下不会丢，但一次极长的未采集空档只会分析保留区间。
