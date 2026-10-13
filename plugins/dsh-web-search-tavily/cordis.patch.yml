@@ -1,0 +1,33 @@
+# dsh-web-search-tavily bundle patch.
+#
+# Composed into a profile by listing "dsh-web-search-tavily" in that profile's
+# `dsh.profile.bundles` (this file is then resolved through the `dsh.bundle.patch`
+# manifest field), or by pasting both entries below into the profile's own
+# `cordis.patch.yml`.
+#
+# `name` must be the FULL package specifier exactly as installed in the profile's
+# node_modules, quoted — an unquoted scalar starting with `@` would parse as a
+# YAML indicator. `id` is the loader row's label; keep it equal to the package
+# name so `/plugins/<id>/...` points at the same string.
+
+# 1. Mount the provider. It injects `web` and registers a search backend under
+#    the id `tavily`; it contributes nothing else to the tree.
+- insert:
+    - id: web-search-tavily
+      name: "dsh-web-search-tavily"
+
+# 2. Point the web seam's search at that backend.
+#
+#    This override is required, not cosmetic: the shipped DeepSeek provider stays
+#    registered and stays `available()` (its credential route resolves), so
+#    without a pinned id the seam would see two usable search providers and fail
+#    every call with `WEB_PROVIDER_AMBIGUOUS`. `fetchProvider` is restated rather
+#    than left implicit so pinning search here can never drop the fetch choice.
+#
+#    Rolling back: delete this entry to return to whichever single usable search
+#    provider remains, or set `searchProvider: deepseek-official` explicitly.
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: tavily
+    fetchProvider: http

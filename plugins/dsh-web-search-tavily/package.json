@@ -1,0 +1,35 @@
+{
+  "name": "dsh-web-search-tavily",
+  "version": "0.1.0",
+  "private": true,
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "tavily",
+    "web-search",
+    "search",
+    "web"
+  ],
+  "description": "Tavily-backed search provider for the DeepSeek Harness web seam: registers a second, independent `tavily` backend beside the shipped DeepSeek one, so web_search runs on Tavily's own REST API.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

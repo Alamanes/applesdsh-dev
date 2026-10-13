@@ -1,0 +1,21 @@
+# dsh-ui-copy bundle patch.
+#
+# 声明在 package.json 的 dsh.bundle.patch 中，使 `dsh plugin add` 或插件页
+# 安装时可直接把这一行插进所选 profile 的 cordis 配置。
+#
+# `id` 是 loader 行标签，与包名保持一致：插件页排障路径
+# /plugins/<id>/client.js 才指向同一个字符串。
+#
+# 文案改在 profile 的 cordis.patch.yml 里追加同 id 的一行，例如：
+#
+#   - id: ui-copy
+#     name: dsh-ui-copy
+#     config:
+#       hidePreviewBadge: true
+#       headline:
+#         zh: ['有什么可以帮你的？']
+#       placeholders:
+#         '描述你想要构建的内容, / 调用指令, @ 文件或对话': ['说点什么，剩下的我来']
+- insert:
+    - id: ui-copy
+      name: dsh-ui-copy

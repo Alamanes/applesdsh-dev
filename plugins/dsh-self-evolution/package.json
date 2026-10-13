@@ -1,0 +1,51 @@
+{
+  "name": "dsh-self-evolution",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH port of agent-self-evolution: a background collector drafts reusable skills from finished sessions and grows a long-term portrait through per-session extraction plus a daily Dream merge; a manually triggered evolve flow reviews, enables, archives and grades the skills — candidates never enter context before you approve them.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "self-evolution",
+    "memory",
+    "skills",
+    "candidates"
+  ],
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "skills",
+    "docs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "meta": {
+    "title": "Self Evolution",
+    "description": "Experience → skill → evolution: a quiet collector, an automatic memory leg, a manual review flow, and a never-polluted candidate queue."
+  }
+}

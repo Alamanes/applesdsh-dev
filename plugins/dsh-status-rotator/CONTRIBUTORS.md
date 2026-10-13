@@ -1,0 +1,124 @@
+# Contributors
+
+> **English** | [中文](./CONTRIBUTORS_ZH.md)
+
+Thanks to everyone who contributed code, ideas, or phrases to this project. Without your effort, this plugin wouldn't have grown into what it is today.
+
+## Project Author
+
+**[01Virex](https://github.com/01Virex)** (git alias Umamed26) — project founder and lead maintainer: phase-aware phrase groups, the typewriter effect, the rainbow gradient, config/phrase separation, config auto-loading, and that phrase bank full of AI-community memes. Also shipped the weighted-random picker (PR #15), the meme-bank expansion (PR #16), modular phrase packs (PR #35), the ten-pack restructuring (PR #36), day/night palettes (#40), gradient flow direction (#42), the durable settings store (#65), tab-title ownership + settings controls (#68), submission-branch conflict self-healing with the duplicate-key guard (#78) and the semicolon filter (#81).
+
+## Contributors
+
+### Code & Infrastructure
+
+**[liceses](https://github.com/liceses)** — submitted **PR #1** (`fix: scope label takeover to role=status + aria-live=polite`, the precise status-label targeting fix, still in use today) and **PR #2** (`chore: declare dsh.bundle manifest`, enabling one-click install via `dsh plugin add`). Special thanks!
+
+**[mrbbbaixue](https://github.com/mrbbbaixue)** — submitted **PR #13** (`fix: normalize abbreviations and brand/model capitalization in the default phrase bank`, e.g. `Deepseek` → `DeepSeek`), **PR #14** (`feat(settings): restyle the settings window controls and layout to match the official DSH settings pages` — 720px content column, hairline groups, official switches and pill buttons), **PR #37** (`chore(pill): remove the floating status Pill code kept as comments since 0.15.0` — over 160 lines of dead code dropped from `lib/client.js`, and the stalled listener mechanism that went with it was retired in v0.17.3) and **PR #38** (`feat(settings): four-tab settings page, aligned with the official spec, saving switched to write-on-change` — nine groups folded into Texts / Appearance / Behavior / Automation, plus preset create-rename-delete, live numeric validation with restore-default, schedule rules as cards, and five bug fixes including silently dropped drafts). Thanks for the UI upgrade and the cleanup!
+
+**[A7m](https://github.com/A7m0spHere)** — submitted **PR #104** (`feat(whale-tail): 鲸鱼尾巴逐帧摇动动画 + tok/s 调速`: the 0.2.0 whale tail can *sway* — a 24-frame vector contour loop, driven by the live **tok/s** or a fixed rate), **PR #109** (`feat(whale-tail): 多动作平滑切换与工具调用触发` — several tail motions that cross-fade, driven by tool calls, plus the reference doc and README previews) **PR #112** (`fix(whale-tail): 摇动时藏掉宿主全部图标子级` — hides every host icon child while a sway runs, fixing the overlap with the official icon) and **PR #133** (`feat(whale-tail): 官方原版晃动动作 + 参与切换的动作池` — a fourth action replaying the official GIF's 150 frames as SVG contours at its own 0.25 cycles/s, a shared selectable action pool for random/tool switching, tok/s speed tiers reworked into 1.0 / 1.5 / 2.0 / 2.5 presets with a custom 1–10 cap, and a fix for a junction notification lost when the host rebuilds the icon at a loop boundary). Also wrote a widely-read post promoting the plugin. Thanks for the tail work and the shout-out!
+
+
+**[NekoDD](https://github.com/NekoDD-wow)** — submitted **PR #139** (`fix(danmaku): 大代码块居中时弹幕层被挂进 <pre>,复制代码会带上弹幕文案` — the mount-point heuristic only asked "paints an opaque background" and "big enough", and a large centered code block satisfies both, so the danmaku layer was appended into the block's own `<pre>`; the host's copy button reads `pre.textContent`, which concatenates every descendant's text in document order, so the danmaku copy was silently appended to copied code — invisible on screen, since the layer is `absolute` + `z-index: -1` + 0.3 opacity). Mount-point walk-up now skips content areas (`pre` / `.md-code-block` / `[data-code-block-content]` / `[data-chat-flow-kind]`) and keeps climbing to the real background panel, with the area heuristic and the no-panel fallbacks untouched; a `?codeBlock=1` browser regression asserts the copied text stays byte-identical to the original code. Thanks for the precise diagnosis and the regression!
+
+
+### Ideas & Feedback
+
+- **[fplj-fplj](https://github.com/fplj-fplj)** — suggested adjustable font weight for the status text (**Issue #12**, shipped in v0.10.0 as `config.fontWeight`, applied to the status text and the danmaku).
+- **[Ztyss](https://github.com/Ztyss)** — reported **Issue #96**: the whole *Behavior → Tab title* group (added in v0.27.0) never auto-saved — the write-on-change effect's signature and dependency array both omitted `titleDraft`, so editing only the title settings never triggered a write (and the same omission in `commitDrafts`'s deps could persist a stale value). Shipped in **v0.27.5** by collecting all draft state into a single `editorState` source that the signature and every dependency array now derive from, plus a browser regression that toggles the title switch alone and asserts the PUT.
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — reported **Issue #94** (and had already contributed phrases via issue #31): our four `<style>` elements were created without `data-plugin`, so the host's module system could claim them for whichever module materialised next and delete them on that module's next revision change — the settings page intermittently lost all styling. Shipped in **v0.27.4** as `createOwnedStyle()` (tag every style with the package-name owner id), with the host's claim/remove steps now replayed as a browser regression.
+- **[Ztyss](https://github.com/Ztyss)** — reported **Issue #6**: the settings page had no switch to turn the rainbow gradient off, and upgrading the plugin wiped `config.json` (all custom settings). Both were fixed in **v0.6.1** — the settings-page gradient controls and the upgrade-safe settings store (`$DSH_HOME/settings.yaml`, official dsh namespace) exist because of this report.
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #39**: with a single bright gradient palette the status text washed out on the light (day) interface. Shipped in **v0.22.0** as two palettes — `dayColors` for the light theme and `colors` for the dark theme — plus `mode: auto / day / night`, so it follows the interface theme automatically or can be forced.
+- **[mulinyang041](https://github.com/mulinyang041)** — reported **Issue #92** (the text was written by the DSH agent running on their machine, posted with their authorisation): a settings-page save recorded the **external bank's** content into the config store as if the user had changed it, so deleting a pack from the bank file no longer handed it back to the settings page — and the compatibility mirror kept serving it either way. Shipped in **v0.27.3** as `userChangeBaselineDocument()` (bundled + auto-updated + external bank) plus a mirror that only carries the user's own configuration; the end-to-end verifier `scripts/verify-external-bank-ownership.cjs` now guards it in CI. Their diagnosis of the root cause was accurate — only the mirror half needed completing.
+- **[yihefeikong-rgb](https://github.com/yihefeikong-rgb)** — reported **Issue #87** together with a complete root-cause analysis: the `turnLabels` map in `lib/client.js` only ever `set` entries and never deleted them, so every adopted turn kept one detached React label element alive — a linear leak over turns that also survived plugin teardown. Shipped in **v0.27.2** as the symmetric `turnLabels.delete(button)` in `releaseStatusLine()` plus the teardown sweep; the report's own reproduction recipe became the `?case=leak` browser scenario that now guards it in CI.
+- **[Shutiao114514](https://github.com/Shutiao114514)** — reported **Issue #60**: the settings dialog flickered continuously because the danmaku layer kept animating behind its full-viewport `backdrop-filter` mask (dsh 0.1.5-rc.3 + Edge). Shipped in **v0.25** as `danmaku.pauseBehindMask` — the layer and every in-flight bullet are torn down while such a mask is up, and rebuilt the moment it goes away.
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #51**: every plugin update reset saved settings. That report drove the whole persistence rework — **v0.26.1** moved the authoritative copy to `$DSH_HOME/status-rotator/config.json` (the 0.1.7-rc.1 host settings service has no `register()`) and added the one-time convergence for old installs.
+- **[xiaijiangxue](https://github.com/xiaijiangxue)** — reported **Issue #41**: the rainbow gradient always swept right to left, opposite to the left-to-right typewriter, and asked for a direction option. Shipped in **v0.23.0** as `gradient.direction` (`rtl` default / `ltr`), with a "Flow direction" select in the settings page and instant preview.
+
+- **子夜** (a user on Heybox / 小黑盒) — reported the "**two whale tails at once**" bug (the host icon staying visible next to the plugin's swaying tail, fixed in PR #112 by A7m) — **without filing a GitHub issue**, just by telling us. Thanks for the eyes!
+- **[yanzhaohui1999](https://github.com/yanzhaohui1999)** — reported **Issue #129**: `appearance.fontSize: 0` ("follow the host", the factory default in `config.example.json`) was clamped to the lower bound **8** by the node half's merge, while the browser half deliberately let `0` through — so choosing 0 in the settings page applied immediately, the server persisted 8, and the next load silently reverted to 8px. Shipped in **v0.34.1** by mirroring the client's exemption (`src.fontSize === 0 ? 0 : …`); `scripts/verify-appearance-zero.cjs` (two-half point-by-point comparison plus a real PUT→GET round trip) guards it in CI.
+- **[Ztyss](https://github.com/Ztyss)** — reported **Issue #131**, the *same* `fontSize: 0` clamp, together with its own line-by-line root-cause analysis (`clampNumber(0, [8, 96]) === 8`, the top-level `ZERO_DISABLES` precedent, and the client's exemption at `client.js:1149`) — independently arriving at the same fix. Confirmed against the source and shipped in the same **v0.34.1**.
+- **洛水之蔚** (a user on Heybox / 小黑盒) — suggested **speed tiers for the whale-tail wag**: in tok/s mode the speed ramps continuously up to 6 cycles/s, which left the tail too blurry to follow (「直接起飞了…都看不清尾巴了」). Landed as `whaleTailMotion.tpsTiers` — **2–5 discrete tiers spanning 2–4 cycles/s**, so the speed only changes when it crosses a tier boundary and the top tier still shows the flip; `0` keeps the original continuous mapping, so existing configurations are untouched, and `scripts/verify-whale-tail-tiers.cjs` pins the ladder, the cap and that no-regression path. **Without filing a GitHub issue**, just by saying so on Heybox — thanks for the eyes!
+
+### Phrases & Community
+
+Most of the phrase bank comes from members of QQ groups **641028237** and **1103406958** — thank you! Because the contributions were scattered across group chats, we can't reliably list everyone by name. If you contributed phrases and would like to be credited, please reach out to the maintainer ([01Virex](https://github.com/01Virex)) and we'll add you here.
+
+- **deesnolem** — contributed phrases.
+- **[NotUNperson](https://github.com/NotUNperson)** — contributed phrases.
+- **[Fuhua-code](https://github.com/Fuhua-code)** — contributed phrases.
+- **[rruixi](https://github.com/rruixi)** — contributed phrases.
+- **[fplj-fplj](https://github.com/fplj-fplj)** — contributed phrases.
+- **[milk dragon](https://github.com/1251639747jm-ctrl)** — contributed phrases.
+- **[TanPowasd](https://github.com/TanPowasd)** — contributed phrases.
+- **[dancha0fan](https://github.com/dancha0fan)** — contributed phrases.
+- **[YunMeng-ink](https://github.com/YunMeng-ink)** — contributed phrases.
+- **[achenjins](https://github.com/achenjins)** — contributed phrases.
+- **[laszapens](https://github.com/laszapens)** — contributed phrases.
+- **[hu-1145](https://github.com/hu-1145)** — contributed phrases.
+- **[IThinkItsaName](https://github.com/IThinkItsaName)** — contributed phrases.
+- **[xiaozi233](https://github.com/xiaozi233)** — contributed phrases.
+- **[xialongxl](https://github.com/xialongxl)** — submitted the phrases merged as PR #73.
+- **[Clmzz-gra](https://github.com/Clmzz-gra)** — submitted the phrases merged as PR #75 and #77.
+- **[SQMY-dor](https://github.com/SQMY-dor)** — submitted the phrases merged as PR #46 and PR #48.
+
+- **[3418244301q-star](https://github.com/3418244301q-star)** — submitted phrases via **issue #102** (merged as #103: `正在让提示词变得硬邦邦…`).
+
+
+## Real Contribution Stats (synced from the GitHub API)
+
+> The data below comes from the public contributor API of [`01Virex/dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator) and has nothing to do with the "Cloud Contributors" meme zone above. Note that these stats only count commits — phrase-only contributors listed under "Phrases & Community" don't appear here. The API counts **every commit on the default branch, merge commits included** (the local equivalent is spelled out under the table).
+
+| Contributor | Commits | Notes |
+| --- | --- | --- |
+| [Umamed26](https://github.com/Umamed26) | 167 | Project author alias (01Virex); main development and maintenance — recent work: PRs #125 #126 #127 #128 #130 #132 #135 |
+| [01Virex](https://github.com/01Virex) | 22 | Repo account, merged PRs and released |
+| github-actions[bot] | 79 | Phrase-submission bot (validation, auto-PR, branch refresh), the star-pack refresh workflow, and the QC workflow iterations |
+| [A7m0spHere](https://github.com/A7m0spHere) | 4 | The whole whale-tail motion line: PR #104 (24-frame wag + tok/s control) + PR #109 (multi-action cross-fade + tool triggers) + PR #112 (hide the host icon children while swaying) + PR #133 (official 150-frame action + selectable action pool) |
+| [mrbbbaixue](https://github.com/mrbbbaixue) | 4 | PR #13 (default phrase-bank capitalization normalization) + PR #14 (settings window restyled to the official DSH style) + PR #37 (removing the dead Pill code) + PR #38 (four-tab settings page, write-on-change saving) |
+| [liceses](https://github.com/liceses) | 2 | PR #1 (status label targeting) + PR #2 (dsh.bundle manifest) |
+
+**278 commits** in total (synced 2026-10-04) — four real human contributors (**Umamed26**, **A7m0spHere**, **liceses**, **mrbbbaixue**), plus the repo account's merge/release commits and the phrase bot's own bank entries. Respect to everyone who seriously submits code ❤️
+
+> Re-sync with one API call: `https://api.github.com/repos/01Virex/dsh-status-rotator/contributors?per_page=100`.
+>
+> The same numbers come out of a clone: run `git shortlog -sne HEAD` (merge commits included, which is how the API counts them) and add up per GitHub account — **Umamed26** `120251447+Umamed26@users.noreply.github.com` 87 + `mr26ishere@gmail.com` 80 = **167**; **github-actions[bot]** `41898282+github-actions[bot]@users.noreply.github.com` 74 + `github-actions[bot]` 5 = **79**; **A7m0spHere** `2154165681@qq.com` 3 + 1 = **4**; **01Virex**, **mrbbbaixue** and **liceses** each have a single identity (**22** / **4** / **2**). `git shortlog` totals 279 rather than 278 because it also counts one commit authored under a placeholder identity that has no linked GitHub account (`dsh-fix <fix@local>`, `67d5034`), which the API leaves out.
+
+## Special Thanks
+
+- **[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness)** — for the extensible client plugin system that made this toy plugin possible;
+- **[iiwish](https://github.com/iiwish)** — for **DSH Testkit** (Issue #5) lifecycle compatibility check: the findings shaped the plugin's host-safe activation design (no hard dependency on webServer/settings; stays alive in headless hosts and registers routes lazily);
+- The news sources and creators behind every meme in the phrase bank — those phrases record the collective memory of the 2026 AI community.
+
+## Cloud Contributors (meme zone · satire)
+
+The following list is purely a joke. The real people behind these names have no actual contribution relationship with this project; if it offends you, it means you're being satirized:
+
+
+> All of the above satire is purely a joke and has nothing to do with real people, real companies, or real products; any resemblance is because the internet remembers.
+
+
+*Kept in the original Chinese — the joke is the wording.*
+
+- **梁蚊蜂** — 贡献了从梁圣到梁÷的风评，以及让用户等了快一个月Deepseek V4.1 Pro;
+- **崔添蚁** — 贡献了Deepseek V4 Pro正式版发布前的抗压和最不会因为破坏性更新导致插件炸完的Deepseek Harness;
+- **杨植麟** — 贡献了对标ChatGPT的价格以及K3到K2.8的时光倒流术;
+- **张鹏** — 贡献了抢不到的 GLM Coding Plan和臭鸡蛋;
+- **唐羯** — 贡献了自动给用户git备份到云端的贼Code;
+- **林俊羊** — 贡献了用户的奶茶;
+- **李燕宏** — 贡献了文心一言模型;
+- **马狮克** — 贡献了 Grok 的R18内容;
+- **达狸奥** — 贡献了AI 安全第一的口号和一次钓鱼中国用户的惊天大阳谋;
+- **奥特鳗** — 贡献了从非营利到营利再到被马斯克追着咬的变形记;
+- **哈鲨比斯** — 贡献了又快又快的Gemini模型;
+- **codex** — 贡献了Response api，让全网看到Deepseek更新文档就嗨了;
+- **claude code** — 贡献了检测到中国ip就封禁的顶级技术;
+- **dsh** — 贡献了整套插件体系，没有它这个项目根本不会存在;
+- **opencode** — 贡献了最不朝令夕改的 Opencode Go套餐，Dax畜！;
+## How to Contribute
+
+- **Submit phrases**: open the **「词库投稿 💬」** form from the Issues page — the bot validates, replies with a preview and a "try it now" JSON, and opens a ready-to-merge PR automatically; **one phrase per line** (an in-line `;` / `；` is rejected — see [Submitting Phrases via Issues](./README.md#contributing-phrases-via-github-issues)); you can also edit the `phrases` field in `config.json` / `config.example.json` directly;
+- **Change behavior**: PRs are welcome at [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator);
+- **Report issues / request features**: open an Issue describing the dsh version, the symptom, and console output — feature suggestions are credited in the "Ideas & Feedback" section above.
+
+Thanks again to every contributor ❤️
