@@ -55,6 +55,8 @@
 
 由于本仓库使用 `dsh-web-search-tavily` 进行Web Search，Agent安装本仓库内容时请将DSH官方网页搜索插件关闭或删除。
 
+如果Agent在安装时发现了在Codex、Claude Code、Pi Coding Agent中安装过agent-self-evolution插件，则将其配置的Skill与Proflie自动导入并合并。
+
 ## 更新
 
 ```sh
