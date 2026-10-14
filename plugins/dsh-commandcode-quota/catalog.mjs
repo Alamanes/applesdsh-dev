@@ -59,6 +59,18 @@ export const CATALOG_MIN_RETRY_MS = 6 * 3_600_000;
 /** 覆盖 {@link CATALOG_TTL_MS} 的环境变量名；与密钥兜底扫描同名冲突，见 quota.mjs 的排除表。 */
 export const CATALOG_TTL_ENV_NAME = 'COMMANDCODE_CATALOG_TTL_MS';
 
+/**
+ * 宿主每隔这么久问一次「目录过期了吗」。这是**纯本地判断**，不联网。
+ *
+ * 真正决定要不要打上游的仍然是 {@link CATALOG_TTL_MS}：下面这个间隔只决定这个
+ * 问题多久被问一次。一天问 24 次、每次读一个本地文件，代价可以忽略；而问出
+ * 「是」的那一次，探测成本是每个官方页面一个 0 字节 `HEAD`。
+ */
+export const CATALOG_WATCH_MS = 3_600_000;
+
+/** 覆盖 {@link CATALOG_WATCH_MS} 的环境变量名；同样要进 quota.mjs 的排除表。`0` 表示关掉后台核对。 */
+export const CATALOG_WATCH_ENV_NAME = 'COMMANDCODE_CATALOG_WATCH_MS';
+
 /** 单次请求超时；官方整页 200–500 KB，正常半秒内返回。 */
 export const CATALOG_TIMEOUT_MS = 20_000;
 
@@ -148,6 +160,28 @@ export function resolveCatalogTtlMs(options = {}) {
     if (Number.isFinite(value) && value >= 60_000 && value <= 30 * 86_400_000) return Math.round(value);
   }
   return CATALOG_TTL_MS;
+}
+
+/**
+ * 解析后台自动核对的检查间隔：显式 → 环境变量 → {@link CATALOG_WATCH_MS}。
+ *
+ * 返回 `0` 表示不该起后台核对——用户用环境变量显式关掉了它。合法区间是
+ * 1 分钟 – 1 天：更小等于轮询，更大等于跟没开一样（判断间隔比 TTL 还长，
+ * 那就由别的触发点负责，不需要这个 watcher）。
+ *
+ * @param {object} [options] `{ watchMs, env }`。
+ * @returns {number} 毫秒；0 表示关闭。
+ */
+export function resolveCatalogWatchMs(options = {}) {
+  const explicit = options.watchMs;
+  if (typeof explicit === 'number' && Number.isFinite(explicit) && explicit >= 0) return Math.round(explicit);
+  const raw = (options.env ?? process.env)[CATALOG_WATCH_ENV_NAME];
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const value = Number(raw);
+    if (Number.isFinite(value) && value === 0) return 0;
+    if (Number.isFinite(value) && value >= 60_000 && value <= 86_400_000) return Math.round(value);
+  }
+  return CATALOG_WATCH_MS;
 }
 
 /**

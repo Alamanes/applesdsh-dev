@@ -28,6 +28,7 @@ import {
   readCatalogCache,
   resolveCatalogTtlMs,
   resolveCatalogView,
+  resolveCatalogWatchMs,
   syncCatalog,
 } from './catalog.mjs'
 
@@ -284,6 +285,31 @@ export function apply(ctx) {
   let catalogInFlight
 
   /**
+   * Start a catalog sync, or join the one already running.
+   *
+   * Two callers can want a sync at the same moment — the settings panel opening
+   * while the background watcher decides the catalog has aged out, say. Joining
+   * keeps one probe per page instead of two, and keeps the later answer from
+   * overwriting the earlier one.
+   *
+   * Failures are recorded inside the catalog itself (a page that cannot be
+   * fetched keeps its last good numbers and lands in `failures`), so a rejected
+   * promise here has nothing left to report.
+   *
+   * @param planId - the plan whose page should be re-read; undefined reads only the pricing page.
+   * @param ttlMs - how long this check counts as fresh.
+   * @returns the in-flight sync.
+   */
+  const startCatalogSync = (planId, ttlMs) => {
+    if (catalogInFlight === undefined) {
+      catalogInFlight = syncCatalog({ planId, ttlMs })
+        .catch(() => undefined)
+        .finally(() => { catalogInFlight = undefined })
+    }
+    return catalogInFlight
+  }
+
+  /**
    * Ensure a catalog view is available, revalidating only when asked.
    *
    * A plain poll (the sidebar card) never spends a request on the catalog: the
@@ -294,7 +320,9 @@ export function apply(ctx) {
    *
    * "Changed only" is enforced upstream: the sync probes each page with a
    * 0-byte HEAD and reuses the cache when the vendor's ETag is unchanged, so a
-   * check that finds nothing new costs no body download and no re-parse.
+   * check that finds nothing new costs no body download and no re-parse. The
+   * panel is no longer the only caller that asks — see {@link watchCatalog} —
+   * but every caller goes through the same ETag probe and the same TTL.
    *
    * @param planId - the account's plan, or undefined when it is not known yet.
    * @param options.check - whether this caller wants the "is it time?" question asked.
@@ -305,14 +333,7 @@ export function apply(ctx) {
     const ttlMs = resolveCatalogTtlMs()
     const cached = readCatalogCache()
     const due = (check || refresh) && needsRevalidate({ catalog: cached, planId, ttlMs })
-    if ((due || refresh) && catalogInFlight === undefined) {
-      // Failures are recorded inside the catalog itself, so a rejected promise
-      // here has nothing left to report.
-      catalogInFlight = syncCatalog({ planId, ttlMs })
-        .catch(() => undefined)
-        .finally(() => { catalogInFlight = undefined })
-    }
-    if ((due || refresh) && catalogInFlight !== undefined) await catalogInFlight
+    if (due || refresh) await startCatalogSync(planId, ttlMs)
     // Cache first, bundled seed second, an honest "nothing yet" last.
     return resolveCatalogView({
       planId,
@@ -341,6 +362,40 @@ export function apply(ctx) {
     const planId = value?.plan?.planId ?? cache?.report?.plan?.planId ?? snapshot?.report?.plan?.planId
     const catalog = await catalogFor(planId, { check, refresh })
     return { ...result, value: { ...value, catalog } }
+  }
+
+  /**
+   * Ask the local "is the catalog overdue?" question on a timer.
+   *
+   * The settings panel used to be the only surface that ever asked it, so a user
+   * who never opens that section keeps whatever the vendor said the last time
+   * they did — and the vendor changes allowances whenever it likes. This watcher
+   * asks on their behalf.
+   *
+   * A tick is pure local arithmetic: read the cache file, compare `checkedAt`
+   * against the TTL. Only a "yes" reaches the network, and that costs a 0-byte
+   * `HEAD` per official page — the body is downloaded only when the vendor's
+   * ETag actually moved. The cadence of real checks stays the catalog TTL (a day
+   * by default), never this interval.
+   *
+   * @param intervalMs - how often to ask the local question.
+   * @returns a disposer that stops the watcher.
+   */
+  const watchCatalog = (intervalMs) => {
+    const tick = () => {
+      // The page to read belongs to the current plan; with no plan on record
+      // yet there is nothing better to do than wait for a report to name one.
+      const planId = cache?.report?.plan?.planId ?? snapshot?.report?.plan?.planId
+      if (planId === undefined) return
+      const ttlMs = resolveCatalogTtlMs()
+      if (!needsRevalidate({ catalog: readCatalogCache(), planId, ttlMs })) return
+      void startCatalogSync(planId, ttlMs)
+    }
+    tick()
+    const timer = setInterval(tick, intervalMs)
+    // A pending timer must not keep the host process alive on shutdown.
+    timer.unref?.()
+    return () => clearInterval(timer)
   }
 
   /**
@@ -478,6 +533,16 @@ export function apply(ctx) {
   }))
 
   registerQuotaCommand(ctx, report, withCatalog, catalogFor)
+
+  // Keep the per-model allowances current without waiting to be opened and read:
+  // see `watchCatalog`. Nobody has to ask for this, and the environment can turn
+  // it off when a machine wants the old "only when the panel asks" behaviour.
+  const watchMs = resolveCatalogWatchMs()
+  if (watchMs > 0) {
+    ctx.effect(() => watchCatalog(watchMs), 'cc-quota: catalog watcher')
+  } else {
+    ctx.logger.info('cc-quota: automatic catalog checks are off (COMMANDCODE_CATALOG_WATCH_MS=0)')
+  }
 
   ctx.logger.info(`cc-quota: serving quota reports on ${ROUTE_PATH}`)
 }
