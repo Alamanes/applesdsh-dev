@@ -1,0 +1,17 @@
+# dsh-local-identity bundle patch.
+#
+# 这份文件声明「怎么把插件挂进 profile」。列出它的方式有两种：
+#
+# 1. 在 profile 的 package.json 里把 "dsh-local-identity" 加进
+#    dsh.profile.bundles —— 本文件随之经 dsh.bundle.patch 解析进来；
+# 2. 或把下面的 insert 块直接粘进 profile 的 cordis.patch.yml。
+#
+# `name` 必须是 profile 的 node_modules 里实际存在的包名。`id` 与包名保持一致：
+# client-modules 用清单里的包名作 boot graph 的行 id，插件页的
+# /plugins/<包名>/client.js 也指向同一字符串。
+#
+# 身份内容不写在这里：个人名字与头像地址写在 profile 的 cordis.patch.yml 中
+# 对同 id 行的 config 覆盖里（见 README「配置」一节），这样插件本体保持通用。
+- insert:
+    - id: dsh-local-identity
+      name: "dsh-local-identity"
