@@ -51,7 +51,7 @@ DSH 的 `desktop` profile 由桌面应用独占管理，命令行不能直接写
 | 进化流程 | `dsh-self-evolution-flow` | `lib/evolve.js`、`lib/doctor.js`、`lib/docs.js` | brief / preflight / enable / merge / reject / archive / restore / health / usage / dream / promote / discard / models / trail / collect / doctor / finish 的全部动作，以及完整性检查与提交 |
 | 工具与表面 | `dsh-self-evolution-surface` | `lib/tools.js`、`lib/commands.js`、`lib/api.js` | 一个 `evolve` 工具、一族 `/evolve` 命令、一条只读 HTTP 路由与常驻纪律段 |
 
-浏览器半边留在清单包里，不注册任何界面。
+浏览器半边留在清单包里，不注册任何界面。表中的 `lib/` 路径相对于该行组件包自己的目录，下文的模块引用同理。
 
 ## 使用
 

@@ -10,7 +10,7 @@
  * The memory leg's two prompts live in `lib/memory-article.js` with the rest of
  * the article pipeline, where their format rules are checked mechanically.
  *
- * @module dsh-self-evolution/lib/prompts
+ * @module dsh-self-evolution-collector/lib/prompts
  */
 
 /** Title line of the skill-candidate prompt. */

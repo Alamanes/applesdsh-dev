@@ -24,7 +24,7 @@
  *   evolution flow itself is skipped so the system does not spend tokens
  *   describing itself to itself.
  *
- * @module dsh-self-evolution/lib/collector
+ * @module dsh-self-evolution-collector/lib/collector
  */
 
 import { bump, clearLegFailures, cursorOf, advanceCursor, noteBreaker, noteLegFailure, noteSkip, readState, recordRejection, writeState } from 'dsh-self-evolution-core/lib/state.js'

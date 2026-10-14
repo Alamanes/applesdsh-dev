@@ -9,7 +9,7 @@
  * `meta.md` carries the provenance a reviewer needs — which session, how many
  * tool calls, how many errors — and, once decided, the verdict.
  *
- * @module dsh-self-evolution/lib/candidates
+ * @module dsh-self-evolution-candidates/lib/candidates
  */
 
 import { cpSync, mkdirSync, renameSync, statSync } from 'node:fs'

@@ -21,7 +21,7 @@
  * Findings are split by consequence. A hard finding aborts the finish step; a
  * soft one is reported and left to the flow's judgement.
  *
- * @module dsh-self-evolution/lib/doctor
+ * @module dsh-self-evolution-flow/lib/doctor
  */
 
 import { writeFileSync, unlinkSync } from 'node:fs'

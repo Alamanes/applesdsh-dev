@@ -9,7 +9,7 @@
  * root. Nothing here is held in context: the flow reads a file only when the
  * brief says which one applies.
  *
- * @module dsh-self-evolution/lib/docs
+ * @module dsh-self-evolution-flow/lib/docs
  */
 
 import { dirname, join, resolve } from 'node:path'

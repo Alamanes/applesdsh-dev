@@ -20,7 +20,7 @@
  * merged again by the next Dream, which is the whole point of reviewing before
  * installing.
  *
- * @module dsh-self-evolution/lib/draft
+ * @module dsh-self-evolution-portrait/lib/draft
  */
 
 import { join } from 'node:path'

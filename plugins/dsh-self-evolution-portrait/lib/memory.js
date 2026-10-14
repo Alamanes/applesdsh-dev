@@ -17,7 +17,7 @@
  * the third, so a portrait written for a human cannot be read as the model's own
  * persona.
  *
- * @module dsh-self-evolution/lib/memory
+ * @module dsh-self-evolution-portrait/lib/memory
  */
 
 import { statSync } from 'node:fs'

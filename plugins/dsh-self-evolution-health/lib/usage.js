@@ -13,7 +13,7 @@
  * heuristic: the health report asks the user to decide, and points back at the
  * original trace for a second look.
  *
- * @module dsh-self-evolution/lib/usage
+ * @module dsh-self-evolution-health/lib/usage
  */
 
 import { readJson, writeJsonAtomic } from 'dsh-self-evolution-core/lib/store.js'

@@ -13,7 +13,7 @@
  * invalidates caches, so enabling, archiving and the bundled flow skill all
  * behave like any other skill surface in DSH.
  *
- * @module dsh-self-evolution/lib/skills
+ * @module dsh-self-evolution-skills/lib/skills
  */
 
 import { readdirSync } from 'node:fs'

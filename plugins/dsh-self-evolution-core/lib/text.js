@@ -9,7 +9,7 @@
  * pieces. A trace leaves the machine for a cheap third-party model, so secrets
  * are masked and private paths abort the whole session — neither is advisory.
  *
- * @module dsh-self-evolution/lib/text
+ * @module dsh-self-evolution-core/lib/text
  */
 
 /**

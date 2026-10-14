@@ -15,7 +15,7 @@
  * rather than carried unconditionally, so its cap is a budget for one tool
  * result rather than a permanent tax on every request.
  *
- * @module dsh-self-evolution/lib/memory-article
+ * @module dsh-self-evolution-portrait/lib/memory-article
  */
 
 import { stripOuterFence } from 'dsh-self-evolution-core/lib/text.js'

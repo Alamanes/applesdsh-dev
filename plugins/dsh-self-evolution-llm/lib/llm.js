@@ -17,7 +17,7 @@
  * re-enumerate models on every pass — while any change to the registry, the
  * pins or the session model re-resolves and leaves a line in the log.
  *
- * @module dsh-self-evolution/lib/llm
+ * @module dsh-self-evolution-llm/lib/llm
  */
 
 /** Text-only drafting never needs a long answer; this bounds a runaway one. */

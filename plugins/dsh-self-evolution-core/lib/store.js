@@ -7,7 +7,7 @@
  * or not at all, so a crash or a second DSH instance can never leave a
  * half-written `state.json` behind.
  *
- * @module dsh-self-evolution/lib/store
+ * @module dsh-self-evolution-core/lib/store
  */
 
 import { mkdirSync, readFileSync, writeFileSync, renameSync, appendFileSync, readdirSync, statSync, unlinkSync, openSync, closeSync, rmSync } from 'node:fs'

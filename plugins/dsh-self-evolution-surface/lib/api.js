@@ -6,7 +6,7 @@
  * also promote a candidate would be a second, unaudited door into the same
  * decision.
  *
- * @module dsh-self-evolution/lib/api
+ * @module dsh-self-evolution-surface/lib/api
  */
 
 /** Route prefix for every endpoint this plugin serves. */

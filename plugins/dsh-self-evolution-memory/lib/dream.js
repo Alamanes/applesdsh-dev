@@ -26,7 +26,7 @@
  * extracted at all. It reads closed sessions through the harness's own session
  * query service, under the same breakers and watermarks.
  *
- * @module dsh-self-evolution/lib/dream
+ * @module dsh-self-evolution-memory/lib/dream
  */
 
 import { acquireSweepLock, releaseSweepLock, stamp, writeTextAtomic } from 'dsh-self-evolution-core/lib/store.js'

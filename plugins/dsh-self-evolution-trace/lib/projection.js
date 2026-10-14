@@ -12,7 +12,7 @@
  * runtime-context injections and notices are dropped at the source, so the
  * retained tail is dense conversation rather than framework noise.
  *
- * @module dsh-self-evolution/lib/projection
+ * @module dsh-self-evolution-trace/lib/projection
  */
 
 import { assistantRecord, toolResultRecord, userRecord } from './trace.js'

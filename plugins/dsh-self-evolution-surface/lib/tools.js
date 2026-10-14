@@ -11,7 +11,7 @@
  * deterministic bodies, so the model cannot half-execute them, and nothing is
  * deleted without a recorded verdict.
  *
- * @module dsh-self-evolution/lib/tools
+ * @module dsh-self-evolution-surface/lib/tools
  */
 
 import { renderDoctor } from 'dsh-self-evolution-flow/lib/doctor.js'

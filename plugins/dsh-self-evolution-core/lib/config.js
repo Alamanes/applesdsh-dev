@@ -11,7 +11,7 @@
  * service, so credentials, model choice and pricing live in the DSH settings
  * that already own them.
  *
- * @module dsh-self-evolution/lib/config
+ * @module dsh-self-evolution-core/lib/config
  */
 
 import { readJson, writeJsonAtomic, exists } from './store.js'

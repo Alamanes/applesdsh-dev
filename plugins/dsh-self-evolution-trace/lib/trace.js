@@ -12,7 +12,7 @@
  * {"role":"bashExecution","command":"…","cancelled":false}
  * ```
  *
- * @module dsh-self-evolution/lib/trace
+ * @module dsh-self-evolution-trace/lib/trace
  */
 
 import { extractText, extractToolPaths, sanitizeTraceText, scrubHome } from 'dsh-self-evolution-core/lib/text.js'

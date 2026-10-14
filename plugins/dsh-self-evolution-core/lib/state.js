@@ -12,7 +12,7 @@
  * other's increments — a plain write-back once wrote a single logical increment
  * as `+3`.
  *
- * @module dsh-self-evolution/lib/state
+ * @module dsh-self-evolution-core/lib/state
  */
 
 import { readJson, writeJsonAtomic } from './store.js'

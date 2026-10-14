@@ -8,7 +8,7 @@
  * Read-only by design: the scorecard never archives, rewrites or deletes
  * anything. It produces the list, and the user decides.
  *
- * @module dsh-self-evolution/lib/health
+ * @module dsh-self-evolution-health/lib/health
  */
 
 /** Skills that define the flow itself; exempt from archiving and compression. */

@@ -9,7 +9,7 @@
  * glance plus the two acts a human owns — collecting on demand and reading the
  * trail — while leaving every decision to the flow.
  *
- * @module dsh-self-evolution/lib/commands
+ * @module dsh-self-evolution-surface/lib/commands
  */
 
 /** Command name, kept lowercase per the command grammar. */

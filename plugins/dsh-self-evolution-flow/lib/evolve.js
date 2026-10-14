@@ -13,7 +13,7 @@
  * them, so there is no subprocess, no shell quoting and no `rg` fallback path
  * to maintain.
  *
- * @module dsh-self-evolution/lib/evolve
+ * @module dsh-self-evolution-flow/lib/evolve
  */
 
 import { execFileSync } from 'node:child_process'

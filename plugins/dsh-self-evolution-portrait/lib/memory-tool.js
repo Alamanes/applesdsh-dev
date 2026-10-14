@@ -17,7 +17,7 @@
  * full read as the default answer to a bare `read` measurably pulled the model
  * back into whole-portrait reads, which is the habit this tool exists to break.
  *
- * @module dsh-self-evolution/lib/memory-tool
+ * @module dsh-self-evolution-portrait/lib/memory-tool
  */
 
 import { readArticle, articleSections, searchArticle } from './memory.js'

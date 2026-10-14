@@ -16,7 +16,7 @@
  * is a DSH plugin, so its data lives in the DSH home next to the harness's own
  * state. Data from a pi installation is moved by hand.
  *
- * @module dsh-self-evolution/lib/paths
+ * @module dsh-self-evolution-core/lib/paths
  */
 
 import { homedir } from 'node:os'
