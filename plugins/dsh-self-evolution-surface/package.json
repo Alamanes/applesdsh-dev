@@ -19,10 +19,6 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
-    "dsh-self-evolution-flow": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-flow"
-  },
   "meta": {
     "title": "Tools and surfaces",
     "description": "The evolve tool, the /evolve commands, the panel route and the standing discipline."

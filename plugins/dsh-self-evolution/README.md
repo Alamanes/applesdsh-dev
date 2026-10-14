@@ -31,7 +31,7 @@ DSH 的 `desktop` profile 由桌面应用独占管理，命令行不能直接写
 
 > 用 plugin_manager 的 install_bundle 安装 `github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution`，然后确认 self-evolution 这一行已启用。
 
-包的 manifest 已按 DSH 约定写好：`dsh.bundle.patch` 指向 `cordis.patch.yml`，里面插入 11 行；`dsh.client` 声明浏览器半边，`exports` 同时导出 `./client`。这个清单包的 `dependencies` 列出 11 个组件包，安装清单包时 pnpm 会一并取回。安装后 `/reload` 或重启生效。
+包的 manifest 已按 DSH 约定写好：`dsh.bundle.patch` 指向 `cordis.patch.yml`，里面插入 11 行；`dsh.client` 声明浏览器半边，`exports` 同时导出 `./client`。清单包不在 `dependencies` 里声明那 11 个组件包，本仓库的包是 Git 子目录说明符，pnpm 默认的 `blockExoticSubdeps` 禁止异形依赖出现在子依赖里。因此 12 个包必须全部登记进 profile 的 `dependencies`（清单见仓库根 README 的安装段），少登记一个就会有一行 insert 加载失败。安装后 `/reload` 或重启生效。
 
 ## 一个清单包，十一个组件包
 

@@ -19,10 +19,6 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
-    "dsh-self-evolution-trace": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-trace"
-  },
   "meta": {
     "title": "Feedback loop",
     "description": "Rule-based skill-usage attribution and the three-axis scorecard."

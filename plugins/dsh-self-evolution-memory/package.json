@@ -19,11 +19,6 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
-    "dsh-self-evolution-trace": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-trace",
-    "dsh-self-evolution-portrait": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-portrait"
-  },
   "meta": {
     "title": "Memory leg",
     "description": "Idle gate, per-session extraction into the inbox, the daily Dream merge and the sweep."

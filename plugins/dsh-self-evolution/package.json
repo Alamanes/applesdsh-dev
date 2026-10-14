@@ -31,19 +31,6 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
-    "dsh-self-evolution-trace": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-trace",
-    "dsh-self-evolution-llm": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-llm",
-    "dsh-self-evolution-portrait": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-portrait",
-    "dsh-self-evolution-skills": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-skills",
-    "dsh-self-evolution-candidates": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-candidates",
-    "dsh-self-evolution-health": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-health",
-    "dsh-self-evolution-collector": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-collector",
-    "dsh-self-evolution-memory": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-memory",
-    "dsh-self-evolution-flow": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-flow",
-    "dsh-self-evolution-surface": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-surface"
-  },
   "dsh": {
     "manifestVersion": 1,
     "bundle": {

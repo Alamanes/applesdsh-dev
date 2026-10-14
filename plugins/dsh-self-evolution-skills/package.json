@@ -20,9 +20,6 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core"
-  },
   "meta": {
     "title": "Skill supply",
     "description": "Publishes only reviewed skills plus the bundled flow skill to the registry."
