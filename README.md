@@ -11,13 +11,32 @@
 | `plugins/dsh-dignity-guard` | `dsh-dignity-guard` | 让模型自行判断尊严被冒犯并按阶梯升级的守卫插件 | 本仓库自产 |
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-reasoning-effort` | `dsh-reasoning-effort` | Codex 风格的模型与推理强度选择器 | 上游 [HanaAyane/dsh-reasoning-effort](https://github.com/HanaAyane/dsh-reasoning-effort)，含本地改色与精简改动 |
-| `plugins/dsh-self-evolution` | `dsh-self-evolution` | 「经验 → 技能 → 进化」闭环：会话结束后台采集技能候选与记忆提取 | 本仓库自产 |
+| `plugins/dsh-self-evolution` | `dsh-self-evolution` | 「经验 → 技能 → 进化」闭环的清单包：一个插件卡片下辖 11 个组件包，每个组件在插件页里可单独启停 | 本仓库自产 |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
 | `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
+
+### dsh-self-evolution 的组件包
+
+清单包的 `cordis.patch.yml` 只做一件事：把下面 11 行插进加载树。每行是一个独立包，各带自己的文案目录，
+所以插件页把它们列成一个卡片的 11 个组件；组件之间的运行时对象经 `dsh-self-evolution-core` 的共享记录传递。
+
+| 组件包 | 中文名 | 职责 |
+|---|---|---|
+| `dsh-self-evolution-core` | 账目与检查 | 数据根布局、共享配置、状态账目与经验日志 |
+| `dsh-self-evolution-trace` | 轨迹适配层 | 把宿主会话事件折成统一轨迹 |
+| `dsh-self-evolution-llm` | 采集模型 | 后台两条腿的模型降级链与链指纹缓存 |
+| `dsh-self-evolution-portrait` | 画像文章与草稿 | 文章规则、评审门、收件箱归档与模型按需读取 |
+| `dsh-self-evolution-skills` | 技能供给 | 只发布已审阅的技能与内置流程技能 |
+| `dsh-self-evolution-candidates` | 候选隔离区 | 候选读写、机械预检与启用 / 并入 / 淘汰留档 |
+| `dsh-self-evolution-health` | 反馈回路 | 技能使用归因与三维记分卡 |
+| `dsh-self-evolution-collector` | 技能腿采集器 | 回合结束后按阈值判断是否起草，并写入隔离区 |
+| `dsh-self-evolution-memory` | 记忆腿 | 闲置闸门、逐会话提取、每日 Dream 合并与清扫 |
+| `dsh-self-evolution-flow` | 进化流程 | brief 到 finish 的全部动作与完整性检查 |
+| `dsh-self-evolution-surface` | 工具与表面 | evolve 工具、/evolve 命令、面板路由与常驻纪律段 |
 
 ## 安装
 
@@ -31,6 +50,17 @@
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-reasoning-effort": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-effort",
     "dsh-self-evolution": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution",
+    "dsh-self-evolution-candidates": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-candidates",
+    "dsh-self-evolution-collector": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-collector",
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
+    "dsh-self-evolution-flow": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-flow",
+    "dsh-self-evolution-health": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-health",
+    "dsh-self-evolution-llm": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-llm",
+    "dsh-self-evolution-memory": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-memory",
+    "dsh-self-evolution-portrait": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-portrait",
+    "dsh-self-evolution-skills": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-skills",
+    "dsh-self-evolution-surface": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-surface",
+    "dsh-self-evolution-trace": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-trace",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
@@ -75,11 +105,12 @@ pnpm install
 ```
 
 pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh-self-evolution`
-（或该插件对应的包名）强制重取，再重启 `dsh web`。
+（或该插件对应的包名）强制重取，再重启 `dsh web`。进化系统改一次要动 12 个包，
+升级时把 `dsh-self-evolution` 与 11 个 `dsh-self-evolution-*` 一起重取，避免清单包与组件包停在不同 commit 上。
 
 ## 来源与许可
 
-所有插件均为 MIT。自产的八个包由本仓库维护；其余三个来自各自的上游，收进本仓库是为了把更新源
+所有插件均为 MIT。自产的包由本仓库维护；其余三个来自各自的上游，收进本仓库是为了把更新源
 统一到一处，上游仍是事实上的作者：
 
 - `dsh-status-phrases` 的替换逻辑、打字机锁宽与渐变 CSS 取自 npm 上的 `dsh-status-rotator`

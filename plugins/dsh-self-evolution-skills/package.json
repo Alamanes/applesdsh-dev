@@ -1,0 +1,30 @@
+{
+  "name": "dsh-self-evolution-skills",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Publishes only reviewed skills plus the bundled flow skill to the registry.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./lib/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locale",
+    "skills"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core"
+  },
+  "meta": {
+    "title": "Skill supply",
+    "description": "Publishes only reviewed skills plus the bundled flow skill to the registry."
+  }
+}

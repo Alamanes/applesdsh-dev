@@ -1,6 +1,6 @@
 {
   "name": "dsh-self-evolution",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "DSH port of agent-self-evolution: a background collector drafts reusable skills from finished sessions and grows a long-term portrait through per-session extraction plus a daily Dream merge; a manually triggered evolve flow reviews, enables, archives and grades the skills — candidates never enter context before you approve them.",
   "keywords": [
@@ -13,24 +13,36 @@
     "candidates"
   ],
   "type": "module",
-  "main": "./index.js",
+  "main": "./lib/index.js",
   "exports": {
-    ".": "./index.js",
+    ".": "./lib/index.js",
     "./client": "./client.js",
     "./package.json": "./package.json"
   },
   "files": [
-    "index.js",
+    "lib/index.js",
     "client.js",
-    "lib",
-    "skills",
-    "docs",
+    "icon.svg",
+    "locale",
     "cordis.patch.yml",
     "README.md"
   ],
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
+    "dsh-self-evolution-trace": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-trace",
+    "dsh-self-evolution-llm": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-llm",
+    "dsh-self-evolution-portrait": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-portrait",
+    "dsh-self-evolution-skills": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-skills",
+    "dsh-self-evolution-candidates": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-candidates",
+    "dsh-self-evolution-health": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-health",
+    "dsh-self-evolution-collector": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-collector",
+    "dsh-self-evolution-memory": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-memory",
+    "dsh-self-evolution-flow": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-flow",
+    "dsh-self-evolution-surface": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-surface"
   },
   "dsh": {
     "manifestVersion": 1,

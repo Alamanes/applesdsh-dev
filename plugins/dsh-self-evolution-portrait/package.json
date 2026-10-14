@@ -1,0 +1,29 @@
+{
+  "name": "dsh-self-evolution-portrait",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Article rules, the review gate, inbox archiving and the model’s on-demand read.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./lib/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locale"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core"
+  },
+  "meta": {
+    "title": "Portrait and drafts",
+    "description": "Article rules, the review gate, inbox archiving and the model’s on-demand read."
+  }
+}

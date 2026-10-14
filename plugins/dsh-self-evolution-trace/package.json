@@ -1,0 +1,29 @@
+{
+  "name": "dsh-self-evolution-trace",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Folds host session events into the unified trace; the only module that knows the event vocabulary.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./lib/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locale"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core"
+  },
+  "meta": {
+    "title": "Trace adapter",
+    "description": "Folds host session events into the unified trace; the only module that knows the event vocabulary."
+  }
+}

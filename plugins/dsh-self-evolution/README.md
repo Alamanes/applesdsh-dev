@@ -31,22 +31,27 @@ DSH 的 `desktop` profile 由桌面应用独占管理，命令行不能直接写
 
 > 用 plugin_manager 的 install_bundle 安装 `github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution`，然后确认 self-evolution 这一行已启用。
 
-包的 manifest 已按 DSH 约定写好：`dsh.bundle.patch` 指向 `cordis.patch.yml`（插入宿主行），`dsh.client` 声明浏览器半边，`exports` 同时导出 `./client`。安装后 `/reload` 或重启生效。
+包的 manifest 已按 DSH 约定写好：`dsh.bundle.patch` 指向 `cordis.patch.yml`，里面插入 11 行；`dsh.client` 声明浏览器半边，`exports` 同时导出 `./client`。这个清单包的 `dependencies` 列出 11 个组件包，安装清单包时 pnpm 会一并取回。安装后 `/reload` 或重启生效。
 
-## 一个插件，十个组件
+## 一个清单包，十一个组件包
 
-| 组件 | 文件 | 职责 |
-|---|---|---|
-| 轨迹适配层 | `lib/projection.js`、`lib/trace.js` | 唯一知道 DSH 会话事件词汇的模块。把 `user/message`、`assistant/message`、`tool/result` 折成统一轨迹协议，作为 `sessionProjections` 单元注册，因此重启与恢复后仍从日志重放得到同一份状态 |
-| 技能腿采集器 | `lib/collector.js` | 增量游标、触发阈值、候选区上限、节流、重试上限、拒因留痕、候选脱敏、隐私与自我管理熔断 |
-| 记忆腿 | `lib/dream.js` | 闲置闸门、逐会话提取进收件箱、Dream 合并闸门（间隔 + 待审草稿互斥）、成稿待审、清扫已关闭会话；两腿水位与失败账户各自独立 |
-| 画像文章与草稿 | `lib/memory-article.js`、`lib/memory.js`、`lib/draft.js`、`lib/memory-tool.js` | 提取与 Dream 两个提示词、文章格式机械校验、模型读取前言与降人称、收件箱与按月归档的读写、草稿评审（差异渲染）、采用与丢弃、章节切分与关键词检索 |
-| 采集模型 | `lib/llm.js` | 走宿主的 `ctx.llm`：钉扎模型 → 自动发现（按上下文窗口从小到大）→ 会话自身模型兜底，逐项降级，丢弃项留痕，链指纹缓存 6 小时 |
-| 候选隔离区 | `lib/candidates.js` | `candidates/<slug>/` 的读写、机械预检、启用/并入/淘汰的裁决与留档 |
-| 技能供给 | `lib/skills.js` | 通过 `ctx.skills.registerProvider()` 只提供 `skills/` 下的技能与内置流程技能；启用与归档即文件移动 + 重新发布 |
-| 反馈回路 | `lib/usage.js`、`lib/health.js` | 纯规则扫描轨迹记录技能使用与结果归因；三维打分与六类分级 |
-| 手动流程与表面 | `lib/evolve.js`、`lib/tools.js`、`lib/commands.js`、`lib/api.js`、`client.js` | brief / preflight / enable / merge / reject / archive / restore / health / usage / dream / promote / discard / models / trail / collect / doctor / finish；一个 `evolve` 工具、一个 `memory` 工具、一族 `/evolve` 命令、一条只读 HTTP 路由；浏览器半边不注册任何界面 |
-| 账目与检查 | `lib/state.js`、`lib/doctor.js`、`lib/docs.js` | 两条水位与增量合并写盘、完整性检查（含文章结构校验与待审草稿解析）、细则文档与流程技能的绝对路径 |
+清单包本身不含逻辑，只有补丁、文案与图标。每一行 insert 是一个独立包，各带自己的 `locale/`，插件页因此把一个包卡片列成 11 个组件，每行都能单独启停。行与行之间需要的运行时对象，经 `dsh-self-evolution-core` 的共享记录惰性传递，不依赖加载顺序。
+
+| 组件 | 包 | 文件 | 职责 |
+|---|---|---|---|
+| 账目与检查 | `dsh-self-evolution-core` | `lib/paths.js`、`lib/store.js`、`lib/text.js`、`lib/state.js`、`lib/config.js` | 数据根布局、共享配置的解析与发布、状态账目、经验日志轮转、脱敏与 slug 规则 |
+| 轨迹适配层 | `dsh-self-evolution-trace` | `lib/projection.js`、`lib/trace.js` | 唯一知道 DSH 会话事件词汇的模块。把 `user/message`、`assistant/message`、`tool/result` 折成统一轨迹协议，作为 `sessionProjections` 单元注册，因此重启与恢复后仍从日志重放得到同一份状态 |
+| 采集模型 | `dsh-self-evolution-llm` | `lib/llm.js` | 走宿主的 `ctx.llm`：钉扎模型 → 自动发现（按上下文窗口从小到大）→ 会话自身模型兜底，逐项降级，丢弃项留痕，链指纹缓存 6 小时 |
+| 画像文章与草稿 | `dsh-self-evolution-portrait` | `lib/memory-article.js`、`lib/memory.js`、`lib/draft.js`、`lib/memory-tool.js` | 提取与 Dream 两个提示词、文章格式机械校验、模型读取前言与降人称、收件箱与按月归档的读写、草稿评审、采用与丢弃、章节切分与关键词检索，以及常驻身份行与按需读取工具 |
+| 技能供给 | `dsh-self-evolution-skills` | `lib/skills.js` | 通过 `ctx.skills.registerProvider()` 只提供 `skills/` 下的技能与内置流程技能；启用与归档即文件移动 + 重新发布 |
+| 候选隔离区 | `dsh-self-evolution-candidates` | `lib/candidates.js` | `candidates/<slug>/` 的读写、机械预检、启用/并入/淘汰的裁决与留档 |
+| 反馈回路 | `dsh-self-evolution-health` | `lib/usage.js`、`lib/health.js` | 纯规则扫描轨迹记录技能使用与结果归因；三维打分与六类分级 |
+| 技能腿采集器 | `dsh-self-evolution-collector` | `lib/collector.js`、`lib/prompts.js` | 增量游标、触发阈值、候选区上限、节流、重试上限、拒因留痕、候选脱敏、隐私与自我管理熔断，以及回合收尾钩子 |
+| 记忆腿 | `dsh-self-evolution-memory` | `lib/dream.js` | 闲置闸门与定时器、逐会话提取进收件箱、Dream 合并闸门（间隔 + 待审草稿互斥）、成稿待审、清扫已关闭会话；两腿水位与失败账户各自独立 |
+| 进化流程 | `dsh-self-evolution-flow` | `lib/evolve.js`、`lib/doctor.js`、`lib/docs.js` | brief / preflight / enable / merge / reject / archive / restore / health / usage / dream / promote / discard / models / trail / collect / doctor / finish 的全部动作，以及完整性检查与提交 |
+| 工具与表面 | `dsh-self-evolution-surface` | `lib/tools.js`、`lib/commands.js`、`lib/api.js` | 一个 `evolve` 工具、一族 `/evolve` 命令、一条只读 HTTP 路由与常驻纪律段 |
+
+浏览器半边留在清单包里，不注册任何界面。
 
 ## 使用
 
@@ -273,6 +278,7 @@ memory action="search" keyword="…"          按关键词字面匹配相关段�
 ## 已知局限与未验证项
 
 - **运行时接线部分验证。** 首次安装暴露了一个真实缺陷：`apply()` 里读 `ctx.llm` 触发了 Cordis 的 `cannot get property "llm" without inject`，整个插件未激活。原因是 Cordis 的服务访问器对未 `inject` 的服务直接抛错。现在所有可选服务都通过 `ctx.get()` 惰性读取，且每个可选组件的注册都带局部容错：一个组件失败只降级它自己，不再拖垮整个插件。真机已确认的是：插件激活、技能 provider 生效（技能目录出现 `self-evolve`）、投影折出轨迹并写出 `state.json`、自我管理熔断按预期跳过本插件自身的施工会话。仍未经真实运行验证的是：`sessionQuery.readSession()` 的实际返回形状（清扫据此折叠历史会话）、工具 schema 被注册表接受的全部动作。`conversation.composer.dock` 槽位那条已随状态条一并删除：浏览器半边现在不注册任何界面，无需再核对槽位落位。
+- **拆成 12 个包后的两条硬约束。** 一是同一份代码必须在同一个 commit：清单包与 11 个组件包若停在不同 commit，行与行之间会拿到互相不兼容的模块。二是组件之间的运行时对象走 `dsh-self-evolution-core` 的模块级记录，要求 pnpm 把 core 去重到同一物理路径；profile 里同时列出清单包与 11 个组件包时满足这一点（各包对 core 的说明符逐字相同），只单独装个别组件包则可能拿到第二份副本，届时共享记录为空，采集与流程会走各自的「尚未加载」降级路径。
 - **`file:` 安装是复制而非软链。** 桌面应用安装时把包复制进 `$DSH_PROFILE_DIR/node_modules/`（硬链接到 pnpm store）。改了仓库之后必须重装，或同步那一份副本，并重启 `dsh web` 才会加载新代码。
 - **状态条已删除。** 原先落在 `conversation.composer.dock` 的那行状态（候选 / 收件箱 / 技能数 / 上次 Dream 与上次进化时间）按用户要求移除，`client.js` 的 `apply()` 现在什么都不注册。要完整页面时再挑一个真正分配了空间的槽位重新实现，而不是复活这行。
 - **采集模型排序只是代理指标。** DSH 不给价格元数据，`auto` 按上下文窗口排序；真正在意成本就钉扎 `collector.models`。

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Trace adapter",
+    "description": "Folds host session events into the unified trace; the only module that knows the event vocabulary."
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "dsh-self-evolution-core",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Data-root layout, shared settings, the state ledger and the experience log.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./lib/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locale"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "meta": {
+    "title": "Ledger and checks",
+    "description": "Data-root layout, shared settings, the state ledger and the experience log."
+  }
+}

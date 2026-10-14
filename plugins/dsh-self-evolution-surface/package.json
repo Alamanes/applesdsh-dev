@@ -1,0 +1,30 @@
+{
+  "name": "dsh-self-evolution-surface",
+  "version": "0.2.0",
+  "private": true,
+  "description": "The evolve tool, the /evolve commands, the panel route and the standing discipline.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./lib/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locale"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
+    "dsh-self-evolution-flow": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-flow"
+  },
+  "meta": {
+    "title": "Tools and surfaces",
+    "description": "The evolve tool, the /evolve commands, the panel route and the standing discipline."
+  }
+}

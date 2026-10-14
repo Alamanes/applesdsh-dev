@@ -1,0 +1,29 @@
+{
+  "name": "dsh-self-evolution-llm",
+  "version": "0.2.0",
+  "private": true,
+  "description": "The ordered attempt chain behind both background legs, with a cached fingerprint.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./lib/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locale"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core"
+  },
+  "meta": {
+    "title": "Collection model",
+    "description": "The ordered attempt chain behind both background legs, with a cached fingerprint."
+  }
+}
