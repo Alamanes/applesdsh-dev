@@ -1,0 +1,18 @@
+# dsh-zh-prompt bundle patch.
+#
+# Composed into a profile by listing "dsh-zh-prompt" in that profile's
+# `dsh.profile.bundles` (this file is then resolved through the `dsh.bundle.patch`
+# manifest field), or by pasting the insert block below into the profile's own
+# `cordis.patch.yml`.
+#
+# `name` must be the FULL package specifier exactly as installed in the profile's
+# node_modules. `id` is the loader row's label; keep it equal to the package name
+# so `/plugins/<id>/client.js` points at the same string.
+#
+# The plugin contributes no configuration: every replacement lives in index.js so
+# a reader sees the English original and its Chinese replacement side by side.
+# Rolling back is deleting the bundle entry (and the dependency) or disabling this
+# row.
+- insert:
+    - id: dsh-zh-prompt
+      name: "dsh-zh-prompt"

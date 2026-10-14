@@ -16,6 +16,7 @@
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
+| `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 
 ## 安装
 
@@ -32,7 +33,8 @@
     "dsh-status-rotator": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-rotator",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
     "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
-    "dsh-whale-widget": "github:Alamanes/applesdsh-dev#path:plugins/dsh-whale-widget"
+    "dsh-whale-widget": "github:Alamanes/applesdsh-dev#path:plugins/dsh-whale-widget",
+    "dsh-zh-prompt": "github:Alamanes/applesdsh-dev#path:plugins/dsh-zh-prompt"
   },
   "dsh": {
     "profile": {
@@ -47,7 +49,8 @@
         "dsh-dignity-guard",
         "dsh-local-identity",
         "dsh-self-evolution",
-        "dsh-whale-widget"
+        "dsh-whale-widget",
+        "dsh-zh-prompt"
       ]
     }
   }
@@ -73,7 +76,7 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
 
 ## 来源与许可
 
-所有插件均为 MIT。自产的五个包由本仓库维护；其余四个来自各自的上游，收进本仓库是为了把更新源
+所有插件均为 MIT。自产的六个包由本仓库维护；其余四个来自各自的上游，收进本仓库是为了把更新源
 统一到一处，上游仍是事实上的作者：
 
 - `dsh-commandcode-quota` 出自 Jovan1666/commandcode-usage，README 与代码内的上游链接保留。

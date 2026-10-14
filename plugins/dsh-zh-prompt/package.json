@@ -1,0 +1,34 @@
+{
+  "name": "dsh-zh-prompt",
+  "version": "1.0.0",
+  "private": true,
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "prompt",
+    "chinese",
+    "localization"
+  ],
+  "description": "Force the first-party DSH system prompt into Simplified Chinese: rewrites the recognized guidance sections and runtime contexts, and injects a rule requiring Simplified Chinese for internal reasoning and final answers.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
