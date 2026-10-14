@@ -11,8 +11,9 @@
  *
  * The article is never injected as it stands: it is rendered through
  * {@link buildInjection}, which frames it and converts its second person into
- * the third. That rendering is change-detected, so a steady article costs
- * nothing and does not churn the published context.
+ * the third. Rendering itself is stateless: the harness's runtime-context
+ * projection already drops an identical snapshot per session, so a steady
+ * article costs nothing per turn without a memo in this module.
  *
  * @module dsh-self-evolution/lib/memory
  */
@@ -113,24 +114,19 @@ export function archiveInbox(paths, names, now = new Date()) {
 /**
  * Render the article into the text published to the model.
  *
- * Returns an empty string while there is no article and while the rendering is
- * unchanged since the last call: a stable portrait must cost nothing.
+ * Returns an empty string while there is no article. The rendering is not
+ * memoized: the plugin instance outlives every session, so a process-wide
+ * "unchanged since the last call" would publish the portrait to whichever
+ * session asked first and starve every session after it. The caller dedupes
+ * per session instead.
  *
  * @param paths - the layout table.
  * @returns the published text, or an empty string.
  */
 export function createArticleRenderer(paths) {
-  let previous
   return function render() {
     const article = readArticle(paths).trim()
-    if (article.length === 0) {
-      if (previous === '') return ''
-      previous = ''
-      return ''
-    }
-    const text = buildInjection(article).content
-    if (text === previous) return ''
-    previous = text
-    return text
+    if (article.length === 0) return ''
+    return buildInjection(article).content
   }
 }
