@@ -36,6 +36,10 @@
 window.__ModuleLoader__.load({
   id: 'dsh-local-identity',
   factory: (require) => {
+    const module = { exports: {} }
+    const exports = module.exports
+    Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
+
     const React = require('react')
     const { createSnapshotStore } = require('@deepseek-ai/dsh-client-store')
     const primitives = require('@deepseek-ai/dsh-client-ui-primitives')
