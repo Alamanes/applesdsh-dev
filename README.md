@@ -12,6 +12,7 @@
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-reasoning-effort` | `dsh-reasoning-effort` | Codex 风格的模型与推理强度选择器 | 上游 [HanaAyane/dsh-reasoning-effort](https://github.com/HanaAyane/dsh-reasoning-effort)，含本地改色与精简改动 |
 | `plugins/dsh-self-evolution` | `dsh-self-evolution` | 「经验 → 技能 → 进化」闭环：会话结束后台采集技能候选与记忆提取 | 本仓库自产 |
+| `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
 | `plugins/dsh-status-rotator` | `dsh-status-rotator` | 状态行短语轮换、打字机、渐变、弹幕与主题包 | 上游 npm 包 `dsh-status-rotator`（[01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator)） |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
@@ -30,6 +31,7 @@
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-reasoning-effort": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-effort",
     "dsh-self-evolution": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution",
+    "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
     "dsh-status-rotator": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-rotator",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
     "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
@@ -49,6 +51,7 @@
         "dsh-dignity-guard",
         "dsh-local-identity",
         "dsh-self-evolution",
+        "dsh-session-delete",
         "dsh-whale-widget",
         "dsh-zh-prompt"
       ]
