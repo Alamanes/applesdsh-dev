@@ -14,6 +14,7 @@
 | `plugins/dsh-status-rotator` | `dsh-status-rotator` | 状态行短语轮换、打字机、渐变、弹幕与主题包 | 上游 npm 包 `dsh-status-rotator`（[01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator)） |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
+| `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
 
 ## 安装
 
@@ -28,7 +29,8 @@
     "dsh-self-evolution": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution",
     "dsh-status-rotator": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-rotator",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
-    "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily"
+    "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
+    "dsh-whale-widget": "github:Alamanes/applesdsh-dev#path:plugins/dsh-whale-widget"
   },
   "dsh": {
     "profile": {
@@ -41,7 +43,8 @@
         "dsh-status-rotator",
         "dsh-ui-copy",
         "dsh-dignity-guard",
-        "dsh-self-evolution"
+        "dsh-self-evolution",
+        "dsh-whale-widget"
       ]
     }
   }
@@ -67,7 +70,7 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
 
 ## 来源与许可
 
-所有插件均为 MIT。自产的四个包由本仓库维护；其余三个来自各自的上游，收进本仓库是为了把更新源
+所有插件均为 MIT。自产的四个包由本仓库维护；其余四个来自各自的上游，收进本仓库是为了把更新源
 统一到一处，上游仍是事实上的作者：
 
 - `dsh-commandcode-quota` 出自 Jovan1666/commandcode-usage，README 与代码内的上游链接保留。
@@ -75,5 +78,8 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
   本地改动见该目录的说明。
 - `dsh-status-rotator` 出自 npm 上的 01Virex 包，取其包内 `files` 清单所列内容，未收录运行时生成的
   `config.json`。
+- `dsh-whale-widget` 出自 MeteorNOX/DeepSeek-Balance-Whale-Widget，取其包内 `files` 清单所列内容与
+  `LICENSE`，未收录上游的开发脚本（`tools/`、`.github/`）。代码 MIT；`assets/` 与 `icon.png` 的美术素材
+  不适用 MIT，按上游 `PROVENANCE.md` 的说明原样随包分发。
 
 上游一旦更新，本仓库不会自动跟；需要时手动取回再提交。
