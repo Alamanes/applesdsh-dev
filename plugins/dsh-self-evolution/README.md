@@ -90,10 +90,13 @@ evolve action="finish" summary="…" updated=N repaired=N rejected=N merged=N
 记忆工具（`memoryTool: true` 时注册）：它取代了原先的 `injectProfile`，画像不常驻注入，只有模型主动调用它时文章才会进入上下文。
 
 ```
-memory action="outline"            章节索引与各节字数
-memory action="read" [section="…"] 读某一节，省略 section 读全文
-memory action="search" keyword="…" 按关键词字面匹配相关段落
+memory action="outline"                     章节索引与各节字数（默认第一步）
+memory action="read" section="…"            读某一节；多节用 sections=["…", "…"]
+memory action="read" full=true              读全文，仅在用户明确要完整画像时才用
+memory action="search" keyword="…"          按关键词字面匹配相关段落
 ```
+
+`read` 不指定节也不写 `full=true` 时只会回索引，不会把文章倒出来：这条契约是刻意收紧的，早先「省略 section 即全文」的写法会把模型拉回整读画像的习惯，而那正是这个工具要解决的问题。
 
 浏览器半边不注册任何界面：原先在输入框下方的那行状态条（候选 / 收件箱 / 技能数 / 上次 Dream 与上次进化时间）已按用户要求删除，`client.js` 只保留一个空的 `apply()`，包清单与启动图因此不变。数据仍由只读路由 `/api/self-evolution/overview` 提供，需要时用 `curl` 或 `/evolve` 命令查看。
 

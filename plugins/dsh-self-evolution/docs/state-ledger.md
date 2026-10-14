@@ -107,7 +107,8 @@
 | 画像文章长度 | ≤3000 字符，散文段落 + 两级章节，首节固定为「概览」 | `MAX_ARTICLE_CHARS` |
 | 文章文体 | 第二人称「你」、不用清单、不用表情符号，由 `parseArticle` 机械强验 | `ARTICLE_LEAD_SECTION` |
 | 模型读取框定 | 模型读到的内容 = 固定前言 + **降人称后的正文**；正文保持第二人称给人读，读取前过 `toThirdPerson` 转第三人称。画像不注入运行时上下文，只在模型调用 `memory` 工具时按需读取 | `MODEL_VIEW_HEADER` / `renderForModel` / `toThirdPerson` |
-| 画像读取面 | `outline` 只列章节索引与各节字数，`read` 读单节或全文，`search` 按关键词字面匹配段落 | `lib/memory-tool.js` / `articleSections` / `searchArticle` |
+| 画像读取面 | `outline` 只列章节索引与各节字数，`read` 按 `section` / `sections` 取指定节，`search` 按关键词字面匹配段落 | `lib/memory-tool.js` / `articleSections` / `searchArticle` |
+| 整读门槛 | 全文只在显式 `full=true` 时返回；`read` 既不给节也不给 `full` 时只回索引，不倒出文章 | `lib/memory-tool.js` `read()` |
 | 待审草稿 | 同时只允许 1 份：有待审草稿时 Dream 跳过合并，先处置它；采用是唯一会写 `memory/PROFILE.md` 的路径 | `lib/dream.js` `runDreamGate` / `promoteDraft` |
 | Dream 间隔 | 距上次合并 24 小时 | `SE_DREAM_INTERVAL_MS` |
 | 草稿输出预算 | 技能 5120 / 逐会话提取 3072 / Dream 8192 token | `SE_MAX_OUTPUT_TOKENS`、`SE_MAX_EXTRACT_OUTPUT_TOKENS`、`SE_MAX_ARTICLE_OUTPUT_TOKENS` |
