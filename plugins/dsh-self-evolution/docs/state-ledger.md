@@ -106,7 +106,9 @@
 | 逐会话提取长度 | ≤600 字符，每条以「- 」开头 | `MAX_EXTRACT_CHARS` |
 | 画像文章长度 | ≤3000 字符，散文段落 + 两级章节，首节固定为「概览」 | `MAX_ARTICLE_CHARS` |
 | 文章文体 | 第二人称「你」、不用清单、不用表情符号，由 `parseArticle` 机械强验 | `ARTICLE_LEAD_SECTION` |
-| 模型读取框定 | 模型读到的内容 = 固定前言 + **降人称后的正文**；正文保持第二人称给人读，读取前过 `toThirdPerson` 转第三人称。画像不注入运行时上下文，只在模型调用 `memory` 工具时按需读取 | `MODEL_VIEW_HEADER` / `renderForModel` / `toThirdPerson` |
+| 模型读取框定 | 模型读到的内容 = 固定前言 + **降人称后的正文**；正文保持第二人称给人读，读取前过 `toThirdPerson` 转第三人称。画像文章不注入运行时上下文，只在模型调用 `memory` 工具时按需读取；前言另含「不复述」纪律 | `MODEL_VIEW_HEADER` / `renderForModel` / `toThirdPerson` |
+| 常驻身份行 | `evolve:identity` 段 = 概览节的**首句**、过 `toThirdPerson`；只取一句是刻意的，概览后几句常从「她是谁」滑向「她喜欢怎样」，属于没人要求过的常驻指令。首句超 220 字符（`IDENTITY_MAX_CHARS`）时截到 220 字符加省略号；无概览节或文章为空时不产出该段 | `lib/memory.js` `identityLine` / `createIdentityReader`、`IDENTITY_MAX_CHARS` |
+| 身份行刷新 | 每次组装提示词读一次 mtime，文件未变则复用上次结果；stat 失败沿用上一次的文本，不把该段抖掉 | `createIdentityReader` |
 | 画像读取面 | `outline` 只列章节索引与各节字数，`read` 按 `section` / `sections` 取指定节，`search` 按关键词字面匹配段落 | `lib/memory-tool.js` / `articleSections` / `searchArticle` |
 | 整读门槛 | 全文只在显式 `full=true` 时返回；`read` 既不给节也不给 `full` 时只回索引，不倒出文章 | `lib/memory-tool.js` `read()` |
 | 待审草稿 | 同时只允许 1 份：有待审草稿时 Dream 跳过合并，先处置它；采用是唯一会写 `memory/PROFILE.md` 的路径 | `lib/dream.js` `runDreamGate` / `promoteDraft` |

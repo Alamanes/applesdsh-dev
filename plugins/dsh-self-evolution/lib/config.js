@@ -116,6 +116,12 @@ export function resolveSettings(rowConfig) {
     /** Register the model-facing `memory` tool, the on-demand portrait read. */
     memoryTool: row.memoryTool !== false,
     /**
+     * Keep the article's lead sentence in the prompt as one identity line, so
+     * the assistant behaves as if it already knows who it is talking to. Set
+     * false to keep everything about the user behind the `memory` tool.
+     */
+    identityLine: row.identityLine !== false,
+    /**
      * Require a human verdict before a Dream's rewrite becomes the article.
      * `SE_DREAM_REVIEW=0` restores the pre-review behaviour, where a Dream
      * installs `memory/PROFILE.md` the moment it validates.

@@ -20,8 +20,10 @@
  * @module dsh-self-evolution/lib/memory
  */
 
+import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { exists, listDir, readText, removeFile, writeTextAtomic } from './store.js'
+import { ARTICLE_LEAD_SECTION, toThirdPerson } from './memory-article.js'
 import { slugify } from './text.js'
 
 /** Fresh `logs/experience-log.md`. */
@@ -164,4 +166,71 @@ export function searchArticle(article, keyword) {
     }
   }
   return hits
+}
+
+/** Longest identity line kept in the prompt, in characters. */
+export const IDENTITY_MAX_CHARS = 220
+
+/**
+ * The one-line identity taken from the article's lead section.
+ *
+ * The point of this line is the opposite of the article: it is what makes the
+ * assistant behave as if it already knows who it is talking to, without a read
+ * and without anything to recite. So it is deliberately small and deliberately
+ * boring — who the user is — and it carries only the lead section's **first
+ * sentence**.
+ *
+ * The restriction to one sentence is the load-bearing part. A portrait's lead
+ * section quickly moves from "who she is" to "how she likes things", and those
+ * sentences steer behaviour: an identity line that ends with "she likes
+ * exclamation marks" is a standing instruction nobody asked for. Preferences,
+ * opinions and projects stay behind the `memory` tool, where a step has to ask
+ * for them and the ask is visible.
+ *
+ * @param article - the raw article.
+ * @param maxChars - the truncation guard for an over-long first sentence.
+ * @returns the identity line, or an empty string when there is nothing usable.
+ */
+export function identityLine(article, maxChars = IDENTITY_MAX_CHARS) {
+  const lead = articleSections(article).find((section) => section.name === ARTICLE_LEAD_SECTION)
+  if (lead === undefined) return ''
+  // The article is written in the second person for its human reader; in a
+  // prompt slot that 「你」 would read as the assistant describing itself.
+  const sentences = toThirdPerson(lead.body.replace(/\s*\n\s*/g, ''))
+    .text.split(/(?<=。)/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0)
+  const first = sentences[0] ?? ''
+  if (first.length <= maxChars) return first
+  // A first sentence that blows the budget is kept as its opening clause, so the
+  // line neither disappears nor grows.
+  return `${first.slice(0, maxChars - 1)}…`
+}
+
+/**
+ * Read the identity line for the prompt, re-reading only when the file changes.
+ *
+ * The prompt is assembled before every model step, so this runs often; the
+ * article only changes when a human accepts a draft. An mtime check keeps the
+ * steady state to one `stat` instead of one read, and a failed stat falls back
+ * to the last text rather than dropping the line mid-session.
+ *
+ * @param paths - the layout table.
+ * @returns a function returning the current identity line.
+ */
+export function createIdentityReader(paths) {
+  let stamp
+  let line = ''
+  return function identity() {
+    try {
+      const current = statSync(paths.profile).mtimeMs
+      if (current === stamp) return line
+      line = identityLine(readText(paths.profile, ''))
+      stamp = current
+      return line
+    } catch {
+      stamp = undefined
+      return line
+    }
+  }
 }

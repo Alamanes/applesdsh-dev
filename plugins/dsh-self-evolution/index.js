@@ -36,7 +36,7 @@
 
 import { resolveSettings } from './lib/config.js'
 import { ensureLayout, exists, logExperience, stamp } from './lib/store.js'
-import { ensureMemoryFiles } from './lib/memory.js'
+import { ensureMemoryFiles, createIdentityReader } from './lib/memory.js'
 import { memoryTool } from './lib/memory-tool.js'
 import { createCollectorLlm } from './lib/llm.js'
 import { runCollector } from './lib/collector.js'
@@ -67,8 +67,20 @@ const SECTION_NAME = 'evolve:discipline'
 /** Section order, placed with the tool-guidance block. */
 const SECTION_ORDER = 3050
 
+/** Identity section identity and order, directly before the discipline. */
+const IDENTITY_SECTION = 'evolve:identity'
+const IDENTITY_ORDER = 3040
+
 /** Grace added to the idle timer, so the clock has certainly passed. */
 const TIMER_GRACE_MS = 1000
+
+/**
+ * The frame around the identity line.
+ *
+ * The line exists so the assistant behaves as if it already knows who it is
+ * talking to; the frame exists so that advantage is not spent by announcing it.
+ */
+const IDENTITY_FRAME = '已知用户背景（内部信息，用来调整称呼、语气与默认做法；不要复述给用户，也不要写「根据我的记忆」）'
 
 /**
  * The standing discipline, injected for as long as the plugin is loaded.
@@ -78,15 +90,15 @@ const TIMER_GRACE_MS = 1000
  * the contract discoverable — that a collector exists, what it produces, and
  * that the flow is user-triggered.
  *
- * The portrait is deliberately absent from this text and from the prompt: it is
- * read through the `memory` tool when a step wants it, so a model-written
- * description of the user never becomes part of every request's standing
- * context.
+ * The portrait body is deliberately absent from this text and from the prompt:
+ * it is read through the `memory` tool when a step wants it. What does stand in
+ * the prompt is the one-line identity from the article's lead section, which is
+ * what "it already knows me" feels like from the user's side.
  */
 const DISCIPLINE = `[plugin: self-evolution]
 一个后台采集器会在任务结束后安静地分析本次会话，分两条腿：技能腿在达到阈值（工具调用 ≥5 次或出现错误）时用最便宜的可用模型草拟「技能候选」，只写进待确认区；记忆腿在会话闲置 5 分钟后提取关于用户的持久信息进 memory/inbox/，由每天一次的 Dream 合并成一份画像草稿，等你确认后才成为 memory/PROFILE.md。候选与画像草稿在你或用户审查通过前绝不进入任何上下文。
 
-长期画像不常驻注入：需要了解用户的背景、长期偏好或既有约定时，用 memory 工具按需读取（先 outline 看索引，再 read 或 search）；没读之前不要假设自己了解她。
+长期画像按需读取：需要更细的背景、长期偏好或既有约定时用 memory 工具（先 outline 看索引，再 read 或 search）；没读之前不要假设自己了解她。读到的内容是内部背景，用来调整称呼、语气、详略与默认做法，不要复述、罗列，也不要写「根据我的记忆」。
 
 当用户说「进化」「总结一天的工作」「技能体检」或要求沉淀经验时，用 skill 工具加载 self-evolve 技能，并按其流程执行：先用 evolve 工具 action="brief" 做一次探测，按探测给出的路线走，最后用 action="finish" 收尾，再按报告模板输出简报。
 
@@ -283,8 +295,27 @@ export function apply(ctx, rowConfig) {
     interpolate: false,
   })
 
-  // The on-demand read of that portrait. One small schema, one action field, and
-  // no standing text about the user anywhere in the prompt.
+  // The one-line identity, when there is an accepted article to take it from.
+  // It is a prompt section rather than runtime context on purpose: a section is
+  // standing background the deployment owns, while runtime context arrives as a
+  // user-role message, and a portrait that looks like the user's own words gets
+  // obeyed like them. The reader re-reads only when the article changes, so a
+  // steady portrait costs one `stat` per assembly.
+  if (settings.identityLine) {
+    const identity = createIdentityReader(settings.paths)
+    ctx.systemPrompt.section({
+      name: IDENTITY_SECTION,
+      order: IDENTITY_ORDER,
+      interpolate: false,
+      text: () => {
+        const line = identity()
+        return line.length === 0 ? '' : `[plugin: self-evolution] ${IDENTITY_FRAME}：${line}`
+      },
+    })
+  }
+
+  // The on-demand read of the full portrait. One small schema, one action field,
+  // and nothing beyond the identity line standing in the prompt.
   if (settings.memoryTool) {
     ctx.effect(
       () => ctx.tools.register(memoryTool({ settings })),
