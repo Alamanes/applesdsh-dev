@@ -1,0 +1,14 @@
+# dsh-status-phrases bundle patch.
+#
+# Declares how this plugin joins a profile, exactly like the other plugins in
+# this repository: listing the package in the profile's `dsh.profile.bundles`
+# pulls this file in through `dsh.bundle.patch`. `name` must be the package name
+# as it appears in the profile's node_modules, and `id` is kept equal to it
+# because the client module loader uses that string as the boot-graph row id and
+# serves the browser half from /plugins/<package name>/client.js.
+#
+# The phrase list is not written here: it lives in the row config, which the
+# Settings → General row appends to the profile's cordis.patch.yml.
+- insert:
+    - id: dsh-status-phrases
+      name: "dsh-status-phrases"

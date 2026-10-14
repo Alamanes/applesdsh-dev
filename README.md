@@ -13,7 +13,7 @@
 | `plugins/dsh-reasoning-effort` | `dsh-reasoning-effort` | Codex 风格的模型与推理强度选择器 | 上游 [HanaAyane/dsh-reasoning-effort](https://github.com/HanaAyane/dsh-reasoning-effort)，含本地改色与精简改动 |
 | `plugins/dsh-self-evolution` | `dsh-self-evolution` | 「经验 → 技能 → 进化」闭环：会话结束后台采集技能候选与记忆提取 | 本仓库自产 |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
-| `plugins/dsh-status-rotator` | `dsh-status-rotator` | 状态行短语轮换、打字机、渐变、弹幕与主题包 | 上游 npm 包 `dsh-status-rotator`（[01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator)） |
+| `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
@@ -32,7 +32,7 @@
     "dsh-reasoning-effort": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-effort",
     "dsh-self-evolution": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
-    "dsh-status-rotator": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-rotator",
+    "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
     "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
     "dsh-whale-widget": "github:Alamanes/applesdsh-dev#path:plugins/dsh-whale-widget",
@@ -46,7 +46,7 @@
         "dsh-reasoning-effort",
         "dsh-web-search-tavily",
         "dsh-commandcode-quota",
-        "dsh-status-rotator",
+        "dsh-status-phrases",
         "dsh-ui-copy",
         "dsh-dignity-guard",
         "dsh-local-identity",
@@ -79,14 +79,15 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
 
 ## 来源与许可
 
-所有插件均为 MIT。自产的六个包由本仓库维护；其余四个来自各自的上游，收进本仓库是为了把更新源
+所有插件均为 MIT。自产的八个包由本仓库维护；其余三个来自各自的上游，收进本仓库是为了把更新源
 统一到一处，上游仍是事实上的作者：
 
+- `dsh-status-phrases` 的替换逻辑、打字机锁宽与渐变 CSS 取自 npm 上的 `dsh-status-rotator`
+  （MIT，01Virex），是那份实现的收窄复刻：只保留状态行替换与特效，并把短语配置收敛成设置里的一个
+  文本框。该上游包已从本仓库与本机移除，这份复刻是它在状态行上的唯一延续。
 - `dsh-commandcode-quota` 出自 Jovan1666/commandcode-usage，README 与代码内的上游链接保留。
 - `dsh-reasoning-effort` 出自 HanaAyane，`package.json` 的 `author` 与 `repository` 字段保留上游，
   本地改动见该目录的说明。
-- `dsh-status-rotator` 出自 npm 上的 01Virex 包，取其包内 `files` 清单所列内容，未收录运行时生成的
-  `config.json`。
 - `dsh-whale-widget` 出自 MeteorNOX/DeepSeek-Balance-Whale-Widget，取其包内 `files` 清单所列内容与
   `LICENSE`，未收录上游的开发脚本（`tools/`、`.github/`）。代码 MIT；`assets/` 与 `icon.png` 的美术素材
   不适用 MIT，按上游 `PROVENANCE.md` 的说明原样随包分发。
