@@ -24,9 +24,10 @@
 清单包的 `cordis.patch.yml` 只做一件事：把下面 11 行插进加载树。每行是一个独立包，各带自己的文案目录，
 所以插件页把它们列成一个卡片的 11 个组件；组件之间的运行时对象经 `dsh-self-evolution-core` 的共享记录传递。
 
-清单包与组件包都不声明彼此为依赖：本仓库的包是 Git 子目录说明符，pnpm 默认的 `blockExoticSubdeps`
-禁止异形依赖出现在子依赖里。代价是安装时必须把 12 个包全部登记进 profile 的 `dependencies`，
-上面的 JSON 已经列全；少登记一个，对应的那一行 insert 就会加载失败。
+组件包是清单包 `dependencies` 里的 11 条 Git 子目录说明符，profile 只登记清单包一个。要让这 11 行从 profile
+根解析到，profile 需要满足两个条件：包管理器采用提升式布局（`nodeLinker: hoisted`，DSH 的 desktop profile
+默认如此，组件包因此落在 `node_modules/` 顶层），以及关闭 `blockExoticSubdeps`——本仓库的包是 Git 子目录
+说明符，该策略默认会拒绝它出现在子依赖里。
 
 | 组件包 | 中文名 | 职责 |
 |---|---|---|
@@ -54,17 +55,6 @@
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-reasoning-effort": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-effort",
     "dsh-self-evolution": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution",
-    "dsh-self-evolution-candidates": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-candidates",
-    "dsh-self-evolution-collector": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-collector",
-    "dsh-self-evolution-core": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-core",
-    "dsh-self-evolution-flow": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-flow",
-    "dsh-self-evolution-health": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-health",
-    "dsh-self-evolution-llm": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-llm",
-    "dsh-self-evolution-memory": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-memory",
-    "dsh-self-evolution-portrait": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-portrait",
-    "dsh-self-evolution-skills": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-skills",
-    "dsh-self-evolution-surface": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-surface",
-    "dsh-self-evolution-trace": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution-trace",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
@@ -109,8 +99,9 @@ pnpm install
 ```
 
 pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh-self-evolution`
-（或该插件对应的包名）强制重取，再重启 `dsh web`。进化系统改一次要动 12 个包，
-升级时把 `dsh-self-evolution` 与 11 个 `dsh-self-evolution-*` 一起重取，避免清单包与组件包停在不同 commit 上。
+（或该插件对应的包名）强制重取，再重启 `dsh web`。进化系统的 11 个组件包是清单包的子依赖，
+`pnpm update dsh-self-evolution` 会一并重新解析它们；若某个组件包仍停在旧 commit，把这 11 个
+`dsh-self-evolution-*` 包名一起写进同一条命令再跑一次，避免清单包与组件包停在不同 commit 上。
 
 ## 来源与许可
 
