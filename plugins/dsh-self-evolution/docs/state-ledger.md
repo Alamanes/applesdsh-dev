@@ -15,7 +15,7 @@
 | `createdAt` | 系统创建时间（首次激活时写入） | 激活 | 展示 |
 | `lastSeenAt` | 每次收尾时的心跳时间戳 | 采集器 | 人工排查 |
 | `lastCollectionAt` | 最近一次技能腿采集结束时间 | 采集器 | 节流判断（默认关闭） |
-| `lastDreamAt` | 最近一次 Dream 合并完成时间，距此达到 `SE_DREAM_INTERVAL_MS` 才再合并 | 采集器 | 采集器、`brief` |
+| `lastDreamAt` | 最近一次 Dream 完成时间（成稿待审也算一次），距此达到 `SE_DREAM_INTERVAL_MS` 才再合并；`dreamReview` 开启时还有待审草稿这道闸门 | 采集器 | 采集器、`brief` |
 | `lastEvolutionAt` / `lastEvolution` | 最近一次进化完成时间与明细快照 | 收尾 | `brief` 两处都打印 |
 | `stats` | 见第 3 节 | 两者按字段分别写 | `brief`、报告模板 |
 | `rejections[]` | 最近 20 条拒绝/失败原因 | 采集器与收尾，上限统一 20 | 人工查看 |
@@ -71,6 +71,7 @@
 | `candidatesCreated` | 生成的候选数 | 采集器 |
 | `memoryExtracts` / `memoryFailed` / `memoryRejected` | 记忆提取三态：写入收件箱 / 失败（可重试）/ 格式拒绝 | 采集器 |
 | `dreams` / `dreamsFailed` / `memoryConsumed` | Dream 成功次数 / 失败次数 / 已消费的提取份数 | 采集器 |
+| `dreamDrafts` / `dreamsPromoted` / `dreamsDiscarded` | Dream 成稿待审次数 / 待审草稿被人工采用次数 / 被丢弃次数。采用时才归档提取，因此 `memoryConsumed` 也会在这次采用里加上被消费的份数 | 采集器（成稿）与 `promote`、`discard` 动作（处置） |
 | `candidatesRejected` | **人工审查淘汰**数，由收尾并入 | 收尾 |
 | `skillsEnabled` / `skillsUpdated` / `skillsRepaired` / `candidatesMerged` | 技能侧处置计数 | 收尾 |
 | `evolutions` | 进化轮次 | 收尾 |
@@ -105,7 +106,9 @@
 | 逐会话提取长度 | ≤600 字符，每条以「- 」开头 | `MAX_EXTRACT_CHARS` |
 | 画像文章长度 | ≤3000 字符，散文段落 + 两级章节，首节固定为「概览」 | `MAX_ARTICLE_CHARS` |
 | 文章文体 | 第二人称「你」、不用清单、不用表情符号，由 `parseArticle` 机械强验 | `ARTICLE_LEAD_SECTION` |
-| 注入框定 | 注入内容 = 固定前言 + **降人称后的正文**；正文保持第二人称给人读，注入前过 `toThirdPerson` 转第三人称 | `INJECTION_HEADER` / `toThirdPerson` |
+| 模型读取框定 | 模型读到的内容 = 固定前言 + **降人称后的正文**；正文保持第二人称给人读，读取前过 `toThirdPerson` 转第三人称。画像不注入运行时上下文，只在模型调用 `memory` 工具时按需读取 | `MODEL_VIEW_HEADER` / `renderForModel` / `toThirdPerson` |
+| 画像读取面 | `outline` 只列章节索引与各节字数，`read` 读单节或全文，`search` 按关键词字面匹配段落 | `lib/memory-tool.js` / `articleSections` / `searchArticle` |
+| 待审草稿 | 同时只允许 1 份：有待审草稿时 Dream 跳过合并，先处置它；采用是唯一会写 `memory/PROFILE.md` 的路径 | `lib/dream.js` `runDreamGate` / `promoteDraft` |
 | Dream 间隔 | 距上次合并 24 小时 | `SE_DREAM_INTERVAL_MS` |
 | 草稿输出预算 | 技能 5120 / 逐会话提取 3072 / Dream 8192 token | `SE_MAX_OUTPUT_TOKENS`、`SE_MAX_EXTRACT_OUTPUT_TOKENS`、`SE_MAX_ARTICLE_OUTPUT_TOKENS` |
 | 截断判定 | 通道不报告 length，改由 usage 输出 token 数判断：用满预算即视为可能截断并丢弃 | `lib/llm.js` |
@@ -140,6 +143,6 @@
 | 项 | 原因 |
 |---|---|
 | `state.json` / `usage.json` 不纳入 git | 两者每个回合都会变，是刻意的动态文件。为拿到回滚能力，收尾时会把快照写入 `logs/archive/ledger-backup/`，随提交进 git，不产生每回合噪音 |
-| `memory/` 不纳入 git | 记忆由采集器自动生成，每次提取与 Dream 都会变动，与 `state.json` 同理；可追溯性由 `memory/archive/` 的按月归档保证，不靠 git |
+| `memory/` 不纳入 git | 记忆由采集器自动生成，每次提取、Dream 成稿与草稿处置都会变动，与 `state.json` 同理；可追溯性由 `memory/archive/` 的按月归档与 `memory/archive/drafts/` 的草稿留档保证，不靠 git |
 | 归档目录不自动清理 | 处置权在用户，插件只报告数量与体积 |
 | 技能永不删除 | 只有归档与恢复；淘汰只针对候选，且留档在 `archived/` |

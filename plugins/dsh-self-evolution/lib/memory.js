@@ -1,26 +1,27 @@
 /**
- * The durable memory store: the article, its inbox, and the injected view.
+ * The durable memory store: the article, its inbox, and its provenance.
  *
- * Three files carry the whole long-term memory of the system:
+ * The whole long-term memory of the system is plain files here:
  *
- * - `memory/PROFILE.md` — the portrait article, rewritten in full by each
- *   Dream. It is the one memory that reaches every later session.
+ * - `memory/PROFILE.md` — the portrait article, installed only when a human
+ *   accepts a draft. It is the one memory later sessions can read, through the
+ *   `memory` tool, and it is never carried in the prompt on its own.
  * - `memory/inbox/` — one extract per idle session, waiting to be merged.
- * - `memory/archive/YYYY-MM/` — the extracts a Dream has already consumed,
- *   kept for provenance rather than deleted.
+ * - `memory/drafts/<id>/` — a Dream's proposed rewrite, waiting for review.
+ * - `memory/archive/YYYY-MM/` — the extracts a Dream has already merged, and
+ *   `memory/archive/drafts/<id>/` — every draft with its verdict, both kept for
+ *   provenance rather than deleted.
  *
- * The article is never injected as it stands: it is rendered through
- * {@link buildInjection}, which frames it and converts its second person into
- * the third. Rendering itself is stateless: the harness's runtime-context
- * projection already drops an identical snapshot per session, so a steady
- * article costs nothing per turn without a memo in this module.
+ * The article is not served as it stands: it is rendered through
+ * {@link renderForModel}, which frames it and converts its second person into
+ * the third, so a portrait written for a human cannot be read as the model's own
+ * persona.
  *
  * @module dsh-self-evolution/lib/memory
  */
 
 import { join } from 'node:path'
 import { exists, listDir, readText, removeFile, writeTextAtomic } from './store.js'
-import { buildInjection } from './memory-article.js'
 import { slugify } from './text.js'
 
 /** Fresh `logs/experience-log.md`. */
@@ -112,21 +113,55 @@ export function archiveInbox(paths, names, now = new Date()) {
 }
 
 /**
- * Render the article into the text published to the model.
+ * Split the article into its `##` sections, for on-demand reading.
  *
- * Returns an empty string while there is no article. The rendering is not
- * memoized: the plugin instance outlives every session, so a process-wide
- * "unchanged since the last call" would publish the portrait to whichever
- * session asked first and starve every session after it. The caller dedupes
- * per session instead.
+ * A reader asking about the user rarely wants all 3000 characters, so the
+ * sections are addressable by their heading. Text before the first heading is
+ * returned as a section named `（前言）`, because dropping it silently would be
+ * worse than naming it oddly.
  *
- * @param paths - the layout table.
- * @returns the published text, or an empty string.
+ * @param article - the raw article.
+ * @returns `{ name, body, chars }[]`.
  */
-export function createArticleRenderer(paths) {
-  return function render() {
-    const article = readArticle(paths).trim()
-    if (article.length === 0) return ''
-    return buildInjection(article).content
+export function articleSections(article) {
+  const lines = String(article ?? '').split('\n')
+  const out = []
+  let current = { name: '（前言）', lines: [] }
+  for (const line of lines) {
+    const heading = /^##\s+(.+?)\s*$/.exec(line)
+    if (heading) {
+      out.push(current)
+      current = { name: heading[1].replace(/[：:]\s*$/, '').trim(), lines: [] }
+      continue
+    }
+    current.lines.push(line)
   }
+  out.push(current)
+  return out
+    .map((section) => ({ name: section.name, body: section.lines.join('\n').trim() }))
+    .filter((section) => section.body.length > 0)
+    .map((section) => ({ ...section, chars: section.body.length }))
+}
+
+/**
+ * Find the paragraphs of the article that match a keyword.
+ *
+ * Matching is deliberately literal: this answers "did we ever record something
+ * about X", and a fuzzy answer to that question is worse than none.
+ *
+ * @param article - the raw article.
+ * @param keyword - the needle.
+ * @returns `{ section, text }[]`, capped by the caller's own budget.
+ */
+export function searchArticle(article, keyword) {
+  const needle = String(keyword ?? '').trim().toLowerCase()
+  if (needle.length === 0) return []
+  const hits = []
+  for (const section of articleSections(article)) {
+    for (const paragraph of section.body.split(/\n{2,}/)) {
+      const text = paragraph.trim()
+      if (text.length > 0 && text.toLowerCase().includes(needle)) hits.push({ section: section.name, text })
+    }
+  }
+  return hits
 }

@@ -8,10 +8,13 @@
  * - `lib/collector.js` decides, from that trace, whether the skill leg is worth
  *   drafting, and drafts it through `lib/llm.js`.
  * - `lib/dream.js` is the memory leg: per-session extraction into the inbox, the
- *   daily Dream that rewrites the portrait article, and the sweep over sessions
- *   that closed before their idle gate could fire.
+ *   daily Dream that proposes a new portrait article, and the sweep over
+ *   sessions that closed before their idle gate could fire.
  * - `lib/memory-article.js` holds the article rules; `lib/memory.js` holds its
- *   storage and the rendered view that reaches the model.
+ *   storage and its section search; `lib/draft.js` is the review gate a Dream's
+ *   output passes through before it becomes the article.
+ * - `lib/memory-tool.js` is the model's only door to the article, and it opens
+ *   on request.
  * - `lib/candidates.js` quarantines what was drafted; `lib/skills.js` serves
  *   only what was reviewed.
  * - `lib/usage.js` and `lib/health.js` are the feedback loop that says which
@@ -21,17 +24,20 @@
  * - `lib/state.js` is the ledger; `lib/doctor.js` is the integrity check the
  *   flow runs before it writes.
  *
- * The load-bearing design is the split. Collection is automatic and quiet;
- * evolution is manual and deliberate; and nothing the collector writes can
- * change the assistant's behaviour until either a human moves it out of
- * quarantine or a Dream rewrites the article.
+ * The load-bearing design is the split, applied to both legs. Collection is
+ * automatic and quiet; evolution is manual and deliberate; and nothing the
+ * collector writes can change the assistant's behaviour until a human moves it
+ * out of quarantine. The portrait obeys the same rule: it is proposed as a
+ * draft, and until it is accepted it is neither the article nor anything a
+ * model can read.
  *
  * @module dsh-self-evolution
  */
 
 import { resolveSettings } from './lib/config.js'
 import { ensureLayout, exists, logExperience, stamp } from './lib/store.js'
-import { ensureMemoryFiles, createArticleRenderer } from './lib/memory.js'
+import { ensureMemoryFiles } from './lib/memory.js'
+import { memoryTool } from './lib/memory-tool.js'
 import { createCollectorLlm } from './lib/llm.js'
 import { runCollector } from './lib/collector.js'
 import { createMemoryLeg, touchSession, idleMsOf } from './lib/dream.js'
@@ -61,12 +67,6 @@ const SECTION_NAME = 'evolve:discipline'
 /** Section order, placed with the tool-guidance block. */
 const SECTION_ORDER = 3050
 
-/** Runtime-context identity for the rendered portrait. */
-const CONTEXT_NAME = 'evolve:profile'
-
-/** Runtime-context order, after the harness's own runtime facts. */
-const CONTEXT_ORDER = 900
-
 /** Grace added to the idle timer, so the clock has certainly passed. */
 const TIMER_GRACE_MS = 1000
 
@@ -77,16 +77,23 @@ const TIMER_GRACE_MS = 1000
  * the model loads only when the user asks for it; this section only has to make
  * the contract discoverable — that a collector exists, what it produces, and
  * that the flow is user-triggered.
+ *
+ * The portrait is deliberately absent from this text and from the prompt: it is
+ * read through the `memory` tool when a step wants it, so a model-written
+ * description of the user never becomes part of every request's standing
+ * context.
  */
 const DISCIPLINE = `[plugin: self-evolution]
-一个后台采集器会在任务结束后安静地分析本次会话，分两条腿：技能腿在达到阈值（工具调用 ≥5 次或出现错误）时用最便宜的可用模型草拟「技能候选」，只写进待确认区；记忆腿在会话闲置 5 分钟后提取关于用户的持久信息进 memory/inbox/，由每天一次的 Dream 合并重写成 memory/PROFILE.md，该文章渲染后注入运行时上下文。候选在你或用户审查通过前绝不进入任何上下文。
+一个后台采集器会在任务结束后安静地分析本次会话，分两条腿：技能腿在达到阈值（工具调用 ≥5 次或出现错误）时用最便宜的可用模型草拟「技能候选」，只写进待确认区；记忆腿在会话闲置 5 分钟后提取关于用户的持久信息进 memory/inbox/，由每天一次的 Dream 合并成一份画像草稿，等你确认后才成为 memory/PROFILE.md。候选与画像草稿在你或用户审查通过前绝不进入任何上下文。
+
+长期画像不常驻注入：需要了解用户的背景、长期偏好或既有约定时，用 memory 工具按需读取（先 outline 看索引，再 read 或 search）；没读之前不要假设自己了解她。
 
 当用户说「进化」「总结一天的工作」「技能体检」或要求沉淀经验时，用 skill 工具加载 self-evolve 技能，并按其流程执行：先用 evolve 工具 action="brief" 做一次探测，按探测给出的路线走，最后用 action="finish" 收尾，再按报告模板输出简报。
 
 三条纪律：
 - 不要在没有用户触发的情况下自行运行进化流程；采集器会自己跑，不需要你代劳。
 - 不要重复采集同一会话，也不要整读会话轨迹；需要回查时用 evolve 的 trail 动作定点抽取。
-- memory/PROFILE.md 是生成态，不要手工编辑；归档或淘汰技能都必须先征求用户决定，你没有删除技能的权力。`
+- memory/PROFILE.md 与 memory/drafts/ 都是生成态，不要手工编辑；采用或丢弃画像草稿、归档或淘汰技能，都必须先征求用户决定。`
 
 /**
  * Register the whole system.
@@ -131,15 +138,6 @@ export function apply(ctx, rowConfig) {
     const detail = String(error?.message ?? error).slice(0, 300)
     if (typeof ctx.logger?.warn === 'function') ctx.logger.warn(`self-evolution: ${label} 未启用：${detail}`)
     log(`| ${stamp()} | - | 降级 | ${label} 未启用：${detail} | - |`)
-  }
-
-  /** Run one synchronous registration, keeping a failure local to it. */
-  function optional(label, body) {
-    try {
-      body()
-    } catch (error) {
-      degrade(label, error)
-    }
   }
 
   /**
@@ -274,7 +272,10 @@ export function apply(ctx, rowConfig) {
     )
   }
 
-  // The standing discipline, and the rendered article when there is one.
+  // The standing discipline. The portrait itself is not published here and not
+  // published as runtime context: it is read through the `memory` tool below, so
+  // what the collector learned about the user is an answer a step asked for
+  // rather than a premise every step starts from.
   ctx.systemPrompt.section({
     name: SECTION_NAME,
     order: SECTION_ORDER,
@@ -282,15 +283,13 @@ export function apply(ctx, rowConfig) {
     interpolate: false,
   })
 
-  if (settings.injectProfile) {
-    const renderArticle = createArticleRenderer(settings.paths)
-    optional('画像注入（systemPrompt.context）', () => {
-      ctx.systemPrompt.context({
-        name: CONTEXT_NAME,
-        order: CONTEXT_ORDER,
-        text: () => renderArticle(),
-      })
-    })
+  // The on-demand read of that portrait. One small schema, one action field, and
+  // no standing text about the user anywhere in the prompt.
+  if (settings.memoryTool) {
+    ctx.effect(
+      () => ctx.tools.register(memoryTool({ settings })),
+      'self-evolution: memory tool',
+    )
   }
 
   /**

@@ -12,8 +12,9 @@
  * - does every file the system reads still parse, above all the enabled skills:
  *   a skill whose frontmatter is malformed is silently dropped by the skill
  *   registry, which looks to the user like the skill vanishing;
- * - does the portrait article still hold together, since it is republished to
- *   every session and a broken one would be injected as-is;
+ * - does the portrait article still hold together, since the model reads it
+ *   through the `memory` tool and a broken one would be served as-is, and is a
+ *   pending draft in a state a human can actually decide on;
  * - is the collector backend reachable, so "nothing was collected" is
  *   distinguishable from "collection is broken".
  *
@@ -27,7 +28,8 @@ import { writeFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { exists, listDir, readJson, readText } from './store.js'
 import { parseSkill, enabledSkillNames } from './skills.js'
-import { buildInjection, parseArticle } from './memory-article.js'
+import { renderForModel, parseArticle } from './memory-article.js'
+import { pendingDraftId, readDraft } from './draft.js'
 import { DOCS } from './docs.js'
 
 /**
@@ -69,8 +71,10 @@ export async function runDoctor({ settings, llm, agent }) {
   }
 
   // 3. The memory directories are where the memory leg writes. The article may
-  //    legitimately be absent (it appears with the first Dream), so only the
-  //    directories are hard, and the article is checked for shape when present.
+  //    legitimately be absent (it appears with the first accepted draft), so
+  //    only the directories are hard, and the article is checked for shape when
+  //    present. A pending draft is checked the same way: it is about to become
+  //    that article on one word from a human.
   for (const [label, path] of [
     ['memory/inbox/', paths.inbox],
     ['memory/archive/', paths.memoryArchive],
@@ -81,13 +85,23 @@ export async function runDoctor({ settings, llm, agent }) {
     const article = readText(paths.profile, '')
     if (article.trim().length > 0) {
       const parsed = parseArticle(article)
-      if (!parsed.ok) soft.push(`memory/PROFILE.md 结构不符（${parsed.reason}），注入的画像可能读不成散文段落`)
+      if (!parsed.ok) soft.push(`memory/PROFILE.md 结构不符（${parsed.reason}），模型经 memory 工具读到的不成散文段落`)
       else {
-        const rendered = buildInjection(article)
+        const rendered = renderForModel(article)
         if (rendered.replaced === 0 && /你/.test(article)) {
-          soft.push('memory/PROFILE.md 渲染后降人称 0 处，但正文含「你」：注入可能被读成人设')
+          soft.push('memory/PROFILE.md 渲染后降人称 0 处，但正文含「你」：读起来可能像模型自己的人设')
         }
       }
+    }
+  }
+  const pending = pendingDraftId(paths)
+  if (pending !== undefined) {
+    const draft = readDraft(paths, pending)
+    if (draft === undefined) soft.push(`待审草稿 memory/drafts/${pending}/ 无法读取，无法评审`)
+    else {
+      const parsed = parseArticle(draft.article)
+      if (!parsed.ok) soft.push(`待审草稿 ${pending} 结构不符（${parsed.reason}），采用前需先修补`)
+      soft.push(`有待审画像草稿 ${pending}：采用前不会生效，评审入口 ${draft.reviewPath}`)
     }
   }
 
@@ -150,6 +164,7 @@ export async function runDoctor({ settings, llm, agent }) {
       candidates: candidateCount,
       inbox: inboxCount,
       article: exists(paths.profile) ? readText(paths.profile, '').trim().length : 0,
+      draft: pending,
     },
   }
 }

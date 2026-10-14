@@ -37,6 +37,7 @@ export function ensureLayout(paths) {
     paths.archived,
     paths.memory,
     paths.inbox,
+    paths.drafts,
     paths.memoryArchive,
     paths.logs,
     paths.logArchive,

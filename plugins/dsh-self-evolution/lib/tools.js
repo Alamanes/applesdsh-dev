@@ -29,6 +29,8 @@ export const ACTIONS = [
   'health',
   'usage',
   'dream',
+  'promote',
+  'discard',
   'models',
   'trail',
   'collect',
@@ -44,7 +46,8 @@ const DESCRIPTION = [
   'action="enable"：把候选提升为启用技能（立即对模型可见）；action="merge" 记录并入现有技能；action="reject" 记录淘汰。三者都必须带 slug，并把处置写入经验日志。',
   'action="archive"/"restore"：把启用技能移出或移回启用区，源文件始终保留。',
   'action="health"：技能记分卡（新鲜度/使用度/可靠性三维打分与三线分级）；action="usage" 查单个技能的成功失败计数与失败原因。',
-  'action="dream"：立刻跑一次记忆轮次（跳过闲置闸门）：提取当前会话的持久信息进 memory/inbox/，到期则 Dream 全量重写 memory/PROFILE.md 并刷新注入。',
+  'action="dream"：立刻跑一次记忆轮次（跳过闲置闸门）：提取当前会话的持久信息进 memory/inbox/，到期则 Dream 把收件箱合并成一份待审画像草稿。',
+  'action="promote"/"discard"：处置待审的画像草稿。promote 让草稿成为 memory/PROFILE.md 并归档它消费的提取；discard 什么都不改，提取留给下一次 Dream。两者都必须先让用户看过 review.md 并作出决定。',
   'action="models"：查看采集模型链的解析结果、来源与丢弃项（绕指纹缓存）。',
   'action="trail"：按关键词定点回查当前会话轨迹（限长），用于复核技能失败的启发式归因，禁止整读轨迹。',
   'action="collect"：立刻对当前会话跑一次技能腿采集（跳过阈值节流），用于手动触发。',
@@ -119,9 +122,12 @@ export function evolveTool({ evolve, collectCurrent, memoryRoundNow }) {
         return [
           `数据根: ${info.root}`,
           `候选 ${info.candidates} / 收件箱 ${info.inbox} / 画像文章 ${info.articleChars} 字符 / 启用技能 ${info.skills} / 归档 ${info.archived}`,
-          info.injectedChars === 0
-            ? '注入面: 无文章，运行时上下文不发布画像段'
-            : `注入面: 渲染 ${info.injectedChars} 字符（前言 + 降人称 ${info.thirdPerson} 处），下一轮请求起进入运行时上下文`,
+          info.drafts === 0
+            ? '待审草稿: 无'
+            : `待审草稿: ${info.drafts} 份（最新 ${info.draftId}，${info.draftChars} 字符，待用户决定 promote/discard）`,
+          info.articleChars === 0
+            ? '画像面: 不常驻注入，且暂无已确认的文章'
+            : `画像面: 不常驻注入，模型用 memory 工具按需读取（读取时 ${info.modelViewChars} 字符）`,
           `上次采集: ${info.lastCollectionAt ?? '无'} | 上次 Dream: ${info.lastDreamAt ?? '无'} | 上次进化: ${info.lastEvolutionAt ?? '无'}`,
           info.collectorUnavailable ? `!! 采集后端不可用: ${info.collectorUnavailableReason ?? '原因未记录'}` : '采集后端: 正常',
         ].join('\n')
@@ -163,6 +169,10 @@ export function evolveTool({ evolve, collectCurrent, memoryRoundNow }) {
         if (typeof memoryRoundNow === 'function' && exec.agent !== undefined) return await memoryRoundNow(exec.agent, { force: true })
         return await evolve.dream({ force: true, agent: exec.agent })
       }
+      case 'promote':
+        return await evolve.promoteMemory()
+      case 'discard':
+        return await evolve.discardMemory({ reason: args.reason })
       case 'models':
         return await evolve.models({ agent: exec.agent })
       case 'trail':

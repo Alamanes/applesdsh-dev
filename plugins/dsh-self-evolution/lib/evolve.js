@@ -21,7 +21,7 @@ import { join } from 'node:path'
 import { exists, listDir, logExperience, readText, rotateExperienceLog, snapshotLedger, stamp, withLock } from './store.js'
 import { DOCS } from './docs.js'
 import { renderDoctor, runDoctor } from './doctor.js'
-import { readState, writeState } from './state.js'
+import { readState, writeState, bump } from './state.js'
 import {
   archiveSkill,
   enabledDescriptions,
@@ -36,7 +36,8 @@ import {
 import { GRADES, renderScorecard, scorecard } from './health.js'
 import { buildTraceSummary } from './trace.js'
 import { ensureMemoryFiles, inboxFiles, readArticle } from './memory.js'
-import { buildInjection } from './memory-article.js'
+import { renderForModel } from './memory-article.js'
+import { discardDraft, listDrafts, pendingDraftId, promoteDraft, readDraft } from './draft.js'
 import { enabledSkillNames, hostSkillCatalog } from './skills.js'
 import { readUsage } from './usage.js'
 
@@ -91,12 +92,19 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
   function memoryInfo() {
     const article = readArticle(paths)
     const inbox = inboxFiles(paths)
-    const rendered = buildInjection(article)
+    const pending = pendingDraftId(paths)
+    const draft = pending === undefined ? undefined : readDraft(paths, pending)
+    const rendered = article.trim().length === 0 ? { content: '', replaced: 0 } : renderForModel(article)
     return {
       articleChars: article.trim().length,
       articleBytes: Buffer.byteLength(article, 'utf8'),
       inbox,
-      injectedChars: article.trim().length === 0 ? 0 : rendered.content.length,
+      drafts: listDrafts(paths).length,
+      draftId: pending,
+      draftReviewPath: draft?.reviewPath,
+      draftChars: draft === undefined ? 0 : Number(draft.meta.articleChars ?? draft.article.trim().length),
+      draftSources: draft === undefined ? 0 : Array.isArray(draft.meta.sources) ? draft.meta.sources.length : 0,
+      modelViewChars: rendered.content.length,
       thirdPerson: rendered.replaced,
     }
   }
@@ -132,6 +140,10 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
       candidates: info.candidates.length,
       inbox: info.memory.inbox.length,
       articleChars: info.memory.articleChars,
+      modelViewChars: info.memory.modelViewChars,
+      drafts: info.memory.drafts,
+      draftId: info.memory.draftId,
+      draftChars: info.memory.draftChars,
       skills: info.skillNames.length,
       archived: info.archived.length,
       lastEvolutionAt: info.state.lastEvolutionAt,
@@ -172,13 +184,21 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
       lines.push(`- ${slug}  [${candidate.size} 字节]  ${meta.trim()}`)
     }
 
-    lines.push('\n== 记忆（收件箱与画像文章）==')
+    lines.push('\n== 记忆（收件箱、画像文章与待审草稿）==')
     lines.push(
-      `画像文章 ${info.memory.articleChars} 字符（注入后 ${info.memory.injectedChars} 字符，降人称 ${info.memory.thirdPerson} 处） | 收件箱 ${info.memory.inbox.length} 份（上限 ${limits.maxExtracts}）`,
+      `画像文章 ${info.memory.articleChars} 字符（模型读取时 ${info.memory.modelViewChars} 字符，降人称 ${info.memory.thirdPerson} 处） | 收件箱 ${info.memory.inbox.length} 份（上限 ${limits.maxExtracts}） | 待审草稿 ${info.memory.drafts} 份`,
     )
+    lines.push('画像不常驻注入：模型用 memory 工具按需读取，本轮只在这里核对它的体量与待审状态。')
+    if (info.memory.draftId !== undefined) {
+      lines.push(
+        `- 待审: ${info.memory.draftId}（草稿 ${info.memory.draftChars} 字符，来源提取 ${info.memory.draftSources} 份）`,
+      )
+      lines.push(`  review: ${info.memory.draftReviewPath}`)
+      lines.push('→ 读上面这个 review.md（含与现行文章的逐行差异与完整草稿），把差异摆给用户，等用户决定后用 action="promote" 采用或 action="discard" 丢弃。采用前不要自行判断通过。')
+    }
     if (info.memory.inbox.length > 0) {
       for (const name of info.memory.inbox.slice(-10)) lines.push(`- ${name}`)
-      lines.push('→ 收件箱有未合并内容：可用 evolve action="dream" 立即跑一次记忆轮次（提取 + Dream）。')
+      lines.push('→ 收件箱有未合并内容：可用 evolve action="dream" 立即跑一次记忆轮次（提取 + Dream）。有成稿待审时 Dream 会跳过，先处置草稿。')
     }
 
     lines.push('\n== 技能健康 ==')
@@ -188,7 +208,7 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
     lines.push('\n== 日志与记忆体量 ==')
     const logLines = readText(paths.experienceLog, '').split('\n').length
     lines.push(`experience-log 行数 ${logLines}（超 100 行由收尾自动归档）`)
-    lines.push(`PROFILE.md ${info.memory.articleBytes} 字节 | 收件箱 ${info.memory.inbox.length} 份 | 已归档提取 ${listDir(join(paths.memoryArchive, new Date().toISOString().slice(0, 7))).length} 份（本月）`)
+    lines.push(`PROFILE.md ${info.memory.articleBytes} 字节 | 收件箱 ${info.memory.inbox.length} 份 | 待审草稿 ${info.memory.drafts} 份 | 已归档提取 ${listDir(join(paths.memoryArchive, new Date().toISOString().slice(0, 7))).length} 份（本月）`)
 
     lines.push('\n== 宿主技能目录同名检查 ==')
     const host = await hostSkillCatalog(ctx, currentCwd())
@@ -198,8 +218,16 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
     const problem = info.card.counts[GRADES.problem] ?? 0
     const idle = info.card.counts[GRADES.idle] ?? 0
     lines.push('\n== 本轮走向 ==')
-    lines.push(`候选 ${info.candidates.length} / 收件箱 ${info.memory.inbox.length} / 问题技能 ${problem} / 闲置技能 ${idle}`)
-    if (info.candidates.length === 0 && info.memory.inbox.length === 0 && problem === 0 && idle === 0) {
+    lines.push(
+      `候选 ${info.candidates.length} / 收件箱 ${info.memory.inbox.length} / 待审草稿 ${info.memory.drafts} / 问题技能 ${problem} / 闲置技能 ${idle}`,
+    )
+    const quiet =
+      info.candidates.length === 0 &&
+      info.memory.inbox.length === 0 &&
+      info.memory.drafts === 0 &&
+      problem === 0 &&
+      idle === 0
+    if (quiet) {
       lines.push('→ 快速通道：本轮无事可做，只需 ① 本探测 ② finish 一条命令收尾 ③ 按报告模板输出简报。跳过全量体检复核与逐项陈述。')
     } else {
       lines.push('→ 常规路线：有对象待处理，按流程技能第二至第五步执行。仅在技能失败归因需要回查轨迹时用 trail 定点抽取，禁止整读轨迹。')
@@ -383,6 +411,62 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
   }
 
   /**
+   * Accept the pending portrait draft as the standing article.
+   *
+   * This is the one path that changes `memory/PROFILE.md`, and it exists so the
+   * change is a recorded human verdict rather than a side effect of a merge. The
+   * extracts the draft consumed are archived here, which is why a discarded
+   * draft leaves them in place for the next merge.
+   *
+   * @returns a short account of the promotion.
+   */
+  async function promoteMemory() {
+    return mutate('采用画像草稿', () => {
+      const id = pendingDraftId(paths)
+      if (id === undefined) return '❌ 没有待审的画像草稿'
+      const result = promoteDraft(paths, id)
+      if (result === undefined) return `❌ 画像草稿 ${id} 不可读，未采用`
+      const state = readState(paths)
+      bump(state, 'dreamsPromoted')
+      bump(state, 'memoryConsumed', result.sources.length)
+      writeState(paths, state)
+      logExperience(
+        paths,
+        `| ${stamp()} | Dream | 采用 | 草稿 ${id} → memory/PROFILE.md（${result.articleChars} 字符），归档 ${result.sources.length} 份提取 | memory/PROFILE.md |`,
+      )
+      return [
+        `✅ 已采用画像草稿 ${id}：memory/PROFILE.md 现为 ${result.articleChars} 字符，${result.sources.length} 份提取已归档。`,
+        '画像不常驻注入：此后模型要用 memory 工具读取它。',
+      ].join('\n')
+    })
+  }
+
+  /**
+   * Reject the pending portrait draft.
+   *
+   * Nothing is installed and no extract is consumed, so the same facts are
+   * merged again by the next Dream once its interval comes round.
+   *
+   * @param options - the rejection inputs.
+   * @param options.reason - why it was rejected, kept with the archived draft.
+   * @returns a short account of the rejection.
+   */
+  async function discardMemory({ reason } = {}) {
+    return mutate('丢弃画像草稿', () => {
+      const id = pendingDraftId(paths)
+      if (id === undefined) return '❌ 没有待审的画像草稿'
+      const verdict = typeof reason === 'string' && reason.trim().length > 0 ? reason.trim() : '未提供原因'
+      const dir = discardDraft(paths, id, { reason: verdict })
+      if (dir === undefined) return `❌ 画像草稿 ${id} 不可读，未丢弃`
+      const state = readState(paths)
+      bump(state, 'dreamsDiscarded')
+      writeState(paths, state)
+      logExperience(paths, `| ${stamp()} | Dream | 丢弃 | 草稿 ${id}：${verdict.slice(0, 100)}，PROFILE.md 未改动 | memory/archive/drafts/${id}/ |`)
+      return `已丢弃画像草稿 ${id}（${verdict}）：PROFILE.md 未改动，收件箱里的提取留给下一次 Dream 重新合并；草稿存档于 ${dir}`
+    })
+  }
+
+  /**
    * Show the resolved collector chain, ignoring the fingerprint cache.
    *
    * The chain is what every leg spends money through, so being able to see what
@@ -499,8 +583,12 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
       }),
       memory: {
         articleChars: info.memory.articleChars,
+        modelViewChars: info.memory.modelViewChars,
         inbox: info.memory.inbox,
-        injectedChars: info.memory.injectedChars,
+        drafts: info.memory.drafts,
+        draftId: info.memory.draftId,
+        draftChars: info.memory.draftChars,
+        draftReviewPath: info.memory.draftReviewPath,
         thirdPerson: info.memory.thirdPerson,
         lastDreamAt: info.state.lastDreamAt,
       },
@@ -534,6 +622,8 @@ export function createEvolve({ settings, ctx, invalidateSkills, traceStateFor, l
     health,
     usageDetail,
     dream,
+    promoteMemory,
+    discardMemory,
     models,
     trail,
     finish,

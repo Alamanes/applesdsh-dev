@@ -40,8 +40,11 @@ export function evolveCommand({ evolve, collectCurrent, memoryRoundNow }) {
               [
                 `Self Evolution @ ${info.root}`,
                 `候选 ${info.candidates} / 收件箱 ${info.inbox} / 画像文章 ${info.articleChars} 字符 / 启用技能 ${info.skills} / 归档 ${info.archived}`,
+                info.drafts === 0 ? '待审草稿: 无' : `待审草稿: ${info.draftId}（${info.draftChars} 字符，待用户决定采用或丢弃）`,
                 `上次采集 ${info.lastCollectionAt ?? '无'} | 上次 Dream ${info.lastDreamAt ?? '无'} | 上次进化 ${info.lastEvolutionAt ?? '无'}`,
-                info.articleChars === 0 ? '注入面: 无文章，未发布画像段' : `注入面: 文章 ${info.articleChars} 字符已就绪（渲染后注入）`,
+                info.articleChars === 0
+                  ? '画像面: 不常驻注入，且暂无已确认的文章'
+                  : `画像面: 不常驻注入，模型用 memory 工具按需读取（读取时 ${info.modelViewChars} 字符）`,
                 info.collectorUnavailable ? `!! 采集后端不可用：${info.collectorUnavailableReason ?? '原因未记录'}` : '采集后端正常',
                 '用法：/evolve brief | health | candidates | collect | dream | models | trail <关键词>',
               ].join('\n'),

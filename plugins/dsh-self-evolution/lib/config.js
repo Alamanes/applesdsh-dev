@@ -113,8 +113,14 @@ export function resolveSettings(rowConfig) {
     collector,
     /** Run the background collector after a finished turn. */
     autoCollect: row.autoCollect !== false,
-    /** Publish the rendered article from `memory/PROFILE.md` to the model. */
-    injectProfile: row.injectProfile !== false,
+    /** Register the model-facing `memory` tool, the on-demand portrait read. */
+    memoryTool: row.memoryTool !== false,
+    /**
+     * Require a human verdict before a Dream's rewrite becomes the article.
+     * `SE_DREAM_REVIEW=0` restores the pre-review behaviour, where a Dream
+     * installs `memory/PROFILE.md` the moment it validates.
+     */
+    dreamReview: row.dreamReview !== false && process.env.SE_DREAM_REVIEW !== '0',
     /** Sweep sessions that closed before their idle gate could fire. */
     sweep: row.sweep !== false && process.env.SE_SWEEP !== '0',
     /** Serve the bundled flow skill through the skill registry. */

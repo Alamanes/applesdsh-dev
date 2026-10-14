@@ -6,7 +6,8 @@
  * person?" The two share the breakers and the model chain and nothing else: each
  * has its own watermark, its own failure account, and its own reason to skip.
  *
- * Three gates protect the portrait from being written from unfinished work:
+ * Four gates protect the portrait from being written from unfinished work or
+ * installed without a decision:
  *
  * - **Idle.** A session is only read after it has been quiet for
  *   `SE_MEMORY_IDLE_MS` (five minutes by default), because a session still in
@@ -16,6 +17,9 @@
  *   rewrites the whole article, so it runs rarely.
  * - **Inbox cap.** Past `SE_MAX_EXTRACTS` pending extracts, extraction pauses
  *   and the log says the Dream is overdue, rather than growing an unread pile.
+ * - **Review.** The merge writes a draft under `memory/drafts/`, and only a
+ *   human verdict turns it into `memory/PROFILE.md`. One draft at a time, so a
+ *   second rewrite cannot pile up behind an unread one.
  *
  * The sweep exists because the idle gate can only ever fire for a session the
  * host is still holding: a window closed right after use would never be
@@ -27,10 +31,10 @@
 
 import { acquireSweepLock, releaseSweepLock, stamp, writeTextAtomic } from './store.js'
 import { archiveInbox, inboxFiles, readArticle, readInbox, writeExtract } from './memory.js'
+import { pendingDraftId, writeDraft } from './draft.js'
 import {
   MAX_EXTRACT_CHARS,
   buildDreamPrompt,
-  buildInjection,
   buildMemoryExtractPrompt,
   isDreamDue,
   isIdleEnough,
@@ -201,12 +205,17 @@ export function createMemoryLeg({ settings, llm, log }) {
   }
 
   /**
-   * Merge the inbox into the portrait article.
+   * Merge the inbox into a portrait draft.
    *
-   * This is the only writer of `memory/PROFILE.md`, and that file is published
-   * to every later session, so every check here is strict: a malformed,
-   * oversized or truncated answer is discarded whole and the inbox stays for the
-   * next attempt.
+   * In review mode this is where the merge stops: the result is written under
+   * `memory/drafts/` and `memory/PROFILE.md` is untouched, so nothing a model
+   * wrote about the user can be read by a later session until a human accepts
+   * it. The extracts stay in the inbox until acceptance, because a rejected
+   * draft must consume nothing.
+   *
+   * With `dreamReview: false` the old behaviour is available: the validated
+   * article is installed and the extracts are archived immediately. The checks
+   * are the same either way, since both destinations are strict about shape.
    *
    * @param options - the merge inputs.
    * @returns a short account of the merge.
@@ -226,8 +235,9 @@ export function createMemoryLeg({ settings, llm, log }) {
     const extracts = readInbox(paths)
     if (extracts.length === 0) return '收件箱无可读内容，Dream 跳过'
 
+    const previous = readArticle(paths)
     const draft = await llm.draft({
-      prompt: buildDreamPrompt(readArticle(paths), extracts.map((item) => item.body)),
+      prompt: buildDreamPrompt(previous, extracts.map((item) => item.body)),
       maxTokens: limits.maxArticleOutputTokens,
       agent,
       state,
@@ -239,39 +249,53 @@ export function createMemoryLeg({ settings, llm, log }) {
     const parsed = parseArticle(draft.text)
     if (!parsed.ok) return failed(`文章校验失败：${parsed.reason}`)
 
+    const size = `${parsed.paragraphs} 段 / ${parsed.text.length} 字符`
+
+    if (settings.dreamReview) {
+      const written = writeDraft(paths, {
+        article: parsed.text,
+        previous,
+        sources: files,
+        stats: { paragraphs: parsed.paragraphs, chain: llm.chainKey(chain) },
+      })
+      bump(state, 'dreams')
+      bump(state, 'dreamDrafts')
+      delete state.dreamFailures
+      state.lastDreamAt = new Date().toISOString()
+      writeState(paths, state)
+      log(line('Dream', '待审', `${files.length} 份提取 → 草稿（${size}），未生效`, `memory/drafts/${written.id}/`))
+      return [
+        `🌙 Dream 已成稿待审：合并 ${files.length} 份提取，草稿 ${size}，PROFILE.md 未改动。`,
+        `审阅 ${written.reviewPath}`,
+        '确认后调用 evolve action="promote" 采用，或 action="discard" 丢弃。',
+      ].join('\n')
+    }
+
     writeTextAtomic(paths.profile, parsed.text)
-
-    const rendered = buildInjection(parsed.text)
-    log(
-      line(
-        'Dream',
-        '注入',
-        `文章 ${parsed.text.trim().length} 字符，降人称 ${rendered.replaced} 处${rendered.quoted ? `，引用内保留 ${rendered.quoted} 处` : ''}`,
-        'systemPrompt.context',
-      ),
-    )
-
     archiveInbox(paths, files)
-
     delete state.dreamFailures
     state.lastDreamAt = new Date().toISOString()
     bump(state, 'dreams')
     bump(state, 'memoryConsumed', files.length)
     writeState(paths, state)
-    log(
-      line('Dream', '合并', `${files.length} 份提取 → PROFILE.md（${parsed.paragraphs} 段 / ${parsed.text.length} 字符）`, 'memory/PROFILE.md'),
-    )
-    return `🌙 Dream 完成：合并 ${files.length} 份提取，文章 ${parsed.paragraphs} 段 / ${parsed.text.length} 字符`
+    log(line('Dream', '合并', `${files.length} 份提取 → PROFILE.md（${size}）`, 'memory/PROFILE.md'))
+    return `🌙 Dream 完成：合并 ${files.length} 份提取，文章 ${size}`
   }
 
   /**
    * The Dream gate, shared by all three callers.
    *
    * One place decides whether a merge happens, so the conditions cannot drift
-   * between the session path, the sweep and the manual command.
+   * between the session path, the sweep and the manual command. A draft still
+   * waiting for a verdict blocks the next merge: two pending rewrites of the
+   * same article would only make the review harder.
    */
   async function runDreamGate({ state, agent, force = false, chain }) {
     if (!force && !isDreamDue(state.lastDreamAt, Date.now(), limits.dreamIntervalMs)) return 'Dream 未到期，跳过'
+    if (settings.dreamReview) {
+      const pending = pendingDraftId(paths)
+      if (pending !== undefined) return `Dream 跳过：已有待审草稿 memory/drafts/${pending}/`
+    }
     let resolved = chain
     if (!Array.isArray(resolved) || resolved.length === 0) {
       const result = await llm.resolveChain({ agent, state, force: false })
@@ -461,7 +485,12 @@ export function createMemoryLeg({ settings, llm, log }) {
       }
 
       const dreamNote = await runDreamGate({ state, agent: undefined, chain: resolved.chain })
-      if (extracted > 0 || !dreamNote.startsWith('Dream 未到期')) {
+      // A routine skip is not news: "not due yet" and "already waiting for a
+      // verdict" can hold for days, and logging either per sweep would rotate
+      // the experience log on its own.
+      const routine =
+        dreamNote.startsWith('Dream 未到期') || dreamNote.startsWith('Dream 跳过：已有待审草稿')
+      if (extracted > 0 || !routine) {
         const summary = `扫描 ${candidates.length} 个（当前会话 ${skipped.current} / 其他进程在用 ${skipped.live} / 超期 ${skipped.old} / 子代理 ${skipped.subagent}），提取 ${extracted}，熔断 ${blocked}，失败 ${failed}${inboxFull ? '，收件箱已满' : ''}；${dreamNote}`
         log(line('清扫', '清扫', summary, '-'))
       }
