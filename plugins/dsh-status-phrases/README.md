@@ -83,6 +83,8 @@ div[data-chat-running]
 
 然后在该 profile 目录里跑一次 `pnpm install` 并重启 DSH。宿主半区只声明了配置字段，页面上的全部工作都由浏览器半区完成。
 
+不要用 `link:` 协议装这个包。宿主半区 `import` 了 `@deepseek-ai/schemastery`，而 `link:` 会把包的真实路径留在仓库目录里，Node 从那里往上找 `node_modules` 找不到 profile 里那一份，插件最终以 `1 entry did not activate dsh-status-phrases … failed to import` 收场。`file:` 与 `github:` 说明符会把包放进 profile 自己的 `node_modules`，依赖才解析得到。
+
 ## 来源与许可
 
 行为与实现取自 [`dsh-status-rotator`](https://github.com/01Virex/dsh-status-rotator)（MIT，作者 01Virex）—— 短语轮换、打字机、锁宽诀窍、渐变 CSS、`data-plugin` 样式归属的做法都来自它。本插件是那份实现的一个收窄复刻：只保留替换状态行文案及其特效，并把短语配置收敛成一个文本框。
