@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Skill-leg collector",
-    "description": "Decides after each turn whether a draft is worth it, and quarantines what it drafts."
-  }
-}

@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Candidate quarantine",
-    "description": "Reads, mechanical preflight, and the enable, merge and reject verdicts with their paper trail."
-  }
-}

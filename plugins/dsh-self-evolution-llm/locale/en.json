@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Collection model",
-    "description": "The ordered attempt chain behind both background legs, with a cached fingerprint."
-  }
-}

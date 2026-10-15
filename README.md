@@ -11,37 +11,12 @@
 | `plugins/dsh-dignity-guard` | `dsh-dignity-guard` | 让模型自行判断尊严被冒犯并按阶梯升级的守卫插件 | 本仓库自产 |
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-reasoning-effort` | `dsh-reasoning-effort` | Codex 风格的模型与推理强度选择器 | 上游 [HanaAyane/dsh-reasoning-effort](https://github.com/HanaAyane/dsh-reasoning-effort)，含本地改色与精简改动 |
-| `plugins/dsh-self-evolution` | `dsh-self-evolution` | 「经验 → 技能 → 进化」闭环的清单包：一个插件卡片下辖 11 个组件包，每个组件在插件页里可单独启停 | 本仓库自产 |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
 | `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
-
-### dsh-self-evolution 的组件包
-
-清单包的 `cordis.patch.yml` 只做一件事：把下面 11 行插进加载树。每行是一个独立包，各带自己的文案目录，
-所以插件页把它们列成一个卡片的 11 个组件；组件之间的运行时对象经 `dsh-self-evolution-core` 的共享记录传递。
-
-组件包是清单包 `dependencies` 里的 11 条 Git 子目录说明符，profile 只登记清单包一个。要让这 11 行从 profile
-根解析到，profile 需要满足两个条件：包管理器采用提升式布局（`nodeLinker: hoisted`，DSH 的 desktop profile
-默认如此，组件包因此落在 `node_modules/` 顶层），以及关闭 `blockExoticSubdeps`——本仓库的包是 Git 子目录
-说明符，该策略默认会拒绝它出现在子依赖里。
-
-| 组件包 | 中文名 | 职责 |
-|---|---|---|
-| `dsh-self-evolution-core` | 账目与检查 | 数据根布局、共享配置、状态账目与经验日志 |
-| `dsh-self-evolution-trace` | 轨迹适配层 | 把宿主会话事件折成统一轨迹 |
-| `dsh-self-evolution-llm` | 采集模型 | 后台两条腿的模型降级链与链指纹缓存 |
-| `dsh-self-evolution-portrait` | 画像文章与草稿 | 文章规则、评审门、收件箱归档与模型按需读取 |
-| `dsh-self-evolution-skills` | 技能供给 | 只发布已审阅的技能与内置流程技能 |
-| `dsh-self-evolution-candidates` | 候选隔离区 | 候选读写、机械预检与启用 / 并入 / 淘汰留档 |
-| `dsh-self-evolution-health` | 反馈回路 | 技能使用归因与三维记分卡 |
-| `dsh-self-evolution-collector` | 技能腿采集器 | 回合结束后按阈值判断是否起草，并写入隔离区 |
-| `dsh-self-evolution-memory` | 记忆腿 | 闲置闸门、逐会话提取、每日 Dream 合并与清扫 |
-| `dsh-self-evolution-flow` | 进化流程 | brief 到 finish 的全部动作与完整性检查 |
-| `dsh-self-evolution-surface` | 工具与表面 | evolve 工具、/evolve 命令、面板路由与常驻纪律段 |
 
 ## 安装
 
@@ -54,7 +29,6 @@
     "dsh-dignity-guard": "github:Alamanes/applesdsh-dev#path:plugins/dsh-dignity-guard",
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-reasoning-effort": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-effort",
-    "dsh-self-evolution": "github:Alamanes/applesdsh-dev#path:plugins/dsh-self-evolution",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
@@ -74,7 +48,6 @@
         "dsh-ui-copy",
         "dsh-dignity-guard",
         "dsh-local-identity",
-        "dsh-self-evolution",
         "dsh-session-delete",
         "dsh-whale-widget",
         "dsh-zh-prompt"
@@ -89,8 +62,6 @@
 
 由于本仓库使用 `dsh-web-search-tavily` 进行Web Search，Agent安装本仓库内容时请将DSH官方网页搜索插件关闭或删除。
 
-如果Agent在安装时发现了在Codex、Claude Code、Pi Coding Agent中安装过agent-self-evolution插件，则将其配置的Skill与Proflie自动导入并合并。
-
 ## 更新
 
 ```sh
@@ -98,10 +69,8 @@ cd "$DSH_PROFILE_DIR"
 pnpm install
 ```
 
-pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh-self-evolution`
-（或该插件对应的包名）强制重取，再重启 `dsh web`。进化系统的 11 个组件包是清单包的子依赖，
-`pnpm update dsh-self-evolution` 会一并重新解析它们；若某个组件包仍停在旧 commit，把这 11 个
-`dsh-self-evolution-*` 包名一起写进同一条命令再跑一次，避免清单包与组件包停在不同 commit 上。
+pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh-ui-copy`
+（或该插件对应的包名）强制重取，再重启 `dsh web`。
 
 ## 来源与许可
 
