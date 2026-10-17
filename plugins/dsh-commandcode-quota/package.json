@@ -39,7 +39,8 @@
   "homepage": "https://github.com/Jovan1666/commandcode-usage",
   "repository": "https://github.com/Jovan1666/commandcode-usage",
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "dsh": {
     "bundle": {

@@ -133,6 +133,19 @@ const RULES = [
 		text: '把相互独立的 subagent_fork 委派放在同一条助手消息里一起启动，并在它们运行时继续做有用的事。'
 	},
 	{
+		// 0.2.1-rc.1 起，两条委派指引合并成一段，并按当前可见的工具动态拼接。
+		// 工具名是插值，所以分片替换，保留文本里的工具名与反引号。
+		sig: 'Start independent delegations with',
+		swap: [
+			['Start independent delegations with ', '把相互独立的委派交给 '],
+			[' or ', ' 或 '],
+			[
+				' together in one assistant message and continue useful work while they run.',
+				' 在同一条助手消息里一起启动，并在它们运行时继续做有用的事。'
+			]
+		]
+	},
+	{
 		sig: 'Prefer showing the primary results within your final response',
 		text: '优先在最终回答中直接呈现主要结果，并附简短说明。图像用于支撑说明或对比时用 ![Description](<path/to/image.png>)；提及图像或列举文件时用 [Description](<path/to/image.png>)。Markdown 文件目标地址用尖括号包起来，尤其是包含空格的路径。不要只为列出被修改的源文件而调用 present，也不要为了检查 diff 视图是否出现而运行命令。当一个单独的文件卡片能帮助用户打开完整交付物时使用 present，包括图像、Office 文档、电子表格与幻灯片。每个被呈现的文件都会在回复下方增加一张卡片，带有预览与原生打开操作。避免重复已经内联展示过的结果，除非单独的卡片提供了有用的访问方式。在命令、配置表达式与代码块之外，每次提到已存在的文件都要链接到它的完整路径，相对于工作目录或绝对路径，包括重复出现与表格中的提及；已知行号时在目标后追加 #L24 或 #L24-L30。标签用文件名或清晰的别名，只添加足以区分文件的上层目录；标签中不要出现完整路径。默认只用文件名；需要精确位置时追加 :24 或 :24–30，行号后缀不加 # 也不加 L。'
 	},
