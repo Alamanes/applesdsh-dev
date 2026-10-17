@@ -1,16 +1,16 @@
 # dsh-ui-copy
 
-DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本并覆写强调色令牌，宿主半只把一张 ask 弹窗样式表内联进页面。
+DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本、覆写强调色令牌，并在设置 → 通用设置里贡献「UI 强调色」一行；宿主半只声明这一行设置的可编辑字段，并把一张 ask 弹窗样式表内联进页面。
 
 | 目标 | 位置 | 行为 |
 | --- | --- | --- |
 | 空态大标题 | `hero.headline`（原为「探索未至之境」） | 从当前语言池中随机取一句；React 每次把原句写回时重新取，自己写的那句不会被反复打乱 |
 | 输入框空置提示 | hero 态与普通态各一组 | 每组随机取一句俏皮话，按 React 传入的原句识别状态，同时同步 `aria-label` |
 | 预览版徽章 | 标题右侧的 `预览版` | 整条隐藏 |
-| UI 强调色 | `--dsw-alias-brand-primary` 与 `--dsw-alias-link` / `--dsw-alias-state-business-primary` 两组令牌 | 按主题换成配置里的颜色 |
+| UI 强调色 | `--dsw-alias-brand-primary` 与 `--dsw-alias-link` / `--dsw-alias-state-business-primary` 两组令牌 | 在设置 → 通用设置里按主题各配一个颜色 |
 | ask 提问弹窗 | `ask_user_question` 的提问卡、计划审批卡、回答气泡 | 换成 OpenAI / ChatGPT 的视觉语言 |
 
-默认文案写在 `lib/client.js` 的 `DEFAULTS` 里：标题与输入框都是「一组句子随机取一句」，改成单元素数组即固定不轮换；`hidePreviewBadge` 默认 `true`；`accent` 为空表示不动强调色。输入框的句子不含 `/`、`@` 之类的提示。
+默认文案写在 `lib/client.js` 的 `DEFAULTS` 里：标题与输入框都是「一组句子随机取一句」，改成单元素数组即固定不轮换；`hidePreviewBadge` 默认 `true`；强调色两项默认为空，即完全不介入。
 
 ## 组件
 
@@ -18,7 +18,7 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 
 | 组件 id | 入口 | 职责 |
 | --- | --- | --- |
-| `ui-copy` | `dsh-ui-copy`（浏览器半只） | 文案改写：大标题轮换、输入框提示、预览版徽章；强调色覆写 |
+| `ui-copy` | `dsh-ui-copy`（宿主半只 + 浏览器半只） | 宿主半只声明强调色的可编辑字段；浏览器半只做文案改写与强调色覆写，并在设置 → 通用设置里贡献「UI 强调色」一行 |
 | `ui-copy-ask` | `dsh-ui-copy/ask`（宿主半只） | ask 弹窗的 OpenAI 视觉 |
 
 两条行由 `cordis.patch.yml` 声明，同包不同入口 —— 官方 `@deepseek-ai/dsh-headless/startup`、`@deepseek-ai/dsh-tool-cordis/host` 用的是同一种做法。只想要其中一半时，在插件页关掉对应开关，或在 profile 的 `cordis.patch.yml` 里给同 id 追加 `disabled: true`。
@@ -49,9 +49,7 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 
 ## 改文案
 
-两种改法，任选其一。
-
-**一、直接改源码**（保存后刷新页面即可，此插件无构建步骤）
+文案只活在浏览器半只的 `DEFAULTS` 里，改法就是编辑源码（保存后刷新页面即可，此插件无构建步骤）：
 
 ```js
 // lib/client.js
@@ -72,28 +70,26 @@ const DEFAULTS = {
 
 想加任意其他改写，用 `css` 字段塞样式，或照 `applyPlaceholders` 的样子加一条规则。
 
-**二、走 profile 配置**（不动插件源码）
-
-在 `~/.dsh/profiles/desktop/cordis.patch.yml` 里追加：
-
-```yaml
-- id: ui-copy
-  name: dsh-ui-copy
-  config:
-    hidePreviewBadge: true
-    headline:
-      zh: ['有什么可以帮你的？']
-    placeholders:
-      '描述你想要构建的内容, / 调用指令, @ 文件或对话': ['说点什么，剩下的我来']
-```
-
-未写的字段沿用 `DEFAULTS`；`placeholders` 是按原句键合并的，所以只写想改的那几条即可。
+这几项为什么不走 profile 配置：浏览器半只是启动图里的一行（只带 id、url、rev），挂载时拿不到 profile 的 config，`apply(ctx, config)` 收到的永远是空对象。配置只有一条能到达页面的路 —— 宿主半只把字段声明成易变、页面再经 `configForms` 读，也就是下一节强调色走的那条。文案字段没有声明，所以 profile 里写了也不会有反应。
 
 ## 改强调色
 
-`accent` 把两族强调令牌统一成一个颜色：中性品牌色 `--dsw-alias-brand-primary`（主按钮填充、开关选中、选区描边、dock 提示）与蓝色业务色 `--dsw-alias-link`、`--dsw-alias-state-business-primary`（链接、焦点环、业务态徽标），再加设置页与活动标签条用的那个上游畸形别名 `--dsw-alias-brand-primary-new-colorprimary-new-color`。
+设置 → 通用设置 里有一行「UI 强调色」：浅色与深色主题各一个色块加一个文本框。点色块开系统取色器，文本框接受任何 CSS 颜色写法（`#7c4dff`、`oklch(...)`、颜色名）；文本框清空即该主题恢复官方配色，有值时右侧出现「清除」按钮。改动即时生效，不需要重启宿主。
 
-在 profile 的 `cordis.patch.yml` 里给 `ui-copy` 那一行加配置：
+这一行存在的条件是宿主半只（`lib/index.js`）里的声明：
+
+```js
+export const Config = Schema.object({
+  accent: Schema.object({
+    light: Schema.string().volatile(),
+    dark: Schema.string().volatile(),
+  }),
+})
+```
+
+`volatile` 不能省：设置接缝只为声明了易变字段的插件行投影表单，而只有易变字段能免重挂载地写进正在运行的引用。`accent.light` / `accent.dark` 分别对应两个主题，空字符串表示该主题不介入。
+
+设置界面写入的就是 profile 的 `cordis.patch.yml` 里同 id 的一行，所以手写同样有效、也可以手工改回：
 
 ```yaml
 - id: ui-copy
@@ -104,12 +100,13 @@ const DEFAULTS = {
       dark: '#b79cff'
 ```
 
-- `light` 与 `dark` 各一个颜色，某一项写空字符串表示该主题保持官方色；写成一个字符串（`accent: '#7c4dff'`）则两个主题同色。默认两个都是空字符串，即不介入。
+`accent` 把两族强调令牌统一成一个颜色：中性品牌色 `--dsw-alias-brand-primary`（主按钮填充、开关选中、选区描边、dock 提示）与蓝色业务色 `--dsw-alias-link`、`--dsw-alias-state-business-primary`（链接、焦点环、业务态徽标），再加设置页与活动标签条用的那个上游畸形别名 `--dsw-alias-brand-primary-new-colorprimary-new-color`。
+
 - 派生值：主按钮悬停色按主题朝黑（浅色）或白（暗色）混合 16%；强调色上的文字在 `#rgb` / `#rrggbb` 输入下按 WCAG 对比度自动取黑或白，其它写法（`oklch()`、颜色名、`var()`）保留主题原本的文字色。
 - 令牌声明落在 `html body` 与 `html body *`，靠特异性压过官方主题的 `body` / `body *`，并且不使用 `!important`，因此在自身作用域内重映射令牌的组件（本插件的 ask 弹窗即是）仍然优先。
 - ask 弹窗经 `--dsh-ui-copy-accent` 与 `--dsh-ui-copy-accent-ink` 跟随同一个强调色；未配置时回落到官方中性色，视觉与之前一致。
 - 官方 `--dsw-static-deepseek-*` 调色板不改动。若仍有残留的蓝色，用 `css` 字段追加覆盖。
-- 此项是纯 CSS 变量覆写，主题切换、页面刷新都实时跟手，不需要重启宿主。
+- 此项是纯 CSS 变量覆写，主题切换、页面刷新都实时跟手，不需要重启宿主；只有改 `lib/index.js` 的字段声明才需要重启。
 
 ## 安装
 
@@ -127,6 +124,8 @@ profile 的 `package.json` 按此登记：
 ```
 
 再在该 profile 目录执行 `pnpm install` 装好 `node_modules`，重启 DSH（或经插件页启用该行）后生效。停用只需从 `bundles` 里删掉 `dsh-ui-copy`。
+
+改代码时两条半只的生效时机不同：改 `lib/client.js` 或 `lib/ask-surface.css` 刷新页面即可；改 `lib/index.js` 必须重启 DSH —— 设置字段的声明由宿主进程在装载插件时读取，页面上拿到的 `configForms` 条目也来自那一刻。
 
 ## 为什么不走 locale 与槽位
 
