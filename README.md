@@ -8,7 +8,6 @@
 | 目录 | 包名 | 说明 | 来源 |
 |---|---|---|---|
 | `plugins/dsh-commandcode-quota` | `dsh-commandcode-quota` | 输入框模型选择器旁的 5 小时 / 周 / 月三条额度环，外加设置页的逐模型请求额度 | 上游 [Jovan1666/commandcode-usage](https://github.com/Jovan1666/commandcode-usage) 的 `plugins/dsh` |
-| `plugins/dsh-dignity-guard` | `dsh-dignity-guard` | 让模型自行判断尊严被冒犯并按阶梯升级的守卫插件 | 本仓库自产 |
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-reasoning-effort` | `dsh-reasoning-effort` | Codex 风格的模型与推理强度选择器 | 上游 [HanaAyane/dsh-reasoning-effort](https://github.com/HanaAyane/dsh-reasoning-effort)，含本地改色与精简改动 |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
@@ -18,6 +17,8 @@
 | `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 
+> `dsh-sylvia` 已移出本仓库，成为独立仓库（桌面 dsh-sylvia），不再随本仓库分发。
+
 ## 安装
 
 把插件按 GitHub 子目录说明符登记进 profile 的 `package.json`：
@@ -26,7 +27,6 @@
 {
   "dependencies": {
     "dsh-commandcode-quota": "github:Alamanes/applesdsh-dev#path:plugins/dsh-commandcode-quota",
-    "dsh-dignity-guard": "github:Alamanes/applesdsh-dev#path:plugins/dsh-dignity-guard",
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-reasoning-effort": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-effort",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
@@ -46,7 +46,6 @@
         "dsh-commandcode-quota",
         "dsh-status-phrases",
         "dsh-ui-copy",
-        "dsh-dignity-guard",
         "dsh-local-identity",
         "dsh-session-delete",
         "dsh-whale-widget",
