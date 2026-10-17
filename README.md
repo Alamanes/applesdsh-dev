@@ -17,8 +17,6 @@
 | `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 
-> `dsh-sylvia` 已移出本仓库，成为独立仓库（桌面 dsh-sylvia），不再随本仓库分发。
-
 ## 安装
 
 把插件按 GitHub 子目录说明符登记进 profile 的 `package.json`：
