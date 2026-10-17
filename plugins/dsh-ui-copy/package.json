@@ -2,7 +2,7 @@
   "name": "dsh-ui-copy",
   "version": "1.0.0",
   "private": true,
-  "description": "DeepSeek Harness 界面文案改写插件：空态大标题轮换、输入框空置提示改写、预览版徽章隐藏。不动官方包，只经 DOM 与一张样式表。",
+  "description": "DeepSeek Harness 界面改写插件：空态大标题轮换、输入框空置提示改写、预览版徽章隐藏，以及 ask_user 提问弹窗的 OpenAI 视觉。不动官方包，只经 DOM 与两张样式表。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -11,7 +11,9 @@
     "i18n",
     "hero",
     "composer",
-    "rebrand"
+    "rebrand",
+    "openai",
+    "ask-user-question"
   ],
   "type": "module",
   "main": "lib/index.js",
@@ -19,16 +21,30 @@
     ".": {
       "default": "./lib/index.js"
     },
+    "./ask": {
+      "default": "./lib/ask.js"
+    },
+    "./ask/locale/*.json": {
+      "default": "./locale/ask/*.json"
+    },
     "./client": {
       "default": "./lib/client.js"
+    },
+    "./locale/*.json": {
+      "default": "./locale/*.json"
     },
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "locale",
     "cordis.patch.yml",
     "README.md"
   ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

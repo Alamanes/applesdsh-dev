@@ -1,0 +1,594 @@
+/* ==========================================================================
+   dsh-ui-copy — the ask surface component
+   --------------------------------------------------------------------------
+   The OpenAI / ChatGPT design language applied to the three surfaces shipped
+   by @deepseek-ai/dsh-client-ui-user-questions:
+
+     QuestionComposer   the pending-question takeover in the composer seat
+     PlanReviewPanel    the plan-approval card
+     QuestionReplyView  the answered-question bubble in the transcript
+
+   The host half inlines this sheet into every index response, so editing it and
+   reloading the page is enough: no rebuild, no restart, no stale stylesheet.
+   It is a file next to the code rather than a string in lib/client.js for
+   exactly that reason.
+
+   Scope
+     Every rule is rooted at one of three data attributes the components write
+     on their own outermost element — [data-question-key], [data-plan-review-key],
+     [data-question-reply] — so nothing outside these surfaces is touched.
+
+   Accent
+     The accent slot — the primary fill, its hover shade, the ink drawn on it and
+     the focus colour — reads `--dsh-ui-copy-accent` and `--dsh-ui-copy-accent-ink`,
+     which the browser half publishes when the profile configures `accent`. With
+     none configured the fallbacks keep the shipped neutral and this sheet renders
+     exactly as before. The harness accent tokens cannot be read directly here:
+     this block remaps them, and a token that refers back to its own remap
+     resolves to nothing.
+
+   Why tokens first
+     The colours, radii and strokes below are published as DSH alias tokens on
+     the scope root and on every descendant, then the mapping layer points the
+     harness tokens at them. Anything the surfaces render through a primitive
+     (Button, MarkdownText, StateDot) therefore follows without a rule of its
+     own, and no primitive class name has to be known.
+
+     The descendant half of that pair matters: the harness defines elevation and
+     static tokens as `body, body *`, so an element carries its own value rather
+     than inheriting one from an ancestor. Re-declaring on `*` inside the scope
+     wins that tie by specificity without needing !important.
+
+   Why !important
+     The component stylesheets are CSS modules injected at runtime, i.e. after
+     this sheet, so an equally specific later rule would otherwise win. Token
+     declarations need no !important (specificity already decides) but every
+     direct property override carries one.
+
+   Maintenance
+     Class names below are the CSS-module tokens of
+     @deepseek-ai/dsh-client-ui-user-questions 0.2.0-rc.2: `y21zpG_*` for the
+     question composer, `R7PCuq_*` for the plan review, `Dh9Boq_*` for the
+     reply bubble. A harness upgrade may rehash those prefixes; every rule that
+     depends on one is paired with a structural or attribute selector
+     (section/header/footer/textarea/role/workflow data attribute), so an
+     upgrade degrades the decoration rather than the layout. To re-point the
+     decoration after an upgrade, read the new prefixes the same way and replace
+     the class names here — nothing else changes.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Scope and palette
+   -------------------------------------------------------------------------- */
+
+:is([data-question-key], [data-plan-review-key], [data-question-reply]),
+:is([data-question-key], [data-plan-review-key], [data-question-reply]) * {
+  /* Palette — ChatGPT neutrals, no blue cast. */
+  --oai-surface: #ffffff;
+  --oai-surface-2: #f4f4f4;
+  --oai-surface-3: #ececec;
+  --oai-text: #0d0d0d;
+  --oai-text-2: #5d5d5d;
+  --oai-text-3: #8f8f8f;
+  --oai-text-4: #a8a8a8;
+  --oai-border: #e5e5e5;
+  --oai-border-strong: #d4d4d4;
+  --oai-accent: var(--dsh-ui-copy-accent, var(--dsw-alias-brand-primary, #0d0d0d));
+  --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, #000000);
+  --oai-accent-fg: var(--dsh-ui-copy-accent-ink, #ffffff);
+  --oai-warn-bg: #fdf6ec;
+  --oai-warn-fg: #8a5a00;
+  --oai-danger: #d92d20;
+  --oai-focus: var(--oai-accent);
+
+  /* Mapping — harness tokens follow the palette. */
+  --dsw-specific-input-major: var(--oai-surface);
+  --dsw-specific-bubble: var(--oai-surface-2);
+  --dsw-alias-bg-base: var(--oai-surface);
+  --dsw-alias-bg-layer-1: var(--oai-surface);
+  --dsw-alias-bg-layer-2: var(--oai-surface);
+  --dsw-alias-bg-overlay: var(--oai-surface-2);
+  --dsw-alias-bg-module-platform: var(--oai-surface-2);
+  --dsw-alias-label-primary: var(--oai-text);
+  --dsw-alias-label-primary-foreground: var(--oai-accent-fg);
+  --dsw-alias-label-secondary: var(--oai-text-2);
+  --dsw-alias-label-tertiary: var(--oai-text-3);
+  --dsw-alias-label-caption: var(--oai-text-4);
+  --dsw-alias-label-dimmed: var(--oai-border-strong);
+  --dsw-alias-border-l1: color-mix(in srgb, var(--oai-border) 55%, transparent);
+  --dsw-alias-border-l2: var(--oai-border);
+  --dsw-alias-border-l2-darkmode-thin: var(--oai-border);
+  --dsw-alias-border-l3: var(--oai-border-strong);
+  --dsw-alias-border-l4: var(--oai-border-strong);
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--oai-text) 5%, transparent);
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, var(--oai-text) 8%, transparent);
+  --dsw-alias-button-primary-fill: var(--oai-accent);
+  --dsw-alias-button-primary-hover: var(--oai-accent-hover);
+  --dsw-alias-button-primary-dimmed: var(--oai-surface-3);
+  --dsw-alias-state-business-primary: var(--oai-focus);
+  --dsw-alias-state-error-primary: var(--oai-danger);
+  --dsw-alias-state-warn-primary: var(--oai-warn-fg);
+  --dsw-alias-state-warn-tertiary: var(--oai-warn-bg);
+  --dsw-alias-button-info-fill: var(--oai-text-2);
+  --dsw-specific-sidebar-nav-item-active-accent: var(--oai-surface-3);
+  --dsw-alias-scrollbar-bg-l2: color-mix(in srgb, var(--oai-text) 18%, transparent);
+  --dsw-alias-scrollbar-hover-l2: color-mix(in srgb, var(--oai-text) 30%, transparent);
+
+  /* Geometry — ChatGPT's generous radii, one step off the harness scale. */
+  --dsw-radius-xl: 24px;
+  --dsw-radius-panel: 24px;
+  --dsw-radius-lg: 16px;
+  --dsw-radius-md: 12px;
+  --dsw-radius-sm: 8px;
+  --oai-card-radius: 24px;
+  --oai-row-radius: 14px;
+  --oai-field-radius: 16px;
+  --oai-chip-radius: 6px;
+  --oai-transition: 140ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-question-reply]),
+body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-question-reply]) * {
+  --oai-surface: #262626;
+  --oai-surface-2: #333333;
+  --oai-surface-3: #3d3d3d;
+  --oai-text: #ececec;
+  --oai-text-2: #b4b4b4;
+  --oai-text-3: #8f8f8f;
+  --oai-text-4: #7a7a7a;
+  --oai-border: rgba(255, 255, 255, 0.12);
+  --oai-border-strong: rgba(255, 255, 255, 0.2);
+  --oai-accent: var(--dsh-ui-copy-accent, var(--dsw-alias-brand-primary, #ffffff));
+  --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, #ffffff);
+  --oai-accent-fg: var(--dsh-ui-copy-accent-ink, #0d0d0d);
+  --oai-warn-bg: rgba(245, 158, 11, 0.1);
+  --oai-warn-fg: #e3a94a;
+  --oai-danger: #f97066;
+  --oai-focus: var(--oai-accent);
+}
+
+/* --------------------------------------------------------------------------
+   1. Card shell
+   -------------------------------------------------------------------------- */
+
+[data-question-key] > section,
+[data-plan-review-key] > section {
+  border-radius: var(--oai-card-radius) !important;
+  border: 1px solid var(--oai-border) !important;
+  background: var(--oai-surface) !important;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.07) !important;
+  color: var(--oai-text) !important;
+}
+
+body[data-ds-dark-theme] [data-question-key] > section,
+body[data-ds-dark-theme] [data-plan-review-key] > section {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 16px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* The frame keeps the composer's side clearance but breathes a little more. */
+[data-question-key],
+[data-plan-review-key] {
+  padding-top: 10px !important;
+  padding-bottom: 12px !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. Header
+   -------------------------------------------------------------------------- */
+
+[data-question-key] > section > header,
+[data-plan-review-key] > section > header {
+  padding: 22px 20px 0 24px !important;
+  gap: 12px !important;
+}
+
+[data-question-key] header h2,
+[data-plan-review-key] header h3 {
+  font-size: 17px !important;
+  line-height: 25px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.012em !important;
+  color: var(--oai-text) !important;
+}
+
+[data-question-key] [class~='y21zpG_eyebrow'] {
+  font-size: 11px !important;
+  line-height: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--oai-text-3) !important;
+  margin-bottom: 6px !important;
+}
+
+/* Icon-only controls: circular, quiet, and only tinted on hover. */
+[data-question-key] header button[class~='y21zpG_iconButton'] {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 999px !important;
+  color: var(--oai-text-3) !important;
+  transition: background var(--oai-transition), color var(--oai-transition) !important;
+}
+
+[data-question-key] header button[class~='y21zpG_iconButton']:hover:not(:disabled) {
+  background: var(--oai-surface-2) !important;
+  color: var(--oai-text) !important;
+}
+
+[data-question-key] [class~='y21zpG_waitStatus'] {
+  font-size: 12px !important;
+  color: var(--oai-text-3) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Body: detail, options, custom answer field
+   -------------------------------------------------------------------------- */
+
+[data-question-key] [data-question-scroll] {
+  padding-bottom: 4px !important;
+}
+
+[data-question-key] [class~='y21zpG_detail'] {
+  margin: 0 24px 4px !important;
+  color: var(--oai-text-2) !important;
+  font-size: 14px !important;
+  line-height: 23px !important;
+}
+
+[data-question-key] [role='radiogroup'],
+[data-question-key] [role='group'] {
+  padding: 8px 12px !important;
+  gap: 2px !important;
+}
+
+/* Rows: no filled card, a hover wash, and a hairline ring once chosen. */
+[data-question-key] [role='radiogroup'] > button,
+[data-question-key] [role='group'] > button,
+[data-question-key] [class~='y21zpG_customRow'] {
+  border-radius: var(--oai-row-radius) !important;
+  border: 1px solid transparent !important;
+  padding: 9px 12px 9px 10px !important;
+  min-height: 44px !important;
+  transition: background var(--oai-transition), border-color var(--oai-transition) !important;
+}
+
+[data-question-key] [role='radiogroup'] > button:hover:not(:disabled),
+[data-question-key] [role='group'] > button:hover:not(:disabled),
+[data-question-key] [class~='y21zpG_customRow']:hover,
+[data-question-key] [class~='y21zpG_customRow']:focus-within {
+  background: var(--oai-surface-2) !important;
+  border-color: transparent !important;
+}
+
+[data-question-key] [class~='y21zpG_optionSelected'],
+[data-question-key] [class~='y21zpG_customRowActive'] {
+  background: var(--oai-surface-2) !important;
+  border-color: var(--oai-border-strong) !important;
+}
+
+body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_optionSelected'],
+body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
+  background: var(--oai-surface-2) !important;
+  border-color: var(--oai-border-strong) !important;
+}
+
+[data-question-key] [class~='y21zpG_optionLabel'] {
+  font-size: 14px !important;
+  line-height: 22px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.006em !important;
+}
+
+[data-question-key] [class~='y21zpG_description'] {
+  font-size: 13px !important;
+  line-height: 20px !important;
+  color: var(--oai-text-3) !important;
+}
+
+/* The ordinal chip and the multi-select box share one treatment. */
+[data-question-key] [class~='y21zpG_number'] {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: var(--oai-chip-radius) !important;
+  background: var(--oai-surface-3) !important;
+  color: var(--oai-text-2) !important;
+  font-size: 11px !important;
+  line-height: 18px !important;
+  font-weight: 600 !important;
+  margin-top: 1px !important;
+}
+
+[data-question-key] [class~='y21zpG_checkbox']:before {
+  width: 16px !important;
+  height: 16px !important;
+  border: 1.5px solid var(--oai-border-strong) !important;
+  border-radius: var(--oai-chip-radius) !important;
+  transition: background var(--oai-transition), border-color var(--oai-transition) !important;
+}
+
+[data-question-key] [class~='y21zpG_checkboxChecked']:before {
+  border-color: var(--oai-accent) !important;
+  background: var(--oai-accent) !important;
+}
+
+[data-question-key] [class~='y21zpG_checkboxChecked'] {
+  color: var(--oai-accent-fg) !important;
+}
+
+/* Recommendation chip: a neutral tag rather than a brand-tinted one. */
+[data-question-key] [class~='y21zpG_badge'] {
+  border-radius: var(--oai-chip-radius) !important;
+  background: var(--oai-surface-3) !important;
+  color: var(--oai-text-2) !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 18px !important;
+}
+
+[data-question-key] [class~='y21zpG_reviewNote'] {
+  color: var(--oai-text-3) !important;
+  font-size: 13px !important;
+  padding: 8px 14px !important;
+}
+
+/* Free-text answer: inset surface, ring on focus, same radius as the rows. */
+[data-question-key] textarea,
+[data-question-key] textarea::placeholder {
+  font-size: 14px !important;
+  line-height: 24px !important;
+}
+
+[data-question-key] textarea::placeholder {
+  color: var(--oai-text-4) !important;
+}
+
+[data-question-key] [class~='y21zpG_customBlock'] {
+  border: 1px solid var(--oai-border) !important;
+  border-radius: var(--oai-field-radius) !important;
+  background: var(--oai-surface-2) !important;
+  margin: 8px 12px 0 !important;
+  min-height: 68px !important;
+  --dsh-answer-field-padding: 12px 14px !important;
+  transition: border-color var(--oai-transition), background var(--oai-transition) !important;
+}
+
+[data-question-key] [class~='y21zpG_customBlock']:focus-within {
+  border-color: var(--oai-focus) !important;
+  background: var(--oai-surface) !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. Footer
+   -------------------------------------------------------------------------- */
+
+[data-question-key] > section > footer {
+  margin-top: 14px !important;
+  padding: 0 14px 0 18px !important;
+  gap: 12px !important;
+}
+
+[data-question-key] [class~='y21zpG_progress'] {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--oai-text-3) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+[data-question-key] [class~='y21zpG_feedback'],
+[data-plan-review-key] [class~='R7PCuq_feedback'] {
+  font-size: 12px !important;
+  line-height: 18px !important;
+  color: var(--oai-danger) !important;
+}
+
+/* Decision buttons: pill shaped, ChatGPT's black-on-white primary. */
+[data-question-key] [class~='y21zpG_footerActions'] button,
+[data-plan-review-key] [class~='R7PCuq_actions'] button {
+  height: 36px !important;
+  border-radius: 999px !important;
+  padding: 0 18px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.006em !important;
+  transition: background var(--oai-transition), border-color var(--oai-transition),
+    opacity var(--oai-transition) !important;
+}
+
+[data-question-key] [class~='y21zpG_footerActions'] button:first-child,
+[data-plan-review-key] [class~='R7PCuq_actions'] button:first-child {
+  border: 1px solid var(--oai-border-strong) !important;
+  background: transparent !important;
+  color: var(--oai-text) !important;
+}
+
+[data-question-key] [class~='y21zpG_footerActions'] button:first-child:hover:not(:disabled),
+[data-plan-review-key] [class~='R7PCuq_actions'] button:first-child:hover:not(:disabled) {
+  background: var(--oai-surface-2) !important;
+}
+
+[data-question-key] [class~='y21zpG_footerActions'] button:last-child,
+[data-plan-review-key] [class~='R7PCuq_actions'] button:last-child {
+  border: 1px solid transparent !important;
+  background: var(--oai-accent) !important;
+  color: var(--oai-accent-fg) !important;
+}
+
+[data-question-key] [class~='y21zpG_footerActions'] button:last-child:hover:not(:disabled),
+[data-plan-review-key] [class~='R7PCuq_actions'] button:last-child:hover:not(:disabled) {
+  background: var(--oai-accent-hover) !important;
+}
+
+[data-question-key] [class~='y21zpG_waitButton'] {
+  border-radius: 999px !important;
+  height: 28px !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. Plan review card
+   -------------------------------------------------------------------------- */
+
+[data-plan-review-key] [class~='R7PCuq_strip'] {
+  padding: 13px 20px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.006em !important;
+  gap: 10px !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_summary'] {
+  padding: 16px 24px 4px !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_title'] {
+  font-size: 16px !important;
+  line-height: 24px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.012em !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_description'] {
+  font-size: 13px !important;
+  line-height: 21px !important;
+  color: var(--oai-text-2) !important;
+  margin-top: 6px !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_footer'] {
+  padding: 10px 16px 14px !important;
+  gap: 12px !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_actions'] {
+  gap: 10px !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_discuss'] {
+  gap: 7px !important;
+}
+
+[data-plan-review-key] [class~='R7PCuq_previewActions'] button {
+  border-radius: 999px !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. Answered-question bubble
+   -------------------------------------------------------------------------- */
+
+[data-question-reply] {
+  gap: 4px !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_bubble'] {
+  border-radius: 18px !important;
+  background: var(--oai-surface-2) !important;
+  padding: 10px 16px !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_labelRow'] {
+  gap: 4px !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_label'] {
+  font-size: 12px !important;
+  color: var(--oai-text-3) !important;
+  letter-spacing: 0.01em !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_summary'] {
+  font-size: 14px !important;
+  margin-top: 2px !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_details'] {
+  border-top: 1px solid var(--oai-border) !important;
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_header'],
+[data-question-reply] [class~='Dh9Boq_detail'],
+[data-question-reply] [class~='Dh9Boq_options'] {
+  color: var(--oai-text-3) !important;
+  font-size: 12px !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_answerLabel'] {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: var(--oai-text-3) !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_actions'] {
+  gap: 6px !important;
+  height: 26px !important;
+  color: var(--oai-text-3) !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_time'] {
+  font-size: 12px !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_action'] {
+  border-radius: 999px !important;
+  width: 26px !important;
+  height: 26px !important;
+  transition: background var(--oai-transition), color var(--oai-transition) !important;
+}
+
+[data-question-reply] [class~='Dh9Boq_action']:hover {
+  background: var(--oai-surface-2) !important;
+  color: var(--oai-text) !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. Focus ring
+   -------------------------------------------------------------------------- */
+
+[data-question-key] :focus-visible,
+[data-plan-review-key] :focus-visible,
+[data-question-reply] :focus-visible {
+  outline: 2px solid var(--oai-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. Motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :is([data-question-key], [data-plan-review-key], [data-question-reply]) *,
+  :is([data-question-key], [data-plan-review-key], [data-question-reply]) *::before {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Narrow viewports
+   -------------------------------------------------------------------------- */
+
+@media (width <= 720px) {
+  [data-question-key] > section > header {
+    padding: 18px 16px 0 18px !important;
+  }
+
+  [data-question-key] [role='radiogroup'],
+  [data-question-key] [role='group'] {
+    padding: 8px 8px !important;
+  }
+
+  [data-question-key] > section > footer {
+    padding: 0 10px 0 14px !important;
+  }
+}
