@@ -39,13 +39,16 @@
 /* --------------------------------------------------------------------------
    Ghost layer
    One fixed layer holds every departing clone; children are inert by
-   construction, because the layer never receives pointer events.
+   construction, because the layer never receives pointer events. The layer sits
+   at the menus' own 1100 and is appended last to the body, so a clone keeps the
+   layer it had while alive — and a menu opened during the fade lands above the
+   copy of the one it replaced.
    -------------------------------------------------------------------------- */
 
 [data-dsh-ui-copy-ghost] {
   position: fixed;
   inset: 0;
-  z-index: 1095;
+  z-index: 1100;
   pointer-events: none;
 }
 
