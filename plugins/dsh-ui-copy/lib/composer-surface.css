@@ -36,12 +36,15 @@
 
 [data-composer-card],
 [data-composer-seat] {
-  --dsh-ui-copy-card-surface: #303030;
+  --dsh-ui-copy-card-surface: #2a2a2a;
   --dsh-ui-copy-card-edge: #3a3a3a;
   --dsh-ui-copy-card-ink: #e5e5e5;
-  --dsh-ui-copy-card-muted: #929292;
-  --dsh-ui-copy-send-fill: #3478cf;
-  --dsh-ui-copy-send-idle: #494949;
+  --dsh-ui-copy-card-muted: #626262;
+  --dsh-ui-copy-send-fill: #ffffff;
+  --dsh-ui-copy-send-ink: #0d0d0d;
+  --dsh-ui-copy-send-idle: #858585;
+  --dsh-ui-copy-send-idle-ink: #2a2a2a;
+  --dsh-ui-copy-dock-surface: #1e1e1e;
 }
 
 body:not([data-ds-dark-theme]) [data-composer-card],
@@ -51,7 +54,10 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   --dsh-ui-copy-card-ink: #202124;
   --dsh-ui-copy-card-muted: #62656c;
   --dsh-ui-copy-send-fill: #3478cf;
+  --dsh-ui-copy-send-ink: #ffffff;
   --dsh-ui-copy-send-idle: #b6b9c1;
+  --dsh-ui-copy-send-idle-ink: #ffffff;
+  --dsh-ui-copy-dock-surface: #ececec;
 }
 
 /* --------------------------------------------------------------------------
@@ -78,7 +84,7 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   background: var(--dsh-ui-copy-card-surface) !important;
   border: 1px solid var(--dsh-ui-copy-card-edge) !important;
   border-radius: 22px !important;
-  box-shadow: 0 8px 32px #00000018 !important;
+  box-shadow: 0 1px 6px #00000010 !important;
   padding-top: 10px !important;
 }
 
@@ -90,8 +96,8 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 [data-composer-card] {
   padding-top: 6px !important;
   gap: 8px !important;
-  font-size: 13px !important;
-  line-height: 1.65 !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -99,14 +105,21 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
    -------------------------------------------------------------------------- */
 
 [data-composer-card] [contenteditable] {
-  min-height: 28px;
-  font-size: 13px;
-  line-height: 1.65;
+  min-height: 42px;
+  font-size: 15px;
+  line-height: 1.5;
   caret-color: var(--dsh-ui-copy-card-ink);
 }
 
 [class*="_composerHero"] [data-composer-card] [contenteditable] {
-  min-height: 36px;
+  min-height: 46px;
+}
+
+/* Placeholder ink: the shipped sheets paint it brighter than the reference. */
+[data-composer-card] [data-placeholder],
+[data-composer-card] [data-composer-placeholder],
+[data-composer-card] [class*="_placeholder"] {
+  color: var(--dsh-ui-copy-card-muted) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -121,7 +134,7 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   border: 0 !important;
   border-radius: 50% !important;
   background: var(--dsh-ui-copy-send-fill) !important;
-  color: #ffffff !important;
+  color: var(--dsh-ui-copy-send-ink) !important;
   box-shadow: none !important;
 }
 
@@ -133,7 +146,7 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 [data-composer-card] :is([class$="_primary"], [class*="_primary "]):disabled {
   background: var(--dsh-ui-copy-send-idle) !important;
   opacity: 1 !important;
-  color: #ffffff !important;
+  color: var(--dsh-ui-copy-send-idle-ink) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -148,6 +161,25 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   background: transparent !important;
   box-shadow: none !important;
   border-color: transparent !important;
+}
+
+/* --------------------------------------------------------------------------
+   Dock: the strip under the card, drawn as the reference's secondary chip.
+   Rendered only when the seat actually carries one, so the empty state keeps
+   its single card.
+   -------------------------------------------------------------------------- */
+
+[data-composer-dock]:has(*) {
+  box-sizing: border-box !important;
+  align-self: center !important;
+  min-height: 34px !important;
+  padding: 5px 16px !important;
+  background: var(--dsh-ui-copy-dock-surface) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  align-items: center !important;
+  gap: 10px !important;
 }
 
 /* --------------------------------------------------------------------------
