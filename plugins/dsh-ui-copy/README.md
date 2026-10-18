@@ -64,6 +64,8 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 
 样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/composer-surface.css` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/composer-surface.css` 看当前内容。
 
+小条最左侧是**项目切换器**：显示当前项目名，点击向上弹出项目列表，选中即经工作区服务切到那个项目的空白会话。它由浏览器半只注册在 `conversation.composer.dock` 槽位上，`order` 为 `-10`，排在统计条目之前；菜单的开合是组件本地状态，用 `transform` 与 `opacity` 过渡，不介入宿主的菜单。文案走 `ui-copy` 字典（`workspacePick` / `workspaceSwitch` / `workspaceEmpty`）。
+
 模型与推理强度控件不在这个组件里：那两样在原皮肤中是替换原生触发器的客户端逻辑，属于控件而非卡片外观。
 
 ## 改文案

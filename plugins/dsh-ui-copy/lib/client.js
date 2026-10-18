@@ -291,6 +291,9 @@ const ROW_TEXT = {
     clear: '清除',
     saveFailed: '保存失败，请重试',
     unavailable: '这台机器上没有可写的设置文档，强调色只能在回环地址的页面上编辑。',
+    workspacePick: '选择项目',
+    workspaceSwitch: '切换项目',
+    workspaceEmpty: '还没有登记的项目',
   },
   en: {
     title: 'UI accent',
@@ -301,6 +304,9 @@ const ROW_TEXT = {
     clear: 'Clear',
     saveFailed: 'Could not save; try again',
     unavailable: 'No writable settings document on this machine; edit the accent from a loopback page.',
+    workspacePick: 'Choose project',
+    workspaceSwitch: 'Switch project',
+    workspaceEmpty: 'No projects registered yet',
   },
 }
 
@@ -334,10 +340,38 @@ const SETTINGS_CSS = `
 .duic-clear:disabled{cursor:default;opacity:.6}
 `
 
-/** Render the stylesheet: the badge rule, the accent override, the row, the caller's CSS. */
+/**
+ * The project chip's chrome.
+ *
+ * It sits in the composer dock as the leftmost entry and opens upward, because
+ * the dock itself lives at the bottom of the seat. Every state change is a
+ * transform or an opacity, so opening and closing stay on the compositor.
+ */
+const WORKSPACE_CSS = `
+.duic-ws{position:relative;display:flex;align-items:center;order:-10}
+.duic-wsTrigger{display:flex;align-items:center;gap:6px;height:22px;padding:0 6px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;cursor:pointer;transition:background-color .14s cubic-bezier(.2,0,.2,1),color .14s cubic-bezier(.2,0,.2,1)}
+.duic-wsTrigger:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.duic-wsTrigger:disabled{cursor:default;opacity:.6}
+.duic-wsIcon,.duic-wsChevron{display:flex;flex:none}
+.duic-wsIcon svg,.duic-wsChevron svg{display:block}
+.duic-wsLabel{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duic-wsChevron{transition:transform .18s cubic-bezier(.2,0,.2,1)}
+.duic-ws[data-open="true"] .duic-wsChevron{transform:rotate(180deg)}
+.duic-wsMenu{position:absolute;bottom:calc(100% + 8px);left:0;z-index:40;display:flex;flex-direction:column;gap:2px;box-sizing:border-box;min-width:236px;max-width:340px;max-height:320px;overflow:auto;padding:6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-2));box-shadow:0 14px 40px #00000059;transform-origin:bottom left;opacity:0;transform:translateY(6px) scale(.96);pointer-events:none;transition:opacity .16s cubic-bezier(.2,0,.2,1),transform .16s cubic-bezier(.2,0,.2,1)}
+.duic-ws[data-open="true"] .duic-wsMenu{opacity:1;transform:none;pointer-events:auto}
+.duic-wsItem{display:flex;flex-direction:column;gap:1px;width:100%;box-sizing:border-box;padding:6px 10px;border:0;border-radius:10px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:18px;text-align:left;cursor:pointer;transition:background-color .14s cubic-bezier(.2,0,.2,1)}
+.duic-wsItem:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.duic-wsItem:disabled{cursor:default;opacity:.6}
+.duic-wsItemLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duic-wsItemPath{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duic-wsItemCurrent .duic-wsItemLabel{color:var(--dsw-alias-brand-primary)}
+.duic-wsEmpty{padding:6px 10px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
+`
+
+/** Render the stylesheet: the badge rule, the accent override, the row, the chip, the caller's CSS. */
 function stylesheetFor(options) {
   const badge = options.hidePreviewBadge ? `${PREVIEW_BADGE_SELECTOR} { display: none !important; }\n` : ''
-  return badge + accentStylesheet(options.accent) + SETTINGS_CSS + options.css
+  return badge + accentStylesheet(options.accent) + SETTINGS_CSS + WORKSPACE_CSS + options.css
 }
 
 /** A config value as a list of lines: a bare string counts as a one-line pool. */
@@ -624,6 +658,145 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * Subscribe one component to a client store's snapshots.
+     *
+     * Both controllers publish plain snapshot stores, so a subscriber reads the
+     * current value and re-renders whenever either side moves.
+     *
+     * @param store - a `list` handle exposing `getSnapshot` and `subscribe`.
+     * @returns the current snapshot, refreshed on every change.
+     */
+    function useStoreSnapshot(store) {
+      const [snapshot, setSnapshot] = React.useState(() => store.getSnapshot())
+      React.useEffect(() => store.subscribe(() => setSnapshot(store.getSnapshot())), [store])
+      return snapshot
+    }
+
+    /** A workspace's display name: its title, else the last path segment. */
+    function workspaceLabelOf(workspace) {
+      if (workspace === undefined || workspace === null) return null
+      if (typeof workspace.title === 'string' && workspace.title.trim() !== '') return workspace.title
+      if (typeof workspace.path === 'string') {
+        const segments = workspace.path.split('/').filter((segment) => segment !== '')
+        if (segments.length > 0) return segments[segments.length - 1]
+      }
+      return typeof workspace.workspaceId === 'string' ? workspace.workspaceId : null
+    }
+
+    /** The folder glyph on the trigger. */
+    function folderGlyph() {
+      return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+        h('path', {
+          d: 'M2 5.2A1.2 1.2 0 0 1 3.2 4h2.6l1.4 1.8h5.6A1.2 1.2 0 0 1 14 7v3.8A1.2 1.2 0 0 1 12.8 12H3.2A1.2 1.2 0 0 1 2 10.8V5.2Z',
+          stroke: 'currentColor',
+          strokeWidth: 1.2,
+          strokeLinejoin: 'round',
+        }))
+    }
+
+    /** The disclosure glyph on the trigger. */
+    function chevronGlyph() {
+      return h('svg', { width: 12, height: 12, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+        h('path', {
+          d: 'M4 6.5 8 10.5l4-4',
+          stroke: 'currentColor',
+          strokeWidth: 1.4,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+        }))
+    }
+
+    /**
+     * The project chip in the composer dock.
+     *
+     * The current project is the workspace the main-view session belongs to; the
+     * list comes from the workspace controller and the switch runs through the
+     * workspace service, so this control duplicates no navigation logic. The
+     * menu is local state, which is what makes its open and close animatable
+     * without touching the host's own menus.
+     */
+    function WorkspaceChip({ t, workspaces, sessions, uiWorkspace }) {
+      const list = useStoreSnapshot(workspaces.list)
+      const sessionList = useStoreSnapshot(sessions.list)
+      const [open, setOpen] = React.useState(false)
+      const [busy, setBusy] = React.useState(false)
+      const root = React.useRef(null)
+
+      React.useEffect(() => {
+        if (!open) return undefined
+        const close = (event) => {
+          if (root.current !== null && event.target instanceof Node && root.current.contains(event.target)) return
+          setOpen(false)
+        }
+        const onKey = (event) => {
+          if (event.key === 'Escape') setOpen(false)
+        }
+        document.addEventListener('pointerdown', close, true)
+        document.addEventListener('keydown', onKey)
+        return () => {
+          document.removeEventListener('pointerdown', close, true)
+          document.removeEventListener('keydown', onKey)
+        }
+      }, [open])
+
+      const items = Array.isArray(list?.items) ? list.items : []
+      const rows = Object.entries(sessionList?.byId ?? {}).map(([sessionId, row]) => ({ sessionId, ...row }))
+      const mainRow = rows.find((row) => (row?.retainedBy?.mainView ?? 0) > 0)
+      const currentSessionId = typeof mainRow?.sessionId === 'string' ? mainRow.sessionId : ''
+      // The Session row owns no workspace id, so the current project comes from
+      // the controller's own membership list, exactly as the host resolves it.
+      const current = items.find((item) => (Array.isArray(item.sessionIds) && currentSessionId !== '' && item.sessionIds.includes(currentSessionId))
+        || (typeof mainRow?.workspaceId === 'string' && item.workspaceId === mainRow.workspaceId))
+      const currentId = typeof current?.workspaceId === 'string' ? current.workspaceId : ''
+      const label = workspaceLabelOf(current) ?? t('workspacePick')
+
+      const choose = (workspaceId) => {
+        setOpen(false)
+        if (workspaceId === currentId || busy) return
+        setBusy(true)
+        Promise.resolve()
+          .then(() => uiWorkspace.openWorkspace(workspaceId))
+          .catch(() => {})
+          .then(() => setBusy(false))
+      }
+
+      const entries = items.length === 0
+        ? h('div', { className: 'duic-wsEmpty', key: 'empty' }, t('workspaceEmpty'))
+        : items.map((item) => h('button', {
+          key: String(item.workspaceId),
+          type: 'button',
+          role: 'menuitemradio',
+          'aria-checked': item.workspaceId === currentId,
+          className: item.workspaceId === currentId ? 'duic-wsItem duic-wsItemCurrent' : 'duic-wsItem',
+          disabled: busy,
+          onClick: () => choose(item.workspaceId),
+        }, [
+          h('span', { className: 'duic-wsItemLabel', key: 'label' }, workspaceLabelOf(item) ?? String(item.workspaceId)),
+          typeof item.path === 'string' && item.path !== ''
+            ? h('span', { className: 'duic-wsItemPath', key: 'path' }, item.path)
+            : null,
+        ]))
+
+      return h('div', { className: 'duic-ws', ref: root, 'data-open': open ? 'true' : 'false' }, [
+        h('button', {
+          key: 'trigger',
+          type: 'button',
+          className: 'duic-wsTrigger',
+          'aria-haspopup': 'menu',
+          'aria-expanded': open,
+          'aria-label': t('workspaceSwitch'),
+          disabled: busy,
+          onClick: () => setOpen((value) => !value),
+        }, [
+          h('span', { className: 'duic-wsIcon', key: 'icon' }, folderGlyph()),
+          h('span', { className: 'duic-wsLabel', key: 'label' }, label),
+          h('span', { className: 'duic-wsChevron', key: 'chevron' }, chevronGlyph()),
+        ]),
+        h('div', { className: 'duic-wsMenu', key: 'menu', role: 'menu' }, entries),
+      ])
+    }
+
+    /**
      * Install the copy overrides, the accent wiring and the settings row.
      *
      * The copy passes start at once because they need no service. The accent
@@ -674,6 +847,20 @@ window.__ModuleLoader__.load({
           locale: SETTINGS_NS,
           inject: () => ({ form }),
         }, AccentRow))
+      })
+
+      ctx.inject(['slots', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], (scope) => {
+        scope.slots.inject('conversation.composer.dock', () => scope.slots.register({
+          name: 'conversation.composer.dock',
+          id: 'ui-copy-workspace',
+          order: -10,
+          locale: SETTINGS_NS,
+          inject: () => ({
+            workspaces: scope.workspaces,
+            sessions: scope.sessions,
+            uiWorkspace: scope.uiWorkspace,
+          }),
+        }, WorkspaceChip))
       })
     }
 
