@@ -149,7 +149,7 @@
    * @param menu - the mounted menu surface.
    */
   function enter(menu) {
-    if (quietMotion() || welcomed.has(menu)) return
+    if (quietMotion() || welcomed.has(menu) || isClone(menu)) return
     welcomed.add(menu)
     open.set(menu, menu.getBoundingClientRect())
     track()
@@ -292,18 +292,30 @@
   }
 
   /**
+   * True for anything this plugin put in the ghost layer. A clone carries the
+   * menu's own markers, so without this test the observer would read its own
+   * copy as a freshly opened menu — and the copy of the copy as the next one.
+   */
+  function isClone(node) {
+    if (node.hasAttribute(LEAVE_ATTR) || node.hasAttribute(BACKING_LEAVE_ATTR)) return true
+    return node.closest(`[${LAYER_ATTR}]`) !== null
+  }
+
+  /**
    * Route one added or removed node to the enter or leave pass.
    *
    * A node that is itself a menu is handled alone: its own submenus travel with
    * it, and a ghost of the outer menu already covers them.
    */
   function visit(node, handle) {
-    if (!(node instanceof Element)) return
+    if (!(node instanceof Element) || isClone(node)) return
     if (node.matches(MENU_SELECTOR)) {
       handle(node)
       return
     }
-    for (const nested of node.querySelectorAll(MENU_SELECTOR)) handle(nested)
+    for (const nested of node.querySelectorAll(MENU_SELECTOR)) {
+      if (!isClone(nested)) handle(nested)
+    }
   }
 
   const observer = new MutationObserver((records) => {

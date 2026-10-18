@@ -91,12 +91,23 @@
 [data-dsh-ui-copy-leave] {
   animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, 130ms) cubic-bezier(0.4, 0, 1, 1) both;
   transform-origin: var(--dsh-ui-copy-menu-origin, center top);
+  /* The clone is a translucent surface over live content; promoting it up front
+     keeps the fade off the paint path that re-samples the blur. */
+  will-change: transform, opacity;
 }
 
 /* The backing plate fades without scaling, so it never separates from the
    menu it sits under: the script pins its exit scale to 1. */
 [data-dsh-ui-copy-leave-backing] {
   animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, 130ms) cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* On the macOS shell an opaque plate already sits under every translucent
+   surface, so the material only ever blurs that flat plate: dropping the blur
+   from a departing copy changes nothing visible and spares the fade a
+   per-frame re-sample of the backdrop. */
+html[data-platform='darwin'] [data-dsh-ui-copy-ghost] [data-menu-material] > [aria-hidden='true']:first-child {
+  backdrop-filter: none;
 }
 
 /* --------------------------------------------------------------------------
