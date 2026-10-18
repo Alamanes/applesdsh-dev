@@ -61,6 +61,7 @@
 整条说明符就是更新源：改完仓库推上去后重跑一次 profile 的 `pnpm install` 即取到新版本。
 
 由于本仓库使用 `dsh-web-search-tavily` 进行Web Search，Agent安装本仓库内容时请将DSH官方网页搜索插件关闭或删除。
+非macOS设备请勿直接使用本仓库 `dsh-ops` 插件，请使用原上游仓库的正确版本。
 
 ## 更新
 
