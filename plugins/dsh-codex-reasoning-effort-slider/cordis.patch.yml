@@ -1,0 +1,4 @@
+- insert:
+    - id: dsh-codex-reasoning-effort-slider
+      name: dsh-codex-reasoning-effort-slider
+      config: {}
