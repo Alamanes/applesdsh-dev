@@ -1,10 +1,10 @@
 # dsh-peak-valley-hint
 
-DeepSeek Harness 的浏览器半只插件：在侧栏底栏的右端显示当前计费时段——现在算高峰还是低谷，以及距下一次切换还有多久。
+DeepSeek Harness 的插件：在侧栏底栏的右端显示当前计费时段——现在算高峰还是低谷，以及距下一次切换还有多久。节假日日期由插件自己联网获取，不需要每年手工补表。
 
 ## 用途
 
-DeepSeek 的 API 计价分峰谷两档，跑长任务前值得看一眼现在处在哪一档。这一行本来就有空位（面板按钮靠左），插件把提示放在右端：
+DeepSeek 的 API 计价分峰谷两档，跑长任务前值得看一眼现在处在哪一档。侧栏底栏本来就有一块空位（面板按钮靠左），插件把提示放在右端：
 
 ```
 [插件] [自动化任务]                        ● 低谷时段 09:25:00
@@ -27,11 +27,24 @@ DeepSeek 的 API 计价分峰谷两档，跑长任务前值得看一眼现在处
 
 切换点只会落在 00:00、09:00、12:00、14:00、18:00 这五个时刻上，倒计时因此按小时边界向前扫描，最长扫 12 天（春节连休 9 天也覆盖得住）。倒计时的小时不取模 24：周五傍晚会显示 62 小时之后的周一早高峰。
 
-## ⚠️ 每年 11 月要补一次节假日
+## 节假日从哪来
 
-`lib/client.js` 里的 `HOLIDAYS` 集合只列**放假的日期**，调休上班日不必列（它们都落在周末，周末本来就是低谷）。当前收录的是 2026 年全年。
+规则里唯一算不出来的是「哪几天放假」。这件事没有官方 API：国务院办公厅每年 11 月发一份通知，第三方项目 [NateScarlet/holiday-cn](https://github.com/NateScarlet/holiday-cn)（MIT）把每份通知整理成一年一个 JSON 文件，用 `days[].isOffDay` 标出放假日。
 
-国务院办公厅在每年 11 月前后公布次年的放假安排，那时必须把新一年的日期补进这个集合，否则那一年里法定节假日会被算成高峰，提示会指错价。这是本插件唯一需要人工维护的地方。
+插件按这个流程拿到它：
+
+1. **宿主半**（`lib/index.js`）取当年与次年的 JSON，两份合并，缓存 24 小时，通过一条同源路由下发：
+
+   ```
+   GET /dsh-peak-valley/holidays.json
+   -> { ok, holidays: ["2026-01-01", …], source, fetchedAt, year, error }
+   ```
+
+   主源是 jsDelivr 上的 `holiday-cn`，失败时回退到 GitHub raw。次年文件在通知发布前是空的（`days: []`），这不算错误，等发布后自然就有了。
+
+2. **浏览器半**（`lib/client.js`）先用内置的兜底表渲染首帧，路由结果一到就换掉。路由失败（离线、源不可达、插件被停用）就继续用兜底表。
+
+兜底表是**离线保险**，不需要跟日历走：平时真正生效的是路由下发的日期，跨年后插件自己就能拿到新一年的安排。
 
 ## 开关方式
 
@@ -47,33 +60,32 @@ DeepSeek 的 API 计价分峰谷两档，跑长任务前值得看一眼现在处
 
 ## 它做了什么
 
-宿主半 `lib/index.js` 是空实现（只为 Loader 提供一个宿主行、并让 `exports["./client"]` 指向浏览器包）；全部逻辑在 `lib/client.js`。
-
-- 注册一个 `sidebar.footer.action` 槽位条目（id `peak-valley-hint`，order 20）。这个槽由 ui-sidebar 渲染，位置在侧栏底部、设置行上方，条目拿到列状态 `wide`。
+- 宿主半注册一条路由（`ctx.webServer.register`，`kind: 'exact'`）。`webServer` 用局部注入等待，服务来得慢也不会推迟插件行本身的加载。抓取在第一次请求时发生，同一时刻的并发请求共享同一次抓取；成功的结果存 24 小时。
+- 浏览器半注册一个 `sidebar.footer.action` 槽位条目（id `peak-valley-hint`，order 20）。这个槽由 ui-sidebar 渲染，位置在侧栏底部、设置行上方，条目拿到列状态 `wide`。
 - 行用 `margin-left: auto` 推到该容器最右端，因此不管左端是插件按钮、Cordis 按钮还是两者都有，提示都贴右。
 - 判断与倒计时都是纯算术：把时间戳平移 +8 小时后按 UTC 读，得到北京的日期、星期与小时，再与高峰窗口和节假日集合比对。
 - 每秒重渲染一次这一个组件，不触碰侧栏其它部分。
 
 ## 已知边界
 
-- **不读接口、不依赖其它插件**：规则硬编码在本插件内。装了鲸鱼挂件（`dsh-whale-widget`）时两者结论一致，但它们是两份独立实现，各自的节假日表要各自维护。
-- **节假日表会过期**：见上一节，这是唯一的维护点。
-- **时区无关，但也没有本地化**：一律按北京时间判断，刻意不跟随系统时区。
+- **依赖一个第三方数据源**：`holiday-cn` 停止维护或改变文件结构时，路由会返回 `ok: false`，插件退回兜底表继续工作（那时日期可能过期）。源地址与解析逻辑都在 `lib/index.js` 顶部的三个常量里。
+- **首次请求要联网**：宿主启动后第一次有人访问那条路由时发起抓取，超时 8 秒；之后 24 小时内不再访问网络。离线机器上不会卡住界面，只会一直用兜底表。
+- **路由不带凭据，返回的是公开日期**：能从本机回环地址访问 DSH 端口的进程都能读到这份日期表，里面没有任何账号或用量信息。需要更严的边界时可以给它套上宿主连接栅栏。
+- **时区固定北京时间**：刻意不跟随系统时区。
 - **只提示，不拦截**：不会因为处在高峰就阻止发消息，也不改变任何计费行为。
-- **面板高亮与时区无关**：本插件不参与面板切换，也不注册任何快捷键。
 
 ## 文件
 
 | 文件 | 作用 |
 | --- | --- |
 | `package.json` | 包声明。`exports["./client"]` 是浏览器包入口，`dsh.bundle.patch` 指向补丁，`dsh.client` 声明 `platform: web` 与 `inject: ["@deepseek-ai/dsh-client-ui-sidebar"]` |
-| `lib/index.js` | 宿主半只：`name` 与空 `apply`，无依赖 |
-| `lib/client.js` | 浏览器半只：规则、倒计时与组件，`window.__ModuleLoader__.load({ id: 'dsh-peak-valley-hint', factory })` 注册 |
+| `lib/index.js` | 宿主半只：抓取节假日、缓存、下发路由 |
+| `lib/client.js` | 浏览器半只：时段规则、倒计时与组件，`window.__ModuleLoader__.load({ id: 'dsh-peak-valley-hint', factory })` 注册 |
 | `cordis.patch.yml` | loader 行声明，供 profile 引用 |
 | `README.md` | 本文件 |
 
 ## 依赖关系
 
 - `dsh.client.inject: ["@deepseek-ai/dsh-client-ui-sidebar"]`：boot graph 层面的包到达顺序声明，让 ui-sidebar 的浏览器包先注册；不是 cordis 服务注入。
-- 服务依赖写在浏览器包自己的 `exports.inject = ['slots', 'locale']`。
-- `factory` 只 `require` 两个运行时提供的模块：`react` 与 `@deepseek-ai/dsh-client-ui-primitives`（后者只取可选的 `Tooltip`）。没有第三方依赖。
+- 宿主半 inject `webServer`；网络请求用 Node 内置的 `fetch`，没有第三方依赖。
+- 浏览器半 inject `slots` 与 `locale`，只 `require` 两个运行时提供的模块：`react` 与 `@deepseek-ai/dsh-client-ui-primitives`（后者只取可选的 `Tooltip`）。

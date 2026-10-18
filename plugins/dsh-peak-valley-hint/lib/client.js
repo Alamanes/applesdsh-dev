@@ -21,15 +21,20 @@
  * holiday run with room to spare. The countdown ticks once a second; the label
  * itself only changes at a switch.
  *
+ * Holiday dates are the one part a clock cannot derive. The host half fetches
+ * the State Council's leave arrangement the way the `holiday-cn` project
+ * republishes it — current year and next — and serves it on
+ * `/dsh-peak-valley/holidays.json`. This half starts on
+ * {@link FALLBACK_HOLIDAYS}, so the first paint is already right, then adopts
+ * the route's answer when it arrives. A route that fails or answers empty leaves
+ * the fallback in place: that is the only path that can go stale, and it only
+ * happens while the source is unreachable.
+ *
  * The hint is a `sidebar.footer.action` entry, the slot ui-sidebar declares for
  * "optional actions beside Settings at the sidebar foot", so the sidebar renders
  * it, hands it the column state (`wide`), and the plugin owns nothing but its
  * own element. In the 56px rail there is no room for a sentence, so it renders
  * nothing at all.
- *
- * `HOLIDAYS` is the one piece that cannot be derived: the State Council
- * publishes the next year's leave arrangement every November, and the dates
- * below stop being complete at that point. See the constant.
  *
  * @module dsh-peak-valley-hint/client
  */
@@ -50,6 +55,9 @@ window.__ModuleLoader__.load({
 
     /** ui-sidebar's list of optional actions beside Settings. */
     const FOOTER_SLOT = 'sidebar.footer.action'
+
+    /** The host half's holiday route; the hint prefers it over the baked-in list. */
+    const HOLIDAY_ROUTE = '/dsh-peak-valley/holidays.json'
 
     /** The primitives tooltip, when this build still exports one. */
     const Tooltip = primitives.Tooltip
@@ -76,21 +84,16 @@ window.__ModuleLoader__.load({
     const SCAN_DAYS = 12
 
     /**
-     * Beijing calendar dates that bill at the valley price all day: every day the
-     * State Council puts on leave.
+     * Leave dates baked in for the case the host route cannot answer.
      *
-     * Make-up workdays need no entry: 2026's fall on 1/4, 2/14, 2/28, 5/9, 9/20
-     * and 10/10, all Saturdays or Sundays, which the weekend rule already bills
-     * as valley.
+     * Make-up workdays need no entry: they fall on weekends, which the weekend
+     * rule already bills as valley.
      *
-     * Source: 国务院办公厅关于 2026 年部分节假日安排的通知（国办发明电〔2025〕7 号）,
-     * matching the footnote on the API pricing page.
-     *
-     * ⚠️ The leave arrangement for a year is published in the November before
-     * it, so this set has to gain that year's dates then. Until it does, the
-     * hint reads as peak on those days, which is the wrong price to plan around.
+     * This list does not have to keep up with the calendar. The route is the
+     * source of truth and follows each year's notice on its own; these dates
+     * only decide the hint while the network or the source is down.
      */
-    const HOLIDAYS = new Set([
+    const FALLBACK_HOLIDAYS = new Set([
       '2026-01-01', '2026-01-02', '2026-01-03',
       '2026-02-15', '2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19',
       '2026-02-20', '2026-02-21', '2026-02-22', '2026-02-23',
@@ -177,12 +180,13 @@ window.__ModuleLoader__.load({
      * Whether an instant bills at the peak price.
      *
      * @param ms - epoch milliseconds.
+     * @param holidays - the leave dates in force.
      * @returns true inside a peak window on a working day.
      */
-    function isPeak(ms) {
+    function isPeak(ms, holidays) {
       const { date, weekday, hour } = beijing(ms)
       if (weekday === 0 || weekday === 6) return false
-      if (HOLIDAYS.has(date)) return false
+      if (holidays.has(date)) return false
       return PEAK_HOURS.some(([start, end]) => hour >= start && hour < end)
     }
 
@@ -193,17 +197,18 @@ window.__ModuleLoader__.load({
      * Beijing order rather than stepping minute by minute.
      *
      * @param ms - epoch milliseconds.
+     * @param holidays - the leave dates in force.
      * @returns epoch milliseconds of the switch, or null when none is in range.
      */
-    function nextSwitchAt(ms) {
-      const current = isPeak(ms)
+    function nextSwitchAt(ms, holidays) {
+      const current = isPeak(ms, holidays)
       // Beijing midnight of the current day, expressed in the shifted frame.
       const midnight = Math.floor((ms + BEIJING_OFFSET_MS) / DAY_MS) * DAY_MS
       for (let day = 0; day <= SCAN_DAYS; day += 1) {
         for (const hour of SWITCH_HOURS) {
           const candidate = midnight + day * DAY_MS + hour * HOUR_MS - BEIJING_OFFSET_MS
           if (candidate <= ms + 1000) continue
-          if (isPeak(candidate) !== current) return candidate
+          if (isPeak(candidate, holidays) !== current) return candidate
         }
       }
       return null
@@ -239,6 +244,30 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * The holiday calendar the hint judges with, asked for once per page.
+     *
+     * @returns the leave dates in force.
+     */
+    function useHolidays() {
+      const [holidays, setHolidays] = React.useState(() => FALLBACK_HOLIDAYS)
+      React.useEffect(() => {
+        let alive = true
+        fetch(HOLIDAY_ROUTE, { headers: { accept: 'application/json' } })
+          .then((response) => (response.ok ? response.json() : null))
+          .then((body) => {
+            if (!alive) return
+            if (body === null || body.ok !== true || !Array.isArray(body.holidays) || body.holidays.length === 0) return
+            setHolidays(new Set(body.holidays))
+          })
+          .catch(() => {})
+        return () => {
+          alive = false
+        }
+      }, [])
+      return holidays
+    }
+
+    /**
      * The hint itself.
      *
      * @param props - the sidebar's owner share (`wide`) and the bound translator.
@@ -246,9 +275,10 @@ window.__ModuleLoader__.load({
      */
     function PeakValleyHint({ wide, t }) {
       const now = useNow()
+      const holidays = useHolidays()
       if (!wide) return null
-      const peak = isPeak(now)
-      const next = nextSwitchAt(now)
+      const peak = isPeak(now, holidays)
+      const next = nextSwitchAt(now, holidays)
       const label = peak ? t('peak') : t('valley')
       const remaining = next === null ? null : countdownText(next - now)
       const rule = t('rule')
