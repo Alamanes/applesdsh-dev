@@ -53,22 +53,22 @@
  * (`- id: ui-copy`): the entry id names the form, and the namespace names the
  * dictionary the row's text is taken from.
  */
-const SETTINGS_NS = 'ui-copy'
-const CONFIG_ENTRY_ID = 'ui-copy'
+var SETTINGS_NS = 'ui-copy'
+var CONFIG_ENTRY_ID = 'ui-copy'
 
 /** Headline label inside the Hero's title group; the badge is its sibling. */
-const HEADLINE_SELECTOR = '[class*="titleGroup"] > span:first-child'
+var HEADLINE_SELECTOR = '[class*="titleGroup"] > span:first-child'
 /** The 预览版 badge sharing that title group. */
-const PREVIEW_BADGE_SELECTOR = '[class*="previewBadge"]'
+var PREVIEW_BADGE_SELECTOR = '[class*="previewBadge"]'
 /** The composer's scrollport: one per mounted composer occurrence. */
-const COMPOSER_SCROLL_SELECTOR = '[data-input-scroll]'
+var COMPOSER_SCROLL_SELECTOR = '[data-input-scroll]'
 /** React's own copy of the current hint, on the editable surface. */
-const HINT_SOURCE_SELECTOR = '[data-placeholder]'
+var HINT_SOURCE_SELECTOR = '[data-placeholder]'
 /** The visible hint bubble. */
-const HINT_BUBBLE_SELECTOR = '[data-composer-placeholder]'
+var HINT_BUBBLE_SELECTOR = '[data-composer-placeholder]'
 
 /** Editable copy. Overridable field by field through the plugin's cordis config. */
-const DEFAULTS = {
+var DEFAULTS = {
   /**
    * Headline pools keyed by the primary subtag of `<html lang>`, which the
    * locale plugin keeps in sync with the active language. An unknown language
@@ -142,9 +142,9 @@ const DEFAULTS = {
 }
 
 /** Last line this plugin wrote, so a re-render never repeats it back to back. */
-let lastHeadline = null
+var lastHeadline = null
 /** Same, per shipped hint sentence (the key names a state and a language). */
-const lastPlaceholder = new Map()
+var lastPlaceholder = new Map()
 
 /** See {@link DEFAULTS}. */
 function isPlainObject(value) {
@@ -166,7 +166,7 @@ function headlinePool(table) {
  * name is spelled exactly as the bundle does; a release that drops it only
  * leaves one unused declaration behind.
  */
-const ACCENT_TOKENS = [
+var ACCENT_TOKENS = [
   '--dsw-alias-brand-primary',
   '--dsw-alias-brand-primary-new-colorprimary-new-color',
   '--dsw-alias-link',
@@ -281,7 +281,7 @@ function pickerHex(value) {
 }
 
 /** The Settings → General row's text, one dictionary per language. */
-const ROW_TEXT = {
+var ROW_TEXT = {
   zh: {
     title: 'UI 强调色',
     description: '主按钮、开关、选中描边、链接、焦点环与业务态徽标的颜色，浅色与深色主题各配一个。留空表示沿用官方配色。',
@@ -318,7 +318,7 @@ const ROW_TEXT = {
  * contribute next to it, and it keeps its own `duic-` prefix so nothing here
  * can collide with a shipped class.
  */
-const SETTINGS_CSS = `
+var SETTINGS_CSS = `
 .duic-row{display:flex;align-items:flex-start;gap:8px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}
 .duic-rowText{display:flex;flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:24px}
 .duic-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}
@@ -347,7 +347,7 @@ const SETTINGS_CSS = `
  * the dock itself lives at the bottom of the seat. Every state change is a
  * transform or an opacity, so opening and closing stay on the compositor.
  */
-const WORKSPACE_CSS = `
+var WORKSPACE_CSS = `
 .duic-ws{position:relative;display:flex;align-items:center;order:-10}
 .duic-wsTrigger{display:flex;align-items:center;gap:6px;height:22px;padding:0 6px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;cursor:pointer;transition:background-color .14s cubic-bezier(.2,0,.2,1),color .14s cubic-bezier(.2,0,.2,1)}
 .duic-wsTrigger:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
