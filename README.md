@@ -17,7 +17,6 @@
 | `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
-| `plugins/dsh-whale-widget` | `dsh-whale-widget` | 界面右下角的小鲸鱼记账挂件：余额 / 今日已用 / 峰谷定价 / 每轮消耗与音效，泡泡内容可自定义 | 上游 [MeteorNOX/DeepSeek-Balance-Whale-Widget](https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget) |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 
 ## 安装
@@ -37,7 +36,6 @@
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
     "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
-    "dsh-whale-widget": "github:Alamanes/applesdsh-dev#path:plugins/dsh-whale-widget",
     "dsh-zh-prompt": "github:Alamanes/applesdsh-dev#path:plugins/dsh-zh-prompt"
   },
   "dsh": {
@@ -55,7 +53,6 @@
         "dsh-peak-valley-hint",
         "dsh-session-delete",
         "dsh-sidebar-foot-panels",
-        "dsh-whale-widget",
         "dsh-zh-prompt"
       ]
     }
@@ -92,10 +89,6 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
   `repository` 字段指向上游，包名与客户端模块 id 由 `@local/dsh-codex-reasoning-effort-slider` 改为
   `dsh-codex-reasoning-effort-slider`，原先精确锁定 `@deepseek-ai/dsh` 0.2.0-rc.2 的 `peerDependencies`
   改为 `engines.dsh` 的版本区间，其余代码原样。
-- `dsh-whale-widget` 出自 MeteorNOX/DeepSeek-Balance-Whale-Widget，取其包内 `files` 清单所列内容与
-  `LICENSE`，未收录上游的开发脚本（`tools/`、`.github/`）。代码 MIT；`assets/` 与 `icon.png` 的美术素材
-  不适用 MIT，按上游 `PROVENANCE.md` 的说明原样随包分发。
-
 - `dsh-ops` 出自 T-Auto/dsh-ops，取自 `v0.3.1` 标签。npm 上最高只到 0.3.0，而 0.3.0 的平台表里只有
   `win32-x64`，在 Apple Silicon 上不注册任何工具；本仓库收录 0.3.1，并补入上游 `v0.3.1` Release 的
   `native-darwin-arm64-runtime-v0.3.1` 载荷（`runtime/darwin-arm64/`），macOS 上因此可用。未收录仓库里的
