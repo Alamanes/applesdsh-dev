@@ -9,6 +9,7 @@
 |---|---|---|---|
 | `plugins/dsh-commandcode-quota` | `dsh-commandcode-quota` | 输入框模型选择器旁的 5 小时 / 周 / 月三条额度环，外加设置页的逐模型请求额度 | 上游 [Jovan1666/commandcode-usage](https://github.com/Jovan1666/commandcode-usage) 的 `plugins/dsh` |
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
+| `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
 | `plugins/dsh-reasoning-slider` | `dsh-reasoning-slider` | 内嵌在模型选择器弹层里的推理等级滑块，选中模型后显示其支持的档位 | 上游 [qjcnmd/dsh-reasoning-slider](https://github.com/qjcnmd/dsh-reasoning-slider)，仅改了包名、bundle 行与客户端模块 id |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
 | `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
@@ -26,6 +27,7 @@
   "dependencies": {
     "dsh-commandcode-quota": "github:Alamanes/applesdsh-dev#path:plugins/dsh-commandcode-quota",
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
+    "dsh-ops": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ops",
     "dsh-reasoning-slider": "github:Alamanes/applesdsh-dev#path:plugins/dsh-reasoning-slider",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
@@ -45,6 +47,7 @@
         "dsh-status-phrases",
         "dsh-ui-copy",
         "dsh-local-identity",
+        "dsh-ops",
         "dsh-session-delete",
         "dsh-whale-widget",
         "dsh-zh-prompt"
@@ -71,8 +74,8 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
 
 ## 来源与许可
 
-所有插件均为 MIT。自产的包由本仓库维护；其余三个来自各自的上游，收进本仓库是为了把更新源
-统一到一处，上游仍是事实上的作者：
+所有插件均为 MIT，`dsh-ops` 为其上游的 MIT AND Apache-2.0。自产的包由本仓库维护；其余来自各自的
+上游，收进本仓库是为了把更新源统一到一处，上游仍是事实上的作者：
 
 - `dsh-status-phrases` 的替换逻辑、打字机锁宽与渐变 CSS 取自 npm 上的 `dsh-status-rotator`
   （MIT，01Virex），是那份实现的收窄复刻：只保留状态行替换与特效，并把短语配置收敛成设置里的一个
@@ -83,5 +86,11 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
 - `dsh-whale-widget` 出自 MeteorNOX/DeepSeek-Balance-Whale-Widget，取其包内 `files` 清单所列内容与
   `LICENSE`，未收录上游的开发脚本（`tools/`、`.github/`）。代码 MIT；`assets/` 与 `icon.png` 的美术素材
   不适用 MIT，按上游 `PROVENANCE.md` 的说明原样随包分发。
+
+- `dsh-ops` 出自 T-Auto/dsh-ops，取自 `v0.3.1` 标签。npm 上最高只到 0.3.0，而 0.3.0 的平台表里只有
+  `win32-x64`，在 Apple Silicon 上不注册任何工具；本仓库收录 0.3.1，并补入上游 `v0.3.1` Release 的
+  `native-darwin-arm64-runtime-v0.3.1` 载荷（`runtime/darwin-arm64/`），macOS 上因此可用。未收录仓库里的
+  `vendor/fastctx/`，它随上游后台组件的移除而作废。`package.json` 的 `version` 必须与 worker 的
+  `provenance.json` 一致，改版本号会让 worker 校验失败，file 组件不再发布任何工具。
 
 上游一旦更新，本仓库不会自动跟；需要时手动取回再提交。
