@@ -165,10 +165,11 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 
 /* --------------------------------------------------------------------------
    Workspace peninsula
-   The blank-session seat's workspace row hangs off the card's top edge: as wide
-   as the card less 34px a side, squared where the two meet, and drawn behind
-   the card so the pair reads as one shape. Only the hero seat renders that row,
-   which is the only place the reference shows it either.
+   The blank-session seat's workspace row hangs off the card's bottom edge: as
+   wide as the card less 34px a side, squared where the two meet, rounded below,
+   and moved after the card in flow order so the pair reads as one shape. Only
+   the hero seat renders that row, which is the only place the reference shows it
+   either.
    -------------------------------------------------------------------------- */
 
 [class*="_composerHero"] {
@@ -179,12 +180,13 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   box-sizing: border-box !important;
   position: relative !important;
   z-index: 0 !important;
+  order: 1 !important;
   width: calc(100% - 68px) !important;
   align-self: center !important;
-  margin: 0 34px -13px !important;
-  padding: 7px 14px 18px !important;
-  min-height: 42px !important;
-  border-radius: 16px 16px 0 0 !important;
+  margin: 0 34px !important;
+  padding: 5px 14px !important;
+  min-height: 38px !important;
+  border-radius: 0 0 16px 16px !important;
   background: var(--dsh-ui-copy-dock-surface) !important;
 }
 
