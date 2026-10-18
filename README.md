@@ -12,6 +12,7 @@
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
+| `plugins/dsh-sidebar-foot-panels` | `dsh-sidebar-foot-panels` | 把侧栏顶部的「插件」与「自动化任务」两行摘出来，改成侧栏底部并排的两个小图标按钮 | 本仓库自产 |
 | `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
@@ -30,6 +31,7 @@
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-ops": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ops",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
+    "dsh-sidebar-foot-panels": "github:Alamanes/applesdsh-dev#path:plugins/dsh-sidebar-foot-panels",
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
     "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy",
     "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
@@ -49,6 +51,7 @@
         "dsh-local-identity",
         "dsh-ops",
         "dsh-session-delete",
+        "dsh-sidebar-foot-panels",
         "dsh-whale-widget",
         "dsh-zh-prompt"
       ]

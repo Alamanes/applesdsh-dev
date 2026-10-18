@@ -1,0 +1,44 @@
+{
+  "name": "dsh-sidebar-foot-panels",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DeepSeek Harness 侧栏插件管理入口改造：把「插件」与「自动化任务」两个全局面板行从侧栏面板列表里摘出来，改成侧栏底部并排的两个小图标按钮。只隐藏官方面板行并在官方 footer 槽位重画按钮，点击仍走 ctx.layout.selectPanel。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "sidebar",
+    "panel",
+    "plugins",
+    "schedules",
+    "layout"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "license": "MIT"
+}
