@@ -1,0 +1,204 @@
+/* ==========================================================================
+   dsh-ui-copy — the composer card component
+   --------------------------------------------------------------------------
+   The Codex-style input card applied to the composer seat: the card surface,
+   its editor, the round send button, the add control and the usage figures.
+
+   The host half inlines this sheet into every index response, so editing it and
+   reloading the page is enough: no rebuild, no restart, no stale stylesheet.
+
+   Scope
+     Every rule is rooted at [data-composer-card] or [data-composer-seat] — the
+     attributes @deepseek-ai/dsh-client-ui-conversation writes on its own
+     composer elements — so nothing outside the composer is touched. The
+     CSS-module locals that appear beside them are fallbacks for the occurrences
+     the attributes do not reach; each one pairs a `$="_x"` form with `*="_x "`
+     because a module local may be followed by another class.
+
+   Palette
+     Both themes are published as `--dsh-ui-copy-card-*` on the scope roots and
+     consumed below: a raised neutral surface, a hairline edge, the muted figure
+     colour, and the blue send fill with its disabled stand-in.
+
+   Why !important
+     This sheet is inlined before the component stylesheets, which are CSS
+     modules injected at runtime and would otherwise win at equal specificity.
+     Token declarations need none — specificity already decides — but every
+     direct property override carries one.
+
+   Maintenance
+     data-composer-card / data-composer-seat / data-composer-stats are harness
+     attributes. `_card`, `_cardWorkspaceTrigger`, `_dock`, `_primary`, `_add`,
+     `_anchor`, `_pill` and `_label` are CSS-module locals of the composer; a
+     harness upgrade may rehash them, and the attribute selectors keep the card
+     itself styled when that happens.
+   ========================================================================== */
+
+[data-composer-card],
+[data-composer-seat] {
+  --dsh-ui-copy-card-surface: #303030;
+  --dsh-ui-copy-card-edge: #3a3a3a;
+  --dsh-ui-copy-card-ink: #e5e5e5;
+  --dsh-ui-copy-card-muted: #929292;
+  --dsh-ui-copy-send-fill: #3478cf;
+  --dsh-ui-copy-send-idle: #494949;
+}
+
+body:not([data-ds-dark-theme]) [data-composer-card],
+body:not([data-ds-dark-theme]) [data-composer-seat] {
+  --dsh-ui-copy-card-surface: #f0f0f2;
+  --dsh-ui-copy-card-edge: #dcdde1;
+  --dsh-ui-copy-card-ink: #202124;
+  --dsh-ui-copy-card-muted: #62656c;
+  --dsh-ui-copy-send-fill: #3478cf;
+  --dsh-ui-copy-send-idle: #b6b9c1;
+}
+
+/* --------------------------------------------------------------------------
+   Card width
+   The composer reads these two length tokens; the card stays where the native
+   layout puts it and only its measure changes.
+   -------------------------------------------------------------------------- */
+
+[class*="_body"]:has([data-composer-seat]) {
+  --dsh-composer-card-max-width: 720px;
+  --dsh-composer-side-clearance: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Card surface
+   -------------------------------------------------------------------------- */
+
+[data-composer-card],
+[class$="_card"]:has([contenteditable]),
+[class*="_card "]:has([contenteditable]),
+[class$="_cardWorkspaceTrigger"],
+[class*="_cardWorkspaceTrigger "] {
+  position: relative !important;
+  background: var(--dsh-ui-copy-card-surface) !important;
+  border: 1px solid var(--dsh-ui-copy-card-edge) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 8px 32px #00000018 !important;
+  padding-top: 10px !important;
+}
+
+[class$="_cardWorkspaceTrigger"]::after,
+[class*="_cardWorkspaceTrigger "]::after {
+  border: 0 !important;
+}
+
+[data-composer-card] {
+  padding-top: 6px !important;
+  gap: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Editor
+   -------------------------------------------------------------------------- */
+
+[data-composer-card] [contenteditable] {
+  min-height: 28px;
+  font-size: 13px;
+  line-height: 1.65;
+  caret-color: var(--dsh-ui-copy-card-ink);
+}
+
+[class*="_composerHero"] [data-composer-card] [contenteditable] {
+  min-height: 36px;
+}
+
+/* --------------------------------------------------------------------------
+   Send button
+   -------------------------------------------------------------------------- */
+
+[data-composer-card] :is([class$="_primary"], [class*="_primary "]) {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  padding: 6px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--dsh-ui-copy-send-fill) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+[data-composer-card] :is([class$="_primary"], [class*="_primary "]) svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+[data-composer-card] :is([class$="_primary"], [class*="_primary "]):disabled {
+  background: var(--dsh-ui-copy-send-idle) !important;
+  opacity: 1 !important;
+  color: #ffffff !important;
+}
+
+/* --------------------------------------------------------------------------
+   Add control: a bare glyph, with no button chrome of its own.
+   -------------------------------------------------------------------------- */
+
+:is([data-composer-card], [data-composer-seat]) button:is(
+  [aria-label="添加"], [aria-label="添加文件"], [aria-label="添加附件"], [aria-label="添加图片"],
+  [aria-label="Add"], [aria-label="Add files"], [aria-label="Add attachment"]
+),
+:is([data-composer-card], [data-composer-seat]) button:is([class$="_add"], [class*="_add "]) {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* --------------------------------------------------------------------------
+   Usage figures
+   Keep the native numbers in flow at narrow widths and high display scaling.
+   -------------------------------------------------------------------------- */
+
+[data-composer-seat] :is([class$="_dock"], [class*="_dock "]):has([data-composer-stats]) {
+  box-sizing: border-box !important;
+  flex: none !important;
+  flex-wrap: wrap !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  gap: 4px 10px !important;
+  padding: 4px 0 2px !important;
+  overflow: visible !important;
+}
+
+[data-composer-stats] {
+  flex: 0 1 auto !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  gap: 4px 8px !important;
+  overflow: visible !important;
+  color: var(--dsh-ui-copy-card-muted);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+[data-composer-stats] :is([class$="_anchor"], [class*="_anchor "]) {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex: 0 1 auto !important;
+}
+
+[data-composer-stats] :is([class$="_pill"], [class*="_pill "]) {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  white-space: normal !important;
+  text-align: left !important;
+  color: var(--dsh-ui-copy-card-muted);
+}
+
+[data-composer-stats] :is([class$="_label"], [class*="_label "]) {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere;
+}

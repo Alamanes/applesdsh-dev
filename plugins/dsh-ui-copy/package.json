@@ -2,7 +2,7 @@
   "name": "dsh-ui-copy",
   "version": "1.0.0",
   "private": true,
-  "description": "DeepSeek Harness 界面改写插件：空态大标题轮换、输入框空置提示改写、预览版徽章隐藏，以及 ask_user 提问弹窗的 OpenAI 视觉。不动官方包，只经 DOM 与两张样式表。",
+  "description": "DeepSeek Harness 界面改写插件：空态大标题轮换、输入框空置提示改写、预览版徽章隐藏、输入卡片的 Codex 视觉，以及 ask_user 提问弹窗的 OpenAI 视觉。不动官方包，只经 DOM 与三张样式表。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -29,6 +29,9 @@
     },
     "./client": {
       "default": "./lib/client.js"
+    },
+    "./composer": {
+      "default": "./lib/composer.js"
     },
     "./locale/*.json": {
       "default": "./locale/*.json"

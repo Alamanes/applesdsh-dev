@@ -1,6 +1,6 @@
 # dsh-ui-copy
 
-DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本、覆写强调色令牌，并在设置 → 通用设置里贡献「UI 强调色」一行；宿主半只声明这一行设置的可编辑字段，并把一张 ask 弹窗样式表内联进页面。
+DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本、覆写强调色令牌，并在设置 → 通用设置里贡献「UI 强调色」一行；宿主半只声明这一行设置的可编辑字段，并把 ask 弹窗与输入卡片两张样式表内联进页面。
 
 | 目标 | 位置 | 行为 |
 | --- | --- | --- |
@@ -9,21 +9,23 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 | 预览版徽章 | 标题右侧的 `预览版` | 整条隐藏 |
 | UI 强调色 | `--dsw-alias-brand-primary` 与 `--dsw-alias-link` / `--dsw-alias-state-business-primary` 两组令牌 | 在设置 → 通用设置里按主题各配一个颜色 |
 | ask 提问弹窗 | `ask_user_question` 的提问卡、计划审批卡、回答气泡 | 换成 OpenAI / ChatGPT 的视觉语言 |
+| 输入卡片 | 空态与普通态的 composer 卡片、编辑器、发送按钮、添加控件与用量数字 | 换成 Codex 风格的圆角卡片、配色与圆形发送按钮 |
 
 默认文案写在 `lib/client.js` 的 `DEFAULTS` 里：标题与输入框都是「一组句子随机取一句」，改成单元素数组即固定不轮换；`hidePreviewBadge` 默认 `true`；强调色两项默认为空，即完全不介入。
 
 ## 组件
 
-这个包在插件页里摊成两行，各自可以单独停用：
+这个包在插件页里摊成三行，各自可以单独停用：
 
 | 组件 id | 入口 | 职责 |
 | --- | --- | --- |
 | `ui-copy` | `dsh-ui-copy`（宿主半只 + 浏览器半只） | 宿主半只声明强调色的可编辑字段；浏览器半只做文案改写与强调色覆写，并在设置 → 通用设置里贡献「UI 强调色」一行 |
 | `ui-copy-ask` | `dsh-ui-copy/ask`（宿主半只） | ask 弹窗的 OpenAI 视觉 |
+| `ui-copy-composer` | `dsh-ui-copy/composer`（宿主半只） | 输入卡片的 Codex 视觉 |
 
-两条行由 `cordis.patch.yml` 声明，同包不同入口 —— 官方 `@deepseek-ai/dsh-headless/startup`、`@deepseek-ai/dsh-tool-cordis/host` 用的是同一种做法。只想要其中一半时，在插件页关掉对应开关，或在 profile 的 `cordis.patch.yml` 里给同 id 追加 `disabled: true`。
+三条行由 `cordis.patch.yml` 声明，同包不同入口 —— 官方 `@deepseek-ai/dsh-headless/startup`、`@deepseek-ai/dsh-tool-cordis/host` 用的是同一种做法。只想要其中一部分时，在插件页关掉对应开关，或在 profile 的 `cordis.patch.yml` 里给同 id 追加 `disabled: true`。
 
-插件的标题与描述取自包根的 `locale/zh.json`、`locale/en.json`（`meta.title` / `meta.description`）；两条组件行共用同一份，因为元数据是按包解析的。
+插件的标题与描述取自包根的 `locale/zh.json`、`locale/en.json`（`meta.title` / `meta.description`）；三条组件行共用同一份，因为元数据是按包解析的。
 
 ## ask 弹窗的 OpenAI 视觉
 
@@ -46,6 +48,22 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/ask-surface.css` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/ask-surface.css` 看当前内容。
 
 样式表里的类名取自 `dsh-client-ui-user-questions` 0.2.0-rc.2 的 CSS 模块 token（`y21zpG_*` 提问卡、`R7PCuq_*` 计划审批、`Dh9Boq_*` 回答气泡）。DSH 升级后这些前缀可能变化，此时装饰会失效而布局不会塌，因为每条依赖前缀的规则都配了结构选择器（`section` / `header` / `footer` / `textarea` / `role`）。重新对齐只需替换这三个前缀。
+
+## 输入卡片的 Codex 视觉
+
+`lib/composer-surface.css` 把 composer 输入卡片换成 Codex 风格。
+
+- **卡片** — 22px 圆角、1px 中性描边、一层柔和投影，宽度上限 720px、左右留白 20px
+- **编辑器** — 13px / 1.65 行高，光标色随主题；空态下最小高度 36px，普通态 28px
+- **发送按钮** — 28px 圆形、`#3478cf` 填充，禁用时退到中性灰
+- **添加控件** — 去掉按钮底板，只留图标
+- **用量数字** — 允许换行，颜色取次级灰
+
+颜色按主题发布成 `--dsh-ui-copy-card-*`，写在 `[data-composer-card]` 与 `[data-composer-seat]` 两个作用域根上，浅色由 `body:not([data-ds-dark-theme])` 覆盖。每条规则都锚在这两个原生属性（或它们旁边的 CSS 模块局部类名）上，卡片之外没有任何影响。
+
+样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/composer-surface.css` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/composer-surface.css` 看当前内容。
+
+模型与推理强度控件不在这个组件里：那两样在原皮肤中是替换原生触发器的客户端逻辑，属于控件而非卡片外观。
 
 ## 改文案
 
