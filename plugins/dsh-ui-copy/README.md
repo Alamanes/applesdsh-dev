@@ -1,6 +1,6 @@
 # dsh-ui-copy
 
-DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本、覆写强调色令牌，并在设置 → 通用设置里贡献「UI 强调色」一行；宿主半只声明这一行设置的可编辑字段，并把 ask 弹窗与输入卡片两张样式表内联进页面。
+DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本、覆写强调色令牌，并在设置 → 通用设置里贡献「UI 强调色」一行；宿主半只声明这一行设置的可编辑字段，并把 ask 弹窗、输入卡片、菜单动画与侧栏四套资源内联进页面。
 
 | 目标 | 位置 | 行为 |
 | --- | --- | --- |
@@ -10,22 +10,26 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 | UI 强调色 | `--dsw-alias-brand-primary` 与 `--dsw-alias-link` / `--dsw-alias-state-business-primary` 两组令牌 | 在设置 → 通用设置里按主题各配一个颜色 |
 | ask 提问弹窗 | `ask_user_question` 的提问卡、计划审批卡、回答气泡 | 换成 OpenAI / ChatGPT 的视觉语言 |
 | 输入卡片 | 空态与普通态的 composer 卡片、编辑器、发送按钮、添加控件与用量数字 | 换成 Codex 风格的圆角卡片、配色与圆形发送按钮 |
+| 菜单开合 | 权限模式、模型、Dock 标签、右键菜单与各级子菜单 | 按展开方向缩放淡入；关闭时把菜单留在原位淡出 |
+| 侧栏「新会话」按钮 | 侧栏顶部的 `session.new` | 去掉描边、填充与居中，压成与「插件」「自动化任务」同一行的按键 |
 
 默认文案写在 `lib/client.js` 的 `DEFAULTS` 里：标题与输入框都是「一组句子随机取一句」，改成单元素数组即固定不轮换；`hidePreviewBadge` 默认 `true`；强调色两项默认为空，即完全不介入。
 
 ## 组件
 
-这个包在插件页里摊成三行，各自可以单独停用：
+这个包在插件页里摊成五行，各自可以单独停用：
 
 | 组件 id | 入口 | 职责 |
 | --- | --- | --- |
 | `ui-copy` | `dsh-ui-copy`（宿主半只 + 浏览器半只） | 宿主半只声明强调色的可编辑字段；浏览器半只做文案改写与强调色覆写，并在设置 → 通用设置里贡献「UI 强调色」一行 |
 | `ui-copy-ask` | `dsh-ui-copy/ask`（宿主半只） | ask 弹窗的 OpenAI 视觉 |
 | `ui-copy-composer` | `dsh-ui-copy/composer`（宿主半只） | 输入卡片的 Codex 视觉 |
+| `ui-copy-menu` | `dsh-ui-copy/menu`（宿主半只） | 菜单的开合动画；样式与页面脚本一并内联 |
+| `ui-copy-sidebar` | `dsh-ui-copy/sidebar`（宿主半只） | 侧栏「新会话」按钮降噪 |
 
-三条行由 `cordis.patch.yml` 声明，同包不同入口 —— 官方 `@deepseek-ai/dsh-headless/startup`、`@deepseek-ai/dsh-tool-cordis/host` 用的是同一种做法。只想要其中一部分时，在插件页关掉对应开关，或在 profile 的 `cordis.patch.yml` 里给同 id 追加 `disabled: true`。
+五行由 `cordis.patch.yml` 声明，同包不同入口 —— 官方 `@deepseek-ai/dsh-headless/startup`、`@deepseek-ai/dsh-tool-cordis/host` 用的是同一种做法。只想要其中一部分时，在插件页关掉对应开关，或在 profile 的 `cordis.patch.yml` 里给同 id 追加 `disabled: true`。
 
-插件的标题与描述取自包根的 `locale/zh.json`、`locale/en.json`（`meta.title` / `meta.description`）；三条组件行共用同一份，因为元数据是按包解析的。
+插件的标题与描述取自包根的 `locale/zh.json`、`locale/en.json`（`meta.title` / `meta.description`）；五行组件共用同一份，因为元数据是按包解析的。
 
 ## ask 弹窗的 OpenAI 视觉
 
@@ -67,6 +71,32 @@ DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器
 半岛用的是宿主自己那一行控件，所以新会话里选工作区、切模式都还是原生行为，没有新增 DOM，也没有重复实现导航逻辑。占位提示的颜色只落在提示气泡（`[data-composer-placeholder]`）上：可编辑表面带着同名属性 `<data-placeholder>`，给它上色会连用户输入的文字一起染灰。
 
 模型与推理强度控件不在这个组件里：那两样在原皮肤中是替换原生触发器的客户端逻辑，属于控件而非卡片外观。
+
+## 菜单的开合动画
+
+`lib/menu-motion.css` 管形态，`lib/menu-motion.page.js` 管时机，宿主半只把前者内联进 `<head>`、后者内联进 `<body>`。
+
+- **覆盖范围** — 所有经 `MenuSurface` 渲染的浮层：权限模式、模型、Dock 标签、右键菜单与各级子菜单。锚点是 MenuSurface 自己写的 `[data-menu-material="translucent"][role="menu"]`，与具体组件无关，也不依赖任何类名。
+- **入场** — 170ms 缩放淡入，锚在展开方向上：菜单在触发器上方展开就锚底边，在下方展开锚顶边，子菜单锚左边。方向由页面脚本测量 —— 记住最后一次 `pointerdown` 落在哪个按钮上，再比对该按钮与菜单的矩形关系；触发器未知时按菜单落在视口上半区还是下半区推断。
+- **首帧** — MenuSurface 挂载时先以 `visibility: hidden` 停在原点，等 `useLayoutEffect` 量完锚点才写入最终的 `left` / `top`。脚本在这期间把菜单与它身下的衬板按在 `opacity: 0`，等面转可见的那一帧才交给样式表，所以不会闪出停在左上角的半个菜单；连续 20 帧仍未转可见就照常显示，菜单不会因为动画而消失。
+- **退场** — React 关闭菜单走的是卸载，没有离场态可挂，因此脚本把菜单克隆进一个固定的惰性层，按它最后一帧的几何位置淡出，衬板一起淡出（只淡不缩，避免与菜单之间露缝）。克隆不接指针事件，也不进无障碍树。
+- **衬板** — macOS 上的菜单是半透明玻璃，身下另有一块不透明衬板 `[data-menu-backing]`，两者共用同一个 `--dsh-menu-anchor` 值；脚本用这个值配对，入场一起淡入，退场一起淡出。
+- **减少动态** — 系统开启「减弱动态效果」时两段动画都不播。
+- **调参** — 时长与缩放都写成了自定义属性（`--dsh-ui-copy-menu-enter-duration`、`--dsh-ui-copy-menu-enter-scale` 等），在自己的样式表里覆盖即可，不必改这两个文件。
+
+改 `lib/menu-motion.css` 或 `lib/menu-motion.page.js` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/menu-motion.css` 与 `/dsh-ui-copy/menu-motion.js` 看当前内容。
+
+## 侧栏「新会话」按钮降噪
+
+`lib/sidebar-surface.css` 把侧栏顶部那颗描边、有填充、居中的「新会话」大按钮压成与「插件」「自动化任务」同一行的按键：36px 行高、7px/8px 内边距、8px 图标间距、无描边、无自身填充、图标在前文字左对齐、悬停用同一种洗色，并补上原本缺失的焦点环。
+
+- 数值直接取自同一张表的 `_panelRow` / `_panelList`：36px、`padding: 7px 8px`、`gap: 8px`、`margin: 0 2px`、悬停 `--dsw-alias-interactive-bg-hover`，不再是抬升填充加浮动填充两种底色。
+- 图标从 14px 提到 16px，与同列的面板行一致。
+- 作用域是侧栏列（`_3WPZCG_root`）的展开态；折叠成窄栏时官方本来就把这颗按钮画成 36px 图标键，不在覆盖范围内。
+- 覆写带 `!important`：这张表内联在组件样式之前，而侧栏的 CSS 模块是运行时注入的，同特异性下会赢。
+- `_3WPZCG_` 是 `@deepseek-ai/dsh-client-ui-sidebar` 0.2.1-rc.2 的 CSS 模块前缀。官方改哈希只会让这颗按钮回到原样，不会破坏布局，对齐只需替换这一个前缀。
+
+样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/sidebar-surface.css` 后刷新页面即生效，调试时直连 `/dsh-ui-copy/sidebar-surface.css`。
 
 ## 改文案
 

@@ -20,11 +20,13 @@
 #         light: '#7c4dff'
 #         dark: '#b79cff'
 #
-# 这个组合包摊成三行，各自可以在插件页单独停用：
+# 这个组合包摊成五行，各自可以在插件页单独停用：
 #
 #   ui-copy           浏览器半只的文案改写与强调色覆写
 #   ui-copy-ask       ask 弹窗的 OpenAI 视觉（宿主半只把 ask-surface.css 内联进页面）
 #   ui-copy-composer  输入卡片的 Codex 视觉（宿主半只把 composer-surface.css 内联进页面）
+#   ui-copy-menu      菜单的开合动画（宿主半只把 menu-motion.css 与 menu-motion.page.js 内联进页面）
+#   ui-copy-sidebar   侧栏「新会话」按钮降噪（宿主半只把 sidebar-surface.css 内联进页面）
 - insert:
     - id: ui-copy
       name: dsh-ui-copy
@@ -32,3 +34,7 @@
       name: dsh-ui-copy/ask
     - id: ui-copy-composer
       name: dsh-ui-copy/composer
+    - id: ui-copy-menu
+      name: dsh-ui-copy/menu
+    - id: ui-copy-sidebar
+      name: dsh-ui-copy/sidebar

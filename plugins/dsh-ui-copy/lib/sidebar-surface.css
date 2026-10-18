@@ -1,0 +1,91 @@
+/* ==========================================================================
+   dsh-ui-copy — the sidebar quiet component
+   --------------------------------------------------------------------------
+   Quiets the sidebar's New Session button. The shipped control is a bordered,
+   filled, centre-aligned call to action, so it outweighs every row beneath it;
+   this sheet repaints it as one more row of the global panel list — same
+   height, same padding, same hover wash, icon leading a left-aligned label.
+
+   The host half inlines this sheet into every index response, so editing it
+   and reloading the page is enough: no rebuild, no restart, no stale
+   stylesheet.
+
+   Scope
+     Two locals of @deepseek-ai/dsh-client-ui-sidebar name the target: `_root`
+     marks the sidebar column and `_newSession` the button. The column's
+     `_collapsed` local is excluded, because the rail state already draws the
+     button as a 36px icon and owes nothing to this sheet. Each local is matched
+     in both `$="_x"` and `*="_x "` form, since a module local may be followed
+     by another class.
+
+   Why !important
+     This sheet is inlined before the component stylesheets, which are CSS
+     modules injected at runtime and would otherwise win at equal specificity.
+     The colour tokens need none — they are read, not written — but every
+     direct property override carries one.
+
+   Maintenance
+     `_3WPZCG_` is the CSS-module prefix of the sidebar package, taken from
+     0.2.1-rc.2. A release that rehashes it costs the quiet styling and nothing
+     else: no layout depends on these rules. Realigning is one prefix swap.
+     The values below mirror the `_panelRow` / `_panelList` locals of the same
+     sheet, so the button matches the rows it sits above.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Button geometry
+   The panel row in the wide column: 36px tall, 7px/8px padding, an 8px gap,
+   no border, no fill of its own.
+   -------------------------------------------------------------------------- */
+
+:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
+  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 7px 8px !important;
+  gap: 8px !important;
+  border: none !important;
+  border-radius: var(--dsw-radius-md);
+  background: transparent !important;
+  box-shadow: none !important;
+  justify-content: flex-start !important;
+  overflow: visible !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 22px !important;
+}
+
+/* Hover is the one wash the panel rows use. It replaces the elevated and
+   floating fills above at every theme and platform. */
+:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
+  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]):hover {
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+}
+
+/* The panel rows carry a focus ring inset by 2px; the shipped button shipped
+   without one, which is reason enough to add it. */
+:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
+  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]):focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}
+
+/* --------------------------------------------------------------------------
+   Contents
+   The label block starts at the leading edge instead of filling the width and
+   centring, and the glyph matches the 16px the panel rows draw at. The trailing
+   shortcut hint keeps its own room.
+   -------------------------------------------------------------------------- */
+
+:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
+  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) [class*="_newSessionContent"] {
+  width: auto !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+
+:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
+  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) [class*="_newSessionContent"] > svg {
+  width: 16px !important;
+  height: 16px !important;
+}

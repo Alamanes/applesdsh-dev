@@ -1,0 +1,111 @@
+/* ==========================================================================
+   dsh-ui-copy — the menu motion component
+   --------------------------------------------------------------------------
+   Open and close motion for the floating menus the client renders through
+   `@deepseek-ai/dsh-client-ui-primitives`: the permission-mode picker, the
+   model picker, dock tab menus, context menus, and every submenu.
+
+   The host half inlines this sheet and the page script beside it into every
+   index response, so editing either file and reloading the page is enough:
+   no rebuild, no restart.
+
+   Anchors
+     `[data-menu-material="translucent"][role="menu"]` is the attribute pair
+     MenuSurface writes on a menu surface itself, and `[data-menu-backing]` is
+     the document-level plate that carries the opaque fill under a translucent
+     menu in the macOS shell. The class-name fragment `_submenu_` is a
+     CSS-module local of the primitives package and is used only to tell a
+     sideways submenu from a dropdown; a rehash costs the submenu its sideways
+     entry direction and nothing else.
+
+   Enter
+     A short scale-and-lift anchored on the edge the menu grows from: bottom
+     when it opens above its trigger, top when below, left for a submenu. The
+     page script measures that edge and writes the three variables below onto
+     both halves of the surface — the menu and the plate under it, so the plate
+     cannot flash in place a frame before the menu arrives.
+
+   Leave
+     React unmounts a closed menu, so the script clones the departing menu —
+     and its backing plate — into a fixed, inert ghost layer, and this sheet
+     fades the clones out on the geometry they had in their last frame. The
+     clones take no pointer events and hold no focus.
+
+   Tuning
+     Durations and the two scale factors are plain custom properties, so a
+     profile can retune them from a stylesheet without editing this file.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Ghost layer
+   One fixed layer holds every departing clone; children are inert by
+   construction, because the layer never receives pointer events.
+   -------------------------------------------------------------------------- */
+
+[data-dsh-ui-copy-ghost] {
+  position: fixed;
+  inset: 0;
+  z-index: 1095;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Enter
+   Only the `from` frame is declared: the resting state is whatever the
+   component styles already say, so nothing here can change a menu at rest.
+   -------------------------------------------------------------------------- */
+
+@keyframes dsh-ui-copy-menu-in {
+  from {
+    opacity: 0;
+    transform:
+      translate3d(var(--dsh-ui-copy-menu-enter-x, 0), var(--dsh-ui-copy-menu-enter-y, 0), 0)
+      scale(var(--dsh-ui-copy-menu-enter-scale, 0.96));
+  }
+}
+
+[data-dsh-ui-copy-enter] {
+  animation: dsh-ui-copy-menu-in var(--dsh-ui-copy-menu-enter-duration, 170ms) cubic-bezier(0.22, 0.68, 0.24, 1) both;
+  transform-origin: var(--dsh-ui-copy-menu-origin, center top);
+  will-change: transform, opacity;
+}
+
+/* --------------------------------------------------------------------------
+   Leave
+   The clone carries the enter variables it was created with, so origin and
+   direction stay consistent between the two halves of the motion.
+   -------------------------------------------------------------------------- */
+
+@keyframes dsh-ui-copy-menu-out {
+  to {
+    opacity: 0;
+    transform:
+      translate3d(var(--dsh-ui-copy-menu-exit-x, 0), var(--dsh-ui-copy-menu-exit-y, 0), 0)
+      scale(var(--dsh-ui-copy-menu-exit-scale, 0.98));
+  }
+}
+
+[data-dsh-ui-copy-leave] {
+  animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, 130ms) cubic-bezier(0.4, 0, 1, 1) both;
+  transform-origin: var(--dsh-ui-copy-menu-origin, center top);
+}
+
+/* The backing plate fades without scaling, so it never separates from the
+   menu it sits under: the script pins its exit scale to 1. */
+[data-dsh-ui-copy-leave-backing] {
+  animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, 130ms) cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   The script already skips both halves under this query; the guard keeps a
+   mid-session preference change from leaving a clone animating.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dsh-ui-copy-enter],
+  [data-dsh-ui-copy-leave],
+  [data-dsh-ui-copy-leave-backing] {
+    animation-duration: 1ms;
+  }
+}
