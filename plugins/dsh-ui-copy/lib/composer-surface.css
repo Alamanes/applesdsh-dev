@@ -17,8 +17,9 @@
 
    Palette
      Both themes are published as `--dsh-ui-copy-card-*` on the scope roots and
-     consumed below: a raised neutral surface, a hairline edge, the muted figure
-     colour, and the blue send fill with its disabled stand-in.
+     consumed below: a raised surface in the wallpaper's blue cast, a hairline
+     edge, the muted figure colour, the blue send fill with its disabled
+     stand-in, and the card's own shadow.
 
    Why !important
      This sheet is inlined before the component stylesheets, which are CSS
@@ -36,28 +37,30 @@
 
 [data-composer-card],
 [data-composer-seat] {
-  --dsh-ui-copy-card-surface: #2a2a2a;
-  --dsh-ui-copy-card-edge: #3a3a3a;
-  --dsh-ui-copy-card-ink: #e5e5e5;
-  --dsh-ui-copy-card-muted: #626262;
+  --dsh-ui-copy-card-surface: #0c1e37;
+  --dsh-ui-copy-card-edge: #1d3556;
+  --dsh-ui-copy-card-ink: #eef5ff;
+  --dsh-ui-copy-card-muted: #7f91a8;
+  --dsh-ui-copy-card-shadow: 0 1px 6px rgba(0, 3, 10, 0.55);
   --dsh-ui-copy-send-fill: #ffffff;
-  --dsh-ui-copy-send-ink: #0d0d0d;
-  --dsh-ui-copy-send-idle: #858585;
-  --dsh-ui-copy-send-idle-ink: #2a2a2a;
-  --dsh-ui-copy-dock-surface: #1e1e1e;
+  --dsh-ui-copy-send-ink: #08152a;
+  --dsh-ui-copy-send-idle: #46597a;
+  --dsh-ui-copy-send-idle-ink: #0c1e37;
+  --dsh-ui-copy-dock-surface: #08182c;
 }
 
 body:not([data-ds-dark-theme]) [data-composer-card],
 body:not([data-ds-dark-theme]) [data-composer-seat] {
-  --dsh-ui-copy-card-surface: #f0f0f2;
-  --dsh-ui-copy-card-edge: #dcdde1;
-  --dsh-ui-copy-card-ink: #202124;
-  --dsh-ui-copy-card-muted: #62656c;
-  --dsh-ui-copy-send-fill: #3478cf;
+  --dsh-ui-copy-card-surface: #fbfdff;
+  --dsh-ui-copy-card-edge: #d9e4f3;
+  --dsh-ui-copy-card-ink: #10233d;
+  --dsh-ui-copy-card-muted: #7186a0;
+  --dsh-ui-copy-card-shadow: 0 1px 6px rgba(47, 72, 110, 0.1);
+  --dsh-ui-copy-send-fill: #4d6bfe;
   --dsh-ui-copy-send-ink: #ffffff;
-  --dsh-ui-copy-send-idle: #b6b9c1;
+  --dsh-ui-copy-send-idle: #bcc9dd;
   --dsh-ui-copy-send-idle-ink: #ffffff;
-  --dsh-ui-copy-dock-surface: #ececec;
+  --dsh-ui-copy-dock-surface: #e7eefa;
 }
 
 /* --------------------------------------------------------------------------
@@ -84,7 +87,7 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   background: var(--dsh-ui-copy-card-surface) !important;
   border: 1px solid var(--dsh-ui-copy-card-edge) !important;
   border-radius: 22px !important;
-  box-shadow: 0 1px 6px #00000010 !important;
+  box-shadow: var(--dsh-ui-copy-card-shadow, 0 1px 6px #00000010) !important;
   padding-top: 10px !important;
 }
 

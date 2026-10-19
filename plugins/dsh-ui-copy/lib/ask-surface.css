@@ -63,16 +63,17 @@
 
 :is([data-question-key], [data-plan-review-key], [data-question-reply]),
 :is([data-question-key], [data-plan-review-key], [data-question-reply]) * {
-  /* Palette — ChatGPT neutrals, no blue cast. */
-  --oai-surface: #ffffff;
-  --oai-surface-2: #f4f4f4;
-  --oai-surface-3: #ececec;
-  --oai-text: #0d0d0d;
-  --oai-text-2: #5d5d5d;
-  --oai-text-3: #8f8f8f;
-  --oai-text-4: #a8a8a8;
-  --oai-border: #e5e5e5;
-  --oai-border-strong: #d4d4d4;
+  /* Palette — the blue cast the whale wallpaper publishes, so the card shares
+     the page's hue instead of fighting it with pure greys. */
+  --oai-surface: #fbfdff;
+  --oai-surface-2: #eef4fd;
+  --oai-surface-3: #e3edfa;
+  --oai-text: #10233d;
+  --oai-text-2: #526a86;
+  --oai-text-3: #7186a0;
+  --oai-text-4: #8799ae;
+  --oai-border: rgba(76, 105, 142, 0.16);
+  --oai-border-strong: rgba(66, 96, 134, 0.3);
   --oai-accent: var(--dsh-ui-copy-accent, var(--dsw-alias-brand-primary, #0d0d0d));
   --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, #000000);
   --oai-accent-fg: var(--dsh-ui-copy-accent-ink, #ffffff);
@@ -129,15 +130,15 @@
 
 body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-question-reply]),
 body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-question-reply]) * {
-  --oai-surface: #262626;
-  --oai-surface-2: #333333;
-  --oai-surface-3: #3d3d3d;
-  --oai-text: #ececec;
-  --oai-text-2: #b4b4b4;
-  --oai-text-3: #8f8f8f;
-  --oai-text-4: #7a7a7a;
-  --oai-border: rgba(255, 255, 255, 0.12);
-  --oai-border-strong: rgba(255, 255, 255, 0.2);
+  --oai-surface: #0c1e37;
+  --oai-surface-2: #13294a;
+  --oai-surface-3: #1b3358;
+  --oai-text: #eef5ff;
+  --oai-text-2: #aebdd0;
+  --oai-text-3: #7f91a8;
+  --oai-text-4: #62758d;
+  --oai-border: rgba(153, 190, 232, 0.16);
+  --oai-border-strong: rgba(174, 207, 243, 0.3);
   --oai-accent: var(--dsh-ui-copy-accent, var(--dsw-alias-brand-primary, #ffffff));
   --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, #ffffff);
   --oai-accent-fg: var(--dsh-ui-copy-accent-ink, #0d0d0d);
@@ -157,16 +158,16 @@ body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-
   border: 1px solid var(--oai-border) !important;
   background: var(--oai-surface) !important;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    0 12px 32px rgba(0, 0, 0, 0.07) !important;
+    0 1px 3px rgba(47, 72, 110, 0.08),
+    0 12px 32px rgba(47, 72, 110, 0.14) !important;
   color: var(--oai-text) !important;
 }
 
 body[data-ds-dark-theme] [data-question-key] > section,
 body[data-ds-dark-theme] [data-plan-review-key] > section {
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    0 16px 40px rgba(0, 0, 0, 0.4) !important;
+    0 1px 3px rgba(0, 3, 10, 0.45),
+    0 16px 40px rgba(0, 3, 10, 0.6) !important;
 }
 
 /* The frame keeps the composer's side clearance but breathes a little more. */
