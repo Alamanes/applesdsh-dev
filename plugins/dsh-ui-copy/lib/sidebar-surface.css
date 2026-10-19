@@ -3,8 +3,14 @@
    --------------------------------------------------------------------------
    Quiets the sidebar's New Session button. The shipped control is a bordered,
    filled, centre-aligned call to action, so it outweighs every row beneath it;
-   this sheet repaints it as one more row of the global panel list — same
-   height, same padding, same hover wash, icon leading a left-aligned label.
+   this sheet repaints it as a quiet row — no border, no fill of its own, the
+   panel rows' hover wash, icon leading a left-aligned label.
+
+   The box is also tighter than a panel row on purpose. `dsh-sidebar-foot-panels`
+   moves the global panel rows out of the column, so this button is now the only
+   thing between the brand row and the session list; the shipped 36px box and
+   its 12px bottom margin read as slack in that position, and both are trimmed
+   below.
 
    The host half inlines this sheet into every index response, so editing it
    and reloading the page is enough: no rebuild, no restart, no stale
@@ -34,15 +40,19 @@
 
 /* --------------------------------------------------------------------------
    Button geometry
-   The panel row in the wide column: 36px tall, 7px/8px padding, an 8px gap,
-   no border, no fill of its own.
+   32px tall, 5px/8px padding, an 8px gap, no border, no fill of its own. The
+   height is the shipped 22px line plus the padding; `min-height` follows it, or
+   the shipped 36px floor would hold the box open. `margin-bottom` replaces the
+   column's own 12px, which was three times the 4px a panel row leaves between
+   rows.
    -------------------------------------------------------------------------- */
 
 :is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
   :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) {
-  height: 36px !important;
-  min-height: 36px !important;
-  padding: 7px 8px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 5px 8px !important;
+  margin-bottom: 8px !important;
   gap: 8px !important;
   border: none !important;
   border-radius: var(--dsw-radius-md);
