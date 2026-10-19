@@ -1,8 +1,9 @@
 /**
  * dsh-sidebar-foot-panels — browser half.
  *
- * Moves the two global panels out of the sidebar's panel list and onto the
- * sidebar foot, as two compact icon buttons:
+ * Moves the global panels out of the sidebar's panel list and onto the sidebar
+ * foot, as compact icon buttons — the two the shipped bundles register plus the
+ * one a third-party bundle adds to the same ledger:
  *
  *   - the shipped rows stay where React drew them; the plugin only hides them,
  *     marking the matching `<button>` in `nav.panelList` with
@@ -14,6 +15,12 @@
  *     sidebar foot" — and drawn by the sidebar itself, so they inherit the
  *     column state (`wide`, i.e. wide row versus 56px rail), the foot's own
  *     alignment and the shipped hover/focus tokens.
+ *
+ * The ledger covers the panels the shipped bundles register (`plugins`,
+ * `schedules`) and the one a third-party bundle registers at `usage-stats`.
+ * Neither of the three packages exports its panel id or its glyph, so both are
+ * inlined here; a bundle that disables itself or renames its id drops its
+ * button through the ledger check below.
  *
  * A click goes through `ctx.layout.selectPanel(id)`, the controller call the
  * shipped row makes, so panel switching keeps the persisted selection, the
@@ -36,7 +43,7 @@
  *     hidden rows are untouched if the plugin is removed.
  *
  * The buttons follow the panel ledger: a panel whose plugin is disabled
- * disappears from the foot as well, and the wrapper renders nothing when neither
+ * disappears from the foot as well, and the wrapper renders nothing when no
  * panel is offered.
  *
  * @module dsh-sidebar-foot-panels/client
@@ -53,19 +60,21 @@ window.__ModuleLoader__.load({
     const primitives = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
 
-    /** Locale namespace for the two button labels; also the footer entry's `locale`. */
+    /** Locale namespace for the button labels; also the footer entry's `locale`. */
     const NS = 'sidebar-foot-panels'
 
     /** Simplified Chinese dictionary (the key-set source of truth). */
     const zh = {
       plugins: '插件',
       schedules: '自动化任务',
+      usage: '使用统计',
     }
 
     /** English dictionary, checked complete against the zh key set. */
     const en = {
       plugins: 'Plugins',
       schedules: 'Automation tasks',
+      usage: 'Usage statistics',
     }
 
     /** ui-sidebar's list of global panel rows. */
@@ -93,12 +102,14 @@ window.__ModuleLoader__.load({
      * `id` is the `sidebar.panellist` cell key, which is also the `main` slot key
      * the panel page renders under, which is also what `ctx.layout.selectPanel`
      * takes. `copy` names the label key in this plugin's dictionary. `Icon` is the
-     * shipped glyph shape, inlined because the two panel packages export neither
-     * their icon components nor their own panel ids.
+     * glyph the owning package draws for its row, inlined because none of the
+     * three exports its icon component or its own panel id; `usage-stats` is
+     * dsh-usage-statistics-panel's `PANEL_ID`, registered at order 30.
      */
     const PANELS = [
       { id: 'plugins', copy: 'plugins', Icon: PinwheelIcon },
       { id: 'schedules', copy: 'schedules', Icon: ClockIcon },
+      { id: 'usage-stats', copy: 'usage', Icon: BarChartIcon },
     ]
 
     /** The cell keys this plugin claims, as a lookup for the ledger scan. */
@@ -202,6 +213,38 @@ window.__ModuleLoader__.load({
         },
         h('path', { key: 'face', d: 'M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z', stroke: 'currentColor' }),
         h('path', { key: 'hands', d: 'M8 4.31V8.46L11 10.08', stroke: 'currentColor' }),
+      )
+    }
+
+    /**
+     * The bar-chart glyph dsh-usage-statistics-panel draws for its panel row.
+     *
+     * Its `StatsIcon` is the lucide `BarChart3` artwork, so it keeps that
+     * drawing's numbers — a 24-unit grid with a 2-unit stroke and round joins —
+     * instead of the 16-unit grid the two shipped glyphs above use.
+     *
+     * @param props - `size` in pixels.
+     * @returns the glyph.
+     */
+    function BarChartIcon({ size = 16 }) {
+      return h(
+        'svg',
+        {
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 2,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          xmlns: 'http://www.w3.org/2000/svg',
+          'aria-hidden': 'true',
+        },
+        h('path', { key: 'axes', d: 'M3 3v18h18' }),
+        h('path', { key: 'bar-tall', d: 'M18 17V9' }),
+        h('path', { key: 'bar-mid', d: 'M13 17V5' }),
+        h('path', { key: 'bar-low', d: 'M8 17v-3' }),
       )
     }
 
