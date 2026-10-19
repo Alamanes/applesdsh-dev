@@ -18,6 +18,19 @@
 | `plugins/dsh-ui-copy` | `dsh-ui-copy` | 界面文案改写：空态大标题、输入框空置提示、预览版徽章；另有 ask 弹窗与输入卡片的换皮、菜单开合动画、侧栏「新会话」按钮降噪四个独立组件 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
+| `plugins/meow-memory`（软链） | `meow-memory` | 跨会话长期记忆：七层 SQLite 记忆库、首轮快照注入、逐消息关键词命中、空闲 dream 整理 | 上游 [Phant0Meow/dsh-meow-memory](https://github.com/Phant0Meow/dsh-meow-memory)，本仓库只放一个指向其本地 clone 的软链，不分发代码 |
+
+## 一个例外：`plugins/meow-memory`
+
+这个目录是符号链接，指向仓库外的本地 clone（`../../dsh-meow-memory`，即 Phant0Meow/dsh-meow-memory
+的一份本地检出）。代码不在本仓库里，也不能用本仓库的子目录说明符安装，那条说明符取到的只会是一个断链。
+把它留在这里，是为了在插件表里标明本机装的是哪个记忆插件、它的上游是谁。别人 clone 本仓库后，这个链接是断的。
+
+实际安装走上游：
+
+```json
+"meow-memory": "github:Phant0Meow/dsh-meow-memory"
+```
 
 ## 安装
 
