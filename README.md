@@ -12,6 +12,7 @@
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
 | `plugins/dsh-peak-valley-hint` | `dsh-peak-valley-hint` | 侧栏底栏右端的峰谷时段提示：当前算高峰还是低谷、距下次切换的倒计时，法定节假日日期由插件自己联网获取 | 本仓库自产 |
+| `plugins/dsh-plugin-harness-whale` | `dsh-plugin-harness-whale` | 界面背后的动态壁纸：约 1750 个 WebGL2 粒子组成的点阵鲸鱼，随主题给出淡蓝与深蓝两套配色，并接管页面底色、文字、边框与输入卡片 | 上游 [HeShen-1/deepseek-whale-wallpaper](https://github.com/HeShen-1/deepseek-whale-wallpaper) 的 npm 包 `dsh-plugin-harness-whale@0.2.0`，原样收进本仓库 |
 | `plugins/dsh-session-delete` | `dsh-session-delete` | 会话行菜单里的「删除会话」：连同子代理会话、工作区引用与投影缓存一起从磁盘上删掉 | 本仓库自产 |
 | `plugins/dsh-sidebar-foot-panels` | `dsh-sidebar-foot-panels` | 把侧栏顶部的「插件」「使用统计」「技能中心」三行摘出来，改成侧栏底部并排的三个小图标按钮；用不到的「自动化任务」整行一并隐藏 | 本仓库自产 |
 | `plugins/dsh-status-phrases` | `dsh-status-phrases` | 状态行「深度求索中」替换：短语轮换 + 逐字打字机 + 彩虹流光，整份短语表由设置 → 通用设置里的一个多行文本框配置 | 本仓库自产，行为复刻自 [01Virex/dsh-status-rotator](https://github.com/01Virex/dsh-status-rotator) 的状态行替换与特效 |
@@ -44,6 +45,7 @@
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-ops": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ops",
     "dsh-peak-valley-hint": "github:Alamanes/applesdsh-dev#path:plugins/dsh-peak-valley-hint",
+    "dsh-plugin-harness-whale": "github:Alamanes/applesdsh-dev#path:plugins/dsh-plugin-harness-whale",
     "dsh-session-delete": "github:Alamanes/applesdsh-dev#path:plugins/dsh-session-delete",
     "dsh-sidebar-foot-panels": "github:Alamanes/applesdsh-dev#path:plugins/dsh-sidebar-foot-panels",
     "dsh-status-phrases": "github:Alamanes/applesdsh-dev#path:plugins/dsh-status-phrases",
@@ -64,6 +66,7 @@
         "dsh-local-identity",
         "dsh-ops",
         "dsh-peak-valley-hint",
+        "dsh-plugin-harness-whale",
         "dsh-session-delete",
         "dsh-sidebar-foot-panels",
         "dsh-zh-prompt"
@@ -98,6 +101,10 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
   （MIT，01Virex），是那份实现的收窄复刻：只保留状态行替换与特效，并把短语配置收敛成设置里的一个
   文本框。该上游包已从本仓库与本机移除，这份复刻是它在状态行上的唯一延续。
 - `dsh-commandcode-quota` 出自 Jovan1666/commandcode-usage，README 与代码内的上游链接保留。
+- `dsh-plugin-harness-whale` 出自 HeShen-1/deepseek-whale-wallpaper，收进本仓库的是 npm 上 0.2.0 的
+  发行产物（`lib/` 四个文件含 sourcemap、`cordis.patch.yml`、双语文档与 LICENSE），`package.json` 的
+  `repository` / `homepage` / `bugs` 仍指向上游，代码与配置一字未改。上游仓库里才有 TypeScript 源码与
+  构建脚本，本仓库只做分发。
 - `dsh-codex-reasoning-effort-slider` 出自 bakabaicai/DSH-Codex-reasoning-effort-slider，`package.json` 的
   `repository` 字段指向上游，包名与客户端模块 id 由 `@local/dsh-codex-reasoning-effort-slider` 改为
   `dsh-codex-reasoning-effort-slider`，原先精确锁定 `@deepseek-ai/dsh` 0.2.0-rc.2 的 `peerDependencies`
