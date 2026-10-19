@@ -17,8 +17,10 @@ window.__ModuleLoader__.load({
       loading: 'Loading models', empty: 'No available models', unsupported: 'No reasoning levels for this model',
       retry: 'Retry', busy: 'Switching', failed: 'Selection failed', unavailable: 'Model selection unavailable'
     };
-    const labels = { off: 'Off', low: 'Low', high: 'High', max: 'Ultra' };
-    const order = ['off', 'low', 'high', 'max'];
+    // Every pi-ai thinking level, in escalation order. The slider renders whatever
+    // levels the host reports, not just the four Codex desktop ones.
+    const labels = { off: 'Off', minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Xhigh', max: 'Ultra' };
+    const order = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
     const styles = `
       .dsh-codex-reasoning-effort-slider-root{position:relative;display:inline-flex;font-family:var(--dsw-font-family);font-size:14px;letter-spacing:0}
       .dsh-codex-reasoning-effort-slider-root *{box-sizing:border-box;corner-shape:round}
