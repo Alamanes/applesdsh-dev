@@ -1,15 +1,15 @@
 # dsh-sidebar-foot-panels
 
-DeepSeek Harness 的浏览器半只插件：把左侧栏顶部的全局面板行——「插件」「自动化任务」，以及第三方插件注册的「使用统计」与「技能中心」——从面板列表里摘出来，改成侧栏底部并排的小图标按钮。
+DeepSeek Harness 的浏览器半只插件：把左侧栏顶部的「插件」与第三方插件注册的「使用统计」「技能中心」三行摘出来，改成侧栏底部并排的小图标按钮；用不到的「自动化任务」不给按钮，整行从侧栏拿掉。
 
 ## 用途
 
-官方 ui-sidebar 把全局面板画成一列行（`nav.panelList`，每行是图标加文字），排在「新会话」按钮与会话列表之间。本机装了四个全局面板（两个随产品组合，两个由第三方包注册：`dsh-usage-statistics-panel` 与 `@linxin666/dsh-client-ui-skill-explorer`），这四行于是长期占住侧栏顶部：
+官方 ui-sidebar 把全局面板画成一列行（`nav.panelList`，每行是图标加文字），排在「新会话」按钮与会话列表之间。本机装了四个全局面板（两个随产品组合：`plugins` 与 `schedules`；两个由第三方包注册：`dsh-usage-statistics-panel` 与 `@linxin666/dsh-client-ui-skill-explorer`），这四行于是长期占住侧栏顶部：
 
 - 宽态下它们各占 36px 高的一整行，加上列表容器的上下间距，会话列表被整体下压；
 - 窄态（56px 轨道）下它们仍是四枚 36px 的图标，与「新会话」按钮争同一块空间。
 
-本插件把这些入口挪到侧栏底部：与会话列表解耦，四枚 28px（窄态 36px）的图标按钮排在设置行上方，省下的纵向空间全部留给会话列表。面板列表随之整条消失，侧栏顶部只剩「新会话」按钮与会话列表；这两者之间的间距不归本插件管，由 `dsh-ui-copy` 的 sidebar 组件在它那份降噪样式里调。
+本插件把其中三个搬到底部：`plugins`、`usage-stats`、`skill-explorer` 与会话列表解耦，三枚 28px（窄态 36px）的图标按钮排在设置行上方；`schedules` 是用户用不到的官方面板，不给按钮，行直接隐藏。面板列表随之整条消失，侧栏顶部只剩「新会话」按钮与会话列表；这两者之间的间距不归本插件管，由 `dsh-ui-copy` 的 sidebar 组件在它那份降噪样式里调。
 
 ## 开关方式
 
@@ -21,7 +21,7 @@ DeepSeek Harness 的浏览器半只插件：把左侧栏顶部的全局面板行
       name: dsh-sidebar-foot-panels
 ```
 
-同一行也写在插件自带的 `cordis.patch.yml` 里（`package.json` 的 `dsh.bundle.patch` 指向它），插件页安装时会直接插入。删掉这一行即关闭整个插件：底部四枚按钮消失，官方两行与第三方两行原样回到面板列表，没有残留标记。没有配置项。
+同一行也写在插件自带的 `cordis.patch.yml` 里（`package.json` 的 `dsh.bundle.patch` 指向它），插件页安装时会直接插入。删掉这一行即关闭整个插件：底部三枚按钮消失，四行面板行原样回到面板列表，被隐藏的「自动化任务」也一起回来，没有残留标记。没有配置项。
 
 ## 它做了什么
 
@@ -31,8 +31,8 @@ DeepSeek Harness 的浏览器半只插件：把左侧栏顶部的全局面板行
 
 - 注册一个 `sidebar.footer.action` 槽位条目（id `foot-panels`，order 10）。这个槽是 ui-sidebar 自己声明的「侧栏底部、设置旁边的可选动作」，位置就在设置行上方，由侧栏渲染，因此自动拿到列状态 `wide`（宽态行 / 窄态 56px 轨道）与官方底部的对齐规则。
 - 点击调用 `ctx.layout.selectPanel(id)`，与官方面板行走的是同一个控制器调用，面板切换、选中状态持久化、待处理导航的中断行为都不变；高亮状态读 `ctx.layout.panelInfo`，与官方行写 `aria-current` 的是同一份数据。
-- 按钮列表来自 `sidebar.panellist` 台账，它认四个 id：`plugins`、`schedules`、`usage-stats`、`skill-explorer`。面板插件被停用时，对应按钮一并消失，不会留下点不动的入口。
-- 图标按各自包注册的形状内联：前两枚抄官方 16 网格字形，`usage-stats` 抄 `dsh-usage-statistics-panel` 的 lucide `BarChart3`（24 网格、2px 描边、圆头圆角），`skill-explorer` 抄技能中心那本打开的书（16 网格、1.3px 描边）。四个包都不导出自己的图标组件。
+- 按钮列表来自 `sidebar.panellist` 台账里的三个 id：`plugins`、`usage-stats`、`skill-explorer`；`schedules` 只进隐藏名单，不给按钮。面板插件被停用时，对应按钮一并消失，不会留下点不动的入口。
+- 图标按各自包注册的形状内联：`plugins` 抄官方 16 网格字形，`usage-stats` 抄 `dsh-usage-statistics-panel` 的 lucide `BarChart3`（24 网格、2px 描边、圆头圆角），`skill-explorer` 抄技能中心那本打开的书（16 网格、1.3px 描边）。三个包都不导出自己的图标组件。
 
 列表一侧：
 
@@ -44,9 +44,9 @@ DeepSeek Harness 的浏览器半只插件：把左侧栏顶部的全局面板行
 
 ## 已知边界
 
-- **依赖 ui-sidebar 的类名后缀与槽位名**：`nav` 的 CSS module 类名以 `panelList` 结尾（选择器写 `nav[class*="panelList"]`），槽位名是 `sidebar.panellist` 与 `sidebar.footer.action`。dsh 升级后若两个按钮失效或列表不再被隐藏，先复核这三处。
-- **面板 id 是硬编码的**：`plugins` 与 `schedules` 分别是 client-ui-plugin-manager 与 client-ui-schedule 的 `PANEL_ID`，`usage-stats` 与 `skill-explorer` 分别是 `dsh-usage-statistics-panel` 与 `@linxin666/dsh-client-ui-skill-explorer` 的 `PANEL_ID`。四个包都不导出它们，任一方改名都要同步 `PANELS` 表，表现是那一行的按钮不再出现、行本身留在列表里。
-- **图标是照抄的**：前两枚按官方注册的 `IconPluginPinwheelOutlineRegular` 与 `IconClockOutlineRegular` 内联（视图盒 16×16、`strokeWidth: 1`、`currentColor`），`usage-stats` 按 usage 面板的 lucide `BarChart3` 内联（视图盒 24×24、`strokeWidth: 2`、圆头圆角），`skill-explorer` 按技能中心那本打开的书内联（视图盒 16×16、`strokeWidth: 1.3`），因为 primitives 的图标组件没有稳定导出面。上游换图标时这里不会自动跟随。
+- **依赖 ui-sidebar 的类名后缀与槽位名**：`nav` 的 CSS module 类名以 `panelList` 结尾（选择器写 `nav[class*="panelList"]`），槽位名是 `sidebar.panellist` 与 `sidebar.footer.action`。dsh 升级后若底部按钮失效或列表不再被隐藏，先复核这三处。
+- **面板 id 是硬编码的**：`plugins` 与 `schedules` 分别是 client-ui-plugin-manager 与 client-ui-schedule 的 `PANEL_ID`，`usage-stats` 与 `skill-explorer` 分别是 `dsh-usage-statistics-panel` 与 `@linxin666/dsh-client-ui-skill-explorer` 的 `PANEL_ID`。这些包都不导出自己的 id，任一方改名都要同步 `PANELS` 或 `HIDDEN_PANELS`：按钮那一侧的表现为按钮不再出现，`schedules` 的表现为那一行退回列表。
+- **图标是照抄的**：`plugins` 按官方注册的 `IconPluginPinwheelOutlineRegular` 内联（视图盒 16×16、`strokeWidth: 1`、`currentColor`），`usage-stats` 按 usage 面板的 lucide `BarChart3` 内联（视图盒 24×24、`strokeWidth: 2`、圆头圆角），`skill-explorer` 按技能中心那本打开的书内联（视图盒 16×16、`strokeWidth: 1.3`），因为 primitives 的图标组件没有稳定导出面。上游换图标时这里不会自动跟随；`schedules` 那枚时钟图标随按钮一并删掉了，要恢复从 git 历史取。
 - **隐藏而非注销**：四行仍在 DOM 里（`display: none`），键盘 Tab 顺序里也不出现。插件卸载时会清掉全部标记，官方行立刻回来。
 - **只碰这四个 id**：其它注册进 `sidebar.panellist` 的条目无论排在哪里都保持原样，不会被误伤。
 - **需要重启宿主**：客户端插件的 boot graph 在宿主启动时构建，装好本插件后必须重启 DeepSeek Harness，新会话与旧会话都会看到新排布。

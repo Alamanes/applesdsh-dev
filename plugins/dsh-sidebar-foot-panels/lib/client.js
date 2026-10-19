@@ -1,9 +1,9 @@
 /**
  * dsh-sidebar-foot-panels — browser half.
  *
- * Moves the global panels out of the sidebar's panel list and onto the sidebar
- * foot, as compact icon buttons — the two the shipped bundles register plus the
- * two that third-party bundles add to the same ledger:
+ * Takes the global panels out of the sidebar's panel list: `plugins` and the two
+ * third-party entries move onto the sidebar foot as compact icon buttons, while
+ * the shipped `schedules` row is hidden outright.
  *
  *   - the shipped rows stay where React drew them; the plugin only hides them,
  *     marking the matching `<button>` in `nav.panelList` with
@@ -18,9 +18,9 @@
  *
  * The ledger covers the panels the shipped bundles register (`plugins`,
  * `schedules`) and the two third-party bundles register at `usage-stats` and
- * `skill-explorer`. None of the four packages exports its panel id or its
- * glyph, so both are inlined here; a bundle that disables itself or renames its
- * id drops its button through the ledger check below.
+ * `skill-explorer`. No package exports its panel id or its glyph, so each is
+ * inlined here; a bundle that disables itself or renames its id drops its button
+ * through the ledger check below.
  *
  * A click goes through `ctx.layout.selectPanel(id)`, the controller call the
  * shipped row makes, so panel switching keeps the persisted selection, the
@@ -66,7 +66,6 @@ window.__ModuleLoader__.load({
     /** Simplified Chinese dictionary (the key-set source of truth). */
     const zh = {
       plugins: '插件',
-      schedules: '自动化任务',
       usage: '使用统计',
       skills: '技能中心',
     }
@@ -74,7 +73,6 @@ window.__ModuleLoader__.load({
     /** English dictionary, checked complete against the zh key set. */
     const en = {
       plugins: 'Plugins',
-      schedules: 'Automation tasks',
       usage: 'Usage statistics',
       skills: 'Skill center',
     }
@@ -105,7 +103,7 @@ window.__ModuleLoader__.load({
      * the panel page renders under, which is also what `ctx.layout.selectPanel`
      * takes. `copy` names the label key in this plugin's dictionary. `Icon` is the
      * glyph the owning package draws for its row, inlined because none of the
-     * four exports its icon component or its own panel id. The two third-party
+     * three exports its icon component or its own panel id. The two third-party
      * rows are both registered at order 30 — `usage-stats` by
      * dsh-usage-statistics-panel, `skill-explorer` by
      * @linxin666/dsh-client-ui-skill-explorer — so the button order below is the
@@ -113,13 +111,24 @@ window.__ModuleLoader__.load({
      */
     const PANELS = [
       { id: 'plugins', copy: 'plugins', Icon: PinwheelIcon },
-      { id: 'schedules', copy: 'schedules', Icon: ClockIcon },
       { id: 'usage-stats', copy: 'usage', Icon: BarChartIcon },
       { id: 'skill-explorer', copy: 'skills', Icon: BookIcon },
     ]
 
+    /**
+     * Panels this plugin takes off the list without giving them a foot button.
+     *
+     * `schedules` is the shipped Automation tasks panel. Leaving an id out of
+     * `PANELS` alone would not remove the row: the list still draws it from the
+     * seat client-ui-schedule registers, so it would simply reappear at the top
+     * of the column — the placement this plugin exists to clear. Hiding it here
+     * drops the entry point entirely. To bring the panel back, move the id into
+     * `PANELS` with a `copy` key and a glyph.
+     */
+    const HIDDEN_PANELS = ['schedules']
+
     /** The cell keys this plugin claims, as a lookup for the ledger scan. */
-    const PANEL_IDS = new Set(PANELS.map((panel) => panel.id))
+    const PANEL_IDS = new Set([...PANELS.map((panel) => panel.id), ...HIDDEN_PANELS])
 
     /** The primitives tooltip, when this build still exports one. */
     const Tooltip = primitives.Tooltip
@@ -200,34 +209,11 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * The clock client-ui-schedule draws for its panel row.
-     *
-     * @param props - `size` in pixels.
-     * @returns the glyph.
-     */
-    function ClockIcon({ size = 16 }) {
-      return h(
-        'svg',
-        {
-          width: size,
-          height: size,
-          viewBox: '0 0 16 16',
-          fill: 'none',
-          strokeWidth: 1,
-          xmlns: 'http://www.w3.org/2000/svg',
-          'aria-hidden': 'true',
-        },
-        h('path', { key: 'face', d: 'M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z', stroke: 'currentColor' }),
-        h('path', { key: 'hands', d: 'M8 4.31V8.46L11 10.08', stroke: 'currentColor' }),
-      )
-    }
-
-    /**
      * The bar-chart glyph dsh-usage-statistics-panel draws for its panel row.
      *
      * Its `StatsIcon` is the lucide `BarChart3` artwork, so it keeps that
      * drawing's numbers — a 24-unit grid with a 2-unit stroke and round joins —
-     * instead of the 16-unit grid the two shipped glyphs above use.
+     * instead of the 16-unit grid the shipped glyph above uses.
      *
      * @param props - `size` in pixels.
      * @returns the glyph.
@@ -259,7 +245,7 @@ window.__ModuleLoader__.load({
      * panel row.
      *
      * Copied from that package's `SkillExplorerPanelIcon`, which already lives on
-     * a 16-unit grid like the two shipped glyphs above; only the stroke width
+     * a 16-unit grid like the shipped glyph above; only the stroke width
      * differs, at 1.3 rather than 1. Its `data-dsh-panel-entry` anchor is not
      * reproduced: that attribute marks the glyph inside the sidebar's own row,
      * and this button is not that row.
