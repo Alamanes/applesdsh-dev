@@ -11,7 +11,7 @@
 # /plugins/<包名>/client.js 也指向同一字符串。
 #
 # 按钮的形态与位置不在这里配：全部行为在浏览器半边，目标是
-# sidebar.panellist 里 id 为 plugins / schedules / usage-stats 的三行（见 README）。
+# sidebar.panellist 里 id 为 plugins / schedules / usage-stats / skill-explorer 的四行（见 README）。
 - insert:
     - id: dsh-sidebar-foot-panels
       name: "dsh-sidebar-foot-panels"

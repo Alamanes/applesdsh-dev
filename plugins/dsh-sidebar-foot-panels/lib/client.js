@@ -3,7 +3,7 @@
  *
  * Moves the global panels out of the sidebar's panel list and onto the sidebar
  * foot, as compact icon buttons — the two the shipped bundles register plus the
- * one a third-party bundle adds to the same ledger:
+ * two that third-party bundles add to the same ledger:
  *
  *   - the shipped rows stay where React drew them; the plugin only hides them,
  *     marking the matching `<button>` in `nav.panelList` with
@@ -17,10 +17,10 @@
  *     alignment and the shipped hover/focus tokens.
  *
  * The ledger covers the panels the shipped bundles register (`plugins`,
- * `schedules`) and the one a third-party bundle registers at `usage-stats`.
- * Neither of the three packages exports its panel id or its glyph, so both are
- * inlined here; a bundle that disables itself or renames its id drops its
- * button through the ledger check below.
+ * `schedules`) and the two third-party bundles register at `usage-stats` and
+ * `skill-explorer`. None of the four packages exports its panel id or its
+ * glyph, so both are inlined here; a bundle that disables itself or renames its
+ * id drops its button through the ledger check below.
  *
  * A click goes through `ctx.layout.selectPanel(id)`, the controller call the
  * shipped row makes, so panel switching keeps the persisted selection, the
@@ -68,6 +68,7 @@ window.__ModuleLoader__.load({
       plugins: '插件',
       schedules: '自动化任务',
       usage: '使用统计',
+      skills: '技能中心',
     }
 
     /** English dictionary, checked complete against the zh key set. */
@@ -75,6 +76,7 @@ window.__ModuleLoader__.load({
       plugins: 'Plugins',
       schedules: 'Automation tasks',
       usage: 'Usage statistics',
+      skills: 'Skill center',
     }
 
     /** ui-sidebar's list of global panel rows. */
@@ -103,13 +105,17 @@ window.__ModuleLoader__.load({
      * the panel page renders under, which is also what `ctx.layout.selectPanel`
      * takes. `copy` names the label key in this plugin's dictionary. `Icon` is the
      * glyph the owning package draws for its row, inlined because none of the
-     * three exports its icon component or its own panel id; `usage-stats` is
-     * dsh-usage-statistics-panel's `PANEL_ID`, registered at order 30.
+     * four exports its icon component or its own panel id. The two third-party
+     * rows are both registered at order 30 — `usage-stats` by
+     * dsh-usage-statistics-panel, `skill-explorer` by
+     * @linxin666/dsh-client-ui-skill-explorer — so the button order below is the
+     * registration order, which is the order the list drew them in.
      */
     const PANELS = [
       { id: 'plugins', copy: 'plugins', Icon: PinwheelIcon },
       { id: 'schedules', copy: 'schedules', Icon: ClockIcon },
       { id: 'usage-stats', copy: 'usage', Icon: BarChartIcon },
+      { id: 'skill-explorer', copy: 'skills', Icon: BookIcon },
     ]
 
     /** The cell keys this plugin claims, as a lookup for the ledger scan. */
@@ -245,6 +251,39 @@ window.__ModuleLoader__.load({
         h('path', { key: 'bar-tall', d: 'M18 17V9' }),
         h('path', { key: 'bar-mid', d: 'M13 17V5' }),
         h('path', { key: 'bar-low', d: 'M8 17v-3' }),
+      )
+    }
+
+    /**
+     * The open-book glyph @linxin666/dsh-client-ui-skill-explorer draws for its
+     * panel row.
+     *
+     * Copied from that package's `SkillExplorerPanelIcon`, which already lives on
+     * a 16-unit grid like the two shipped glyphs above; only the stroke width
+     * differs, at 1.3 rather than 1. Its `data-dsh-panel-entry` anchor is not
+     * reproduced: that attribute marks the glyph inside the sidebar's own row,
+     * and this button is not that row.
+     *
+     * @param props - `size` in pixels.
+     * @returns the glyph.
+     */
+    function BookIcon({ size = 16 }) {
+      return h(
+        'svg',
+        {
+          width: size,
+          height: size,
+          viewBox: '0 0 16 16',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.3,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          xmlns: 'http://www.w3.org/2000/svg',
+          'aria-hidden': 'true',
+        },
+        h('path', { key: 'cover', d: 'M8 3.2C6.6 2 4.5 2 3 2v10.5c1.5 0 3.6 0 5 1.3 1.4-1.3 3.5-1.3 5-1.3V2c-1.5 0-3.6 0-5 1.2z' }),
+        h('path', { key: 'spine', d: 'M8 3.2v10.6' }),
       )
     }
 
