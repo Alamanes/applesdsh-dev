@@ -114,6 +114,31 @@
   }, true)
 
   /**
+   * A press on the control of a menu that is already open.
+   *
+   * The second press on the control that opened a menu is a request to close
+   * it. The host closes an open menu from a document-level outside-press pass,
+   * and that pass does not always see this control as part of the menu: the
+   * workspace picker keeps its trigger outside the wrapper the menu measures
+   * itself against, so the press reads as somewhere else entirely — the menu
+   * tears down, and the trigger's click opens it again on the next frame. The
+   * entry animation replays and the menu never appears to close.
+   *
+   * Stopping the press here keeps the outside-press pass from running on it;
+   * the trigger's own click then toggles the menu shut. Every other press
+   * propagates untouched, and so does every press while the menu is closed,
+   * because only a control that already reports itself expanded matches.
+   */
+  const OPEN_TRIGGER_SELECTOR = '[aria-haspopup="menu"][aria-expanded="true"]'
+
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    if (target.closest(OPEN_TRIGGER_SELECTOR) === null) return
+    event.stopPropagation()
+  }, true)
+
+  /**
    * The edge a menu grows from, as `transform-origin` plus the offset it
    * travels. A submenu comes in from the side of its parent row; a dropdown
    * comes out of its trigger when the trigger is known, and out of the nearer
