@@ -7,7 +7,7 @@
 
 | 目录 | 包名 | 说明 | 来源 |
 |---|---|---|---|
-| `plugins/better-dsh-codex-effort-slider` | `better-dsh-codex-effort-slider` | Codex 风格的美化版模型选择器：一颗「模型名 · 档位名」按钮接管官方席位，点开是两级浮层（provider → 模型列表 + 搜索），档位由一条连续滑条拖动，颜色与星尘粒子随档位递增，深浅主题自适应 | 上游 [Bai-2008/a-better-dsh-codex-effort-slider](https://github.com/Bai-2008/a-better-dsh-codex-effort-slider) 的 `v1.3.10`，源码原样收进本仓库，仅 `repository` / `homepage` 改指本仓库；取代此前的 `dsh-codex-reasoning-effort-slider` |
+| `plugins/dsh-codex-reasoning-effort-slider` | `dsh-codex-reasoning-effort-slider` | 复刻 Codex 桌面版的推理强度滑块：模型选择器弹层里的 Off / Low / High / Ultra 四挡滑轨、Fast 开关与粒子动画 | 上游 [bakabaicai/DSH-Codex-reasoning-effort-slider](https://github.com/bakabaicai/DSH-Codex-reasoning-effort-slider)，仅改了包名、客户端模块 id 与引擎声明 |
 | `plugins/dsh-commandcode-quota` | `dsh-commandcode-quota` | 输入框模型选择器旁的 5 小时 / 周 / 月三条额度环，外加设置页的逐模型请求额度 | 上游 [Jovan1666/commandcode-usage](https://github.com/Jovan1666/commandcode-usage) 的 `plugins/dsh` |
 | `plugins/dsh-local-identity` | `dsh-local-identity` | 侧栏左下角账号芯片改用本机配置的昵称与头像，并在设置 → 通用设置里提供配置行 | 本仓库自产 |
 | `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
@@ -29,7 +29,7 @@
 ```json
 {
   "dependencies": {
-    "better-dsh-codex-effort-slider": "github:Alamanes/applesdsh-dev#path:plugins/better-dsh-codex-effort-slider",
+    "dsh-codex-reasoning-effort-slider": "github:Alamanes/applesdsh-dev#path:plugins/dsh-codex-reasoning-effort-slider",
     "dsh-commandcode-quota": "github:Alamanes/applesdsh-dev#path:plugins/dsh-commandcode-quota",
     "dsh-local-identity": "github:Alamanes/applesdsh-dev#path:plugins/dsh-local-identity",
     "dsh-ops": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ops",
@@ -49,7 +49,7 @@
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        "better-dsh-codex-effort-slider",
+        "dsh-codex-reasoning-effort-slider",
         "dsh-web-search-tavily",
         "dsh-commandcode-quota",
         "dsh-status-phrases",
@@ -97,9 +97,10 @@ pnpm 对 Git 依赖按 commit 缓存，仓库有新提交时用 `pnpm update dsh
   发行产物（`lib/` 四个文件含 sourcemap、`cordis.patch.yml`、双语文档与 LICENSE），`package.json` 的
   `repository` / `homepage` / `bugs` 仍指向上游，代码与配置一字未改。上游仓库里才有 TypeScript 源码与
   构建脚本，本仓库只做分发。
-- `better-dsh-codex-effort-slider` 出自 Bai-2008/a-better-dsh-codex-effort-slider 的 `v1.3.10`，源码与配置
-  原样收进本仓库，唯一改动是 `package.json` 的 `repository` / `homepage` 改指本仓库；它取代了此前收录的
-  `dsh-codex-reasoning-effort-slider`（bakabaicai 上游），后者的四挡滑轨由本插件的连续滑条与自建面板接管。
+- `dsh-codex-reasoning-effort-slider` 出自 bakabaicai/DSH-Codex-reasoning-effort-slider，`package.json` 的
+  `repository` 字段指向上游，包名与客户端模块 id 由 `@local/dsh-codex-reasoning-effort-slider` 改为
+  `dsh-codex-reasoning-effort-slider`，原先精确锁定 `@deepseek-ai/dsh` 0.2.0-rc.2 的 `peerDependencies`
+  改为 `engines.dsh` 的版本区间，其余代码原样。
 - `dsh-ops` 出自 T-Auto/dsh-ops，取自 `v0.3.1` 标签。npm 上最高只到 0.3.0，而 0.3.0 的平台表里只有
   `win32-x64`，在 Apple Silicon 上不注册任何工具；本仓库收录 0.3.1，并补入上游 `v0.3.1` Release 的
   `native-darwin-arm64-runtime-v0.3.1` 载荷（`runtime/darwin-arm64/`），macOS 上因此可用。未收录仓库里的
