@@ -50,8 +50,6 @@ window.__ModuleLoader__.load({
       'confirm.pending': '正在删除…',
       'cancel': '取消',
       'close': '关闭',
-      'failed.running': '这个会话正在运行，先停止它再删除。',
-      'failed.open': '这个会话还开在本机，等它释放之后再删。',
       'failed.unknown': '这个会话已经不在磁盘上了。',
       'failed.refused': '本机拒绝了这次请求。',
       'failed.partial': '部分数据未能删除，请重试或检查文件权限。',
@@ -65,8 +63,6 @@ window.__ModuleLoader__.load({
       'confirm.pending': 'Deleting…',
       'cancel': 'Cancel',
       'close': 'Close',
-      'failed.running': 'This session is running. Stop it first, then delete it.',
-      'failed.open': 'This session is still open on this machine. Delete it once it is released.',
       'failed.unknown': 'This session is no longer on disk.',
       'failed.refused': 'This machine refused the request.',
       'failed.partial': 'Part of the data could not be removed. Retry, or check file permissions.',
@@ -88,8 +84,6 @@ window.__ModuleLoader__.load({
     /** One reason phrase per Host refusal. */
     function messageFor(payload, t) {
       const reason = payload !== null && typeof payload === 'object' ? payload.reason : undefined
-      if (reason === 'active') return t('failed.running')
-      if (reason === 'open') return t('failed.open')
       if (reason === 'unknown') return t('failed.unknown')
       if (reason === 'refused' || reason === 'invalid-id' || reason === 'bad-request') return t('failed.refused')
       if (reason === 'unlink-failed' || reason === 'failed') return t('failed.partial')

@@ -24,9 +24,11 @@
  * editing `workspace.json` — so the `domain/changed` broadcast that refreshes
  * every open list is emitted for free.
  *
- * A live Session is refused rather than deleted: its write handle still owns
- * the log, so removing the directory underneath it would silently drop every
- * later append into an unlinked inode.
+ * A live Session does not block deletion. The request is the authority: the
+ * directory goes away even while a client still holds the Session open, and a
+ * running turn is left to fail its next append rather than being waited for.
+ * That is the point of a forced delete --- nothing about the Session's runtime
+ * state is a reason to keep its bytes on disk.
  *
  * @module dsh-session-delete
  */
@@ -353,10 +355,9 @@ function lineageOf(headers, rootId) {
 /**
  * How alive a session is in this process.
  *
- * A session must not lose its directory while anything holds it: its write
- * handle still owns the log, so a later append would land in an unlinked inode
- * and be lost silently. A session that is merely open is refused too, and the
- * two cases are reported apart so the dialog can say which one applies.
+ * Reported in the result, never used to refuse: a forced delete removes the
+ * bytes whatever the runtime state is. The two cases stay apart so a caller can
+ * tell a cancelling turn from an idle open handle.
  *
  * @param ctx - plugin context.
  * @param id - the session id.
@@ -389,10 +390,9 @@ function livenessOf(ctx, id) {
 /**
  * Delete one session lineage.
  *
- * The order matters: every target is checked for liveness before anything is
- * removed, the durable directories go first, and the registry references are
- * dropped afterwards — a failure partway leaves the session visible in the UI,
- * which is the recoverable direction.
+ * Forced: the durable directories go first, then the registry references, and
+ * a live Session only appears in the result as a note. A failure partway leaves
+ * the session visible in the UI, which is the recoverable direction.
  *
  * @param ctx - plugin context.
  * @param config - the row config.
@@ -405,10 +405,11 @@ async function deleteLineage(ctx, config, rootId) {
 	for (const snapshot of snapshots) headers.set(snapshot.header.id, snapshot.header)
 
 	const targets = lineageOf(headers, rootId)
-	const running = targets.filter((id) => livenessOf(ctx, id) === 'running')
-	if (running.length > 0) return { ok: false, reason: 'active', ids: running }
-	const open = targets.filter((id) => livenessOf(ctx, id) === 'open')
-	if (open.length > 0) return { ok: false, reason: 'open', ids: open }
+	const live = []
+	for (const id of targets) {
+		const state = livenessOf(ctx, id)
+		if (state !== null) live.push({ id, state })
+	}
 
 	const present = targets.filter((id) => headers.has(id))
 	if (present.length === 0) return { ok: false, reason: 'unknown', ids: [rootId] }
@@ -443,7 +444,7 @@ async function deleteLineage(ctx, config, rootId) {
 
 	return removed.length === 0
 		? { ok: false, reason: 'unlink-failed', ids: present, failed }
-		: { ok: true, removed, failed }
+		: { ok: true, removed, failed, live }
 }
 
 /**
