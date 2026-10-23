@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "description": "DeepSeek Harness 界面套件：一个 bundle 包，十五个可独立停用的组件包，共享一套 --dshui-* 设计令牌。",
+  "icon": "./icon.png",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -26,6 +27,7 @@
   "files": [
     "lib",
     "locale",
+    "icon.png",
     "cordis.patch.yml",
     "README.md"
   ],
