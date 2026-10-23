@@ -1,0 +1,1763 @@
+/**
+ * dsh-ui-copy component — skill-explorer
+ * (migrated from `@linxin666/dsh-client-ui-skill-explorer`).
+ *
+ * The skill center: a sidebar row and a center-column panel that list every
+ * loaded skill grouped by source (bundled / project / user / custom / runtime),
+ * show which ones the model can invoke, and let the user switch, create, edit
+ * and delete them. The panel id stays `skill-explorer`, which the sidebar
+ * button component's own ledger resolves against.
+ *
+ * Where the data comes from: the host half owns the scan and the writes
+ * (`/dsh-ui-copy/skill-explorer/...`, with the pre-suite
+ * `/api/dsh-skill-explorer/...` paths kept as aliases). This half only speaks
+ * to those routes, document-relative on purpose: the harness serves the GUI
+ * with `<base href="./">`, so a root-absolute path escapes a sub-path
+ * deployment and the request never reaches the plugin's route.
+ *
+ * The panel is a React surface, not DOM rewriting: the sidebar row
+ * (`sidebar.panellist`) and the page (`main`) are registered slots, exactly the
+ * seats the standalone plugin used, and the layout service is the only thing
+ * that decides which of them is on screen.
+ */
+function dshuiComponent_skill_explorer(rt) {
+  const React = rt.require('react')
+  if (React === null || typeof React.createElement !== 'function') {
+    rt.warn('react is not in this boot graph; component skipped')
+    return
+  }
+
+  // The migrated body came from a bundle that named its React import `react`
+  // (lowercase) and used `react.useState` throughout, while the guards above use
+  // the conventional capitalised binding. Both spellings are kept pointing at the
+  // same module, because a single missed rename renders as `react is not defined`
+  // the first time the skill panel opens.
+  const react = React
+
+  const Fragment = React.Fragment
+
+  /**
+   * JSX call adapter.
+   *
+   * The panel's markup arrives compiled as `jsx(type, props, key)` /
+   * `jsxs(type, props, key)` calls, with the children inside the props object
+   * and the key as the third argument. Both forward to `createElement` after
+   * lifting `children` out and folding the key back into the props, which keeps
+   * the compiled shapes as they are.
+   *
+   * @param type - element type or component.
+   * @param props - the compiled props object, children included.
+   * @param key - the compiled list key, when the element has one.
+   * @returns the React element.
+   */
+  function jsx(type, props, key) {
+    const source = props === null || props === undefined ? {} : props
+    const { children, ...rest } = source
+    if (key !== undefined) rest.key = key
+    return React.createElement(type, rest, children)
+  }
+
+  /** The static-children variant; the adapter handles both shapes identically. */
+  function jsxs(type, props, key) {
+    return jsx(type, props, key)
+  }
+
+  /** Locale namespace this component owns. */
+  const NS = 'dsh-skill-explorer'
+
+  /**
+   * Skill center API client (browser half). Talks to the host route family over
+   * same-origin fetch; the host enforces the trust fence on its side.
+   */
+  /**
+   * Route paths mirrored from the host half (`lib/host/skill-explorer.js`).
+   *
+   * DOCUMENT-RELATIVE on purpose (no leading slash): the harness serves the GUI
+   * with `<base href="./">`, so a sub-path deployment (`/dsh/dsh/`) is the
+   * entry directory. A root-absolute path escapes that prefix and the request
+   * never reaches the plugin's route (issue #1707); the official client posts
+   * its own routes the same way (`api/session.list`). The host also keeps the
+   * pre-suite `/api/dsh-skill-explorer/...` paths as aliases.
+   */
+  const API = {
+    list: "dsh-ui-copy/skill-explorer/list",
+    read: "dsh-ui-copy/skill-explorer/read",
+    setEnabled: "dsh-ui-copy/skill-explorer/set-enabled",
+    setProviderEnabled: "dsh-ui-copy/skill-explorer/set-provider-enabled",
+    create: "dsh-ui-copy/skill-explorer/create",
+    update: "dsh-ui-copy/skill-explorer/update",
+    delete: "dsh-ui-copy/skill-explorer/delete"
+  };
+  /** One thrown API error with the host-provided message. */
+  var ApiError = class extends Error {};
+  /** Skill center API client. */
+  var SkillApi = class {
+    /** Fetch the grouped skill list. */
+    async list(cwd) {
+      const url = typeof cwd === "string" && cwd.trim() !== "" ? `${API.list}?cwd=${encodeURIComponent(cwd)}` : API.list;
+      return this.request(url);
+    }
+    /** Enable or disable a skill (rewrites disable-model-invocation). */
+    async setEnabled(name, path, enabled) {
+      return this.request(API.setEnabled, {
+        method: "POST",
+        body: {
+          name,
+          path,
+          enabled
+        }
+      });
+    }
+    /**
+     * Switch a plugin-provided skill off/on in this panel.
+     *
+     * There is no path to certify: the row's file belongs to the provider and
+     * sits outside the roots this panel scans, so the host records the
+     * (provider, name) pair in the panel's own store instead of rewriting a
+     * SKILL.md the panel does not own. The host answers with the stored state;
+     * the invocable view itself comes from the next list call.
+     */
+    async setProviderEnabled(name, provider, enabled) {
+      return this.request(API.setProviderEnabled, {
+        method: "POST",
+        body: {
+          name,
+          provider,
+          enabled
+        }
+      });
+    }
+    /** Create a skill file under the user or project root. */
+    async create(payload) {
+      return this.request(API.create, {
+        method: "POST",
+        body: payload
+      });
+    }
+    /** One skill's editable fields and body, resolved from the panel's path. */
+    async read(name, path) {
+      return this.request(`${API.read}?name=${encodeURIComponent(name)}&path=${encodeURIComponent(path)}`);
+    }
+    /** Rewrite an existing skill file in place (name and location unchanged). */
+    async update(payload) {
+      return this.request(API.update, {
+        method: "POST",
+        body: payload
+      });
+    }
+    /** Delete a skill (moves it into .trash). */
+    async remove(name, path) {
+      return this.request(API.delete, {
+        method: "POST",
+        body: {
+          name,
+          path
+        }
+      });
+    }
+    async request(path, options = {}) {
+      const headers = options.body === void 0 ? new Headers() : new Headers({ "content-type": "application/json" });
+      const response = await fetch(path, {
+        method: options.method ?? "GET",
+        headers,
+        body: options.body === void 0 ? void 0 : JSON.stringify(options.body)
+      });
+      let body;
+      try {
+        body = await response.json();
+      } catch {
+        body = void 0;
+      }
+      if (!response.ok) throw new ApiError(typeof body === "object" && body !== null && typeof body.error === "string" ? body.error : `HTTP ${response.status}`);
+      return body;
+    }
+  };
+  /** Stable id shared by the sidebar panel row and the main-slot page. */
+  const SKILL_EXPLORER_PANEL_ID = "skill-explorer";
+  /** The panel state owner the sidebar row and the view both read. */
+  var PanelController = class {
+    deps;
+    panelOpen = false;
+    activeTab = "skills";
+    editing;
+    listeners = new Set();
+    /** Cached so getSnapshot stays referentially stable between changes. */
+    snapshot = {
+      panelOpen: false,
+      activeTab: "skills",
+      editing: void 0
+    };
+    constructor(deps = {}) {
+      this.deps = deps;
+    }
+    getSnapshot() {
+      return this.snapshot;
+    }
+    subscribe(fn) {
+      this.listeners.add(fn);
+      return () => {
+        this.listeners.delete(fn);
+      };
+    }
+    /**
+     * Show the panel. The layout owns which panel the column renders, so the
+     * state flip and the selection travel together; the selection is requested
+     * after the snapshot flips, so a subscriber never observes "open" while the
+     * shell still shows the conversation.
+     */
+    open() {
+      if (this.panelOpen) return;
+      this.panelOpen = true;
+      this.commit();
+      this.selectPanel(SKILL_EXPLORER_PANEL_ID);
+    }
+    /** Return the column to the conversation, asking the layout explicitly. */
+    close() {
+      if (!this.panelOpen) return;
+      this.panelOpen = false;
+      this.commit();
+      this.selectPanel(null);
+    }
+    toggle() {
+      if (this.panelOpen) this.close();
+      else this.open();
+    }
+    /**
+     * Reflect a selection made outside this controller (the user clicked another
+     * sidebar row, or the layout dropped the panel id), keeping `panelOpen`
+     * aligned with what the column actually shows.
+     * @param panelId - the layout's current panel id, or null for the conversation.
+     */
+    syncPanelSelection(panelId) {
+      const open = panelId === SKILL_EXPLORER_PANEL_ID;
+      if (open === this.panelOpen) return;
+      this.panelOpen = open;
+      this.commit();
+    }
+    /** Switch tabs without touching the editor target. */
+    setActiveTab(tab) {
+      if (this.activeTab === tab) return;
+      this.activeTab = tab;
+      this.commit();
+    }
+    /** Open the editor for one row; the edit tab appears while it is set. */
+    openEditor(skill) {
+      this.editing = skill;
+      this.activeTab = "edit";
+      this.commit();
+    }
+    /** Leave the editor; the list remounts and refetches the saved copy. */
+    closeEditor() {
+      this.editing = void 0;
+      this.activeTab = "skills";
+      this.commit();
+    }
+    commit() {
+      this.snapshot = {
+        panelOpen: this.panelOpen,
+        activeTab: this.activeTab,
+        editing: this.editing
+      };
+      for (const fn of [...this.listeners]) fn();
+    }
+    /** Ask the layout to select a panel; a shell without the face is a no-op. */
+    selectPanel(panelId) {
+      try {
+        this.deps.panel?.select(panelId);
+      } catch {}
+    }
+  };
+  /**
+   * skill-explorer surface copy: zh is the key source, en mirrors every key.
+   */
+  const zh = {
+    "entry.label": "技能中心",
+    "entry.tooltip": "技能中心：浏览与管理已加载的 skill",
+    "panel.title": "技能中心",
+    "tab.list": "技能",
+    "tab.create": "创建",
+    "tab.edit": "编辑技能",
+    "group.bundled": "系统内置",
+    "group.project-dsh": "项目技能（.dsh/skills）",
+    "group.project-agents": "项目技能（.agents/skills）",
+    "group.custom": "自定义目录",
+    "group.user-dsh": "用户技能（~/.dsh/skills）",
+    "group.user-agents": "用户技能（~/.agents/skills）",
+    "group.runtime": "运行时注册",
+    "groupHint.bundled": "DSH 内置与插件随附的全局技能",
+    "groupHint.project-dsh": "存放于项目目录，作用于所在项目",
+    "groupHint.project-agents": "存放于项目目录，作用于对应项目",
+    "groupHint.custom": "customSkillDirs 自定义配置目录",
+    "groupHint.user-dsh": "全局技能（~/.dsh/skills），本机所有项目共享",
+    "groupHint.user-agents": "全局技能（~/.agents/skills），本机所有项目共享",
+    "groupHint.runtime": "插件运行时代码内嵌注册",
+    "list.loading": "加载中…",
+    "list.loadFailed": "加载失败：{error}",
+    "list.empty": "当前没有已加载的 skill。",
+    "list.count": "{count} 个",
+    "list.when": "适用：{when}",
+    "list.invokable": "可调用：{marks}",
+    "list.invokableTooltip": "模型可自动调用该技能；手动 /skill 指令不受影响",
+    "list.linked": "软链接",
+    "list.noFile": "无本地文件",
+    "list.noFileTooltip": "该技能由插件在运行时注册或随包提供，没有 SKILL.md 文件",
+    "list.noFileHint": "该技能没有本地 SKILL.md 文件，无法在此启用/禁用、编辑或删除。",
+    "list.providerFile": "由插件提供",
+    "list.providerFileTooltip": "该技能的文件由插件 provider 提供，未落在本面板扫描的技能根目录下",
+    "list.providerFileHint": "该技能由插件提供、确有 SKILL.md 文件，但不在本面板扫描的技能根目录下，因此无法在此编辑或删除；开关只改变本面板的可调用视图，不会改变模型实际加载的技能。",
+    "list.mark.model": "模型",
+    "list.mark.user": "用户",
+    "provider.filesystem": "文件系统",
+    "provider.tooltip": "技能来源：{provider}",
+    "list.enabled": "已启用：模型可调用（点击禁用）",
+    "list.disabled": "已禁用：模型不可调用（点击启用）",
+    "list.toggleFailed": "操作失败：{error}",
+    "list.delete": "删除",
+    "list.deleteConfirm": "删除技能「{name}」？将移入 .trash。",
+    "list.deleteFailed": "删除失败：{error}",
+    "list.edit": "编辑",
+    "create.root": "创建位置",
+    "create.root.user": "用户技能（~/.dsh/skills，所有项目可用）",
+    "create.root.project": "项目技能（当前项目 .dsh/skills）",
+    "create.name": "技能名（kebab-case，与文件目录同名）",
+    "create.namePlaceholder": "如 my-workflow",
+    "create.description": "描述（模型判断触发条件的依据）",
+    "create.whenToUse": "适用场景（可选）",
+    "create.content": "指令内容（SKILL.md 正文，Markdown）",
+    "create.submit": "创建技能",
+    "create.empty": "技能名/描述/内容不能为空",
+    "create.created": "已创建：{path}",
+    "create.failed": "创建失败：{error}",
+    "create.note": "创建后立即生效（skill-filesystem 会热扫描）。内容会作为指令注入模型上下文——不要写入敏感信息。",
+    "edit.name": "技能名（不可修改）",
+    "edit.loading": "正在读取技能内容…",
+    "edit.loadFailed": "读取失败：{error}",
+    "edit.submit": "保存修改",
+    "edit.back": "返回列表",
+    "edit.failed": "保存失败：{error}",
+    "edit.note": "只改描述、适用场景与正文：技能名、位置和启用状态保持不变。保存后立即生效（skill-filesystem 会热扫描）。",
+    "filter.workspaceLabel": "工作区",
+    "filter.workspaceAll": "全部工作区",
+    "filter.workspaceCurrent": "当前工作区 ({name})",
+    "filter.searchLabel": "搜索",
+    "filter.searchPlaceholder": "按名称或描述筛选",
+    "filter.empty": "没有匹配「{query}」的技能",
+    "filter.emptyWorkspace": "当前筛选下没有技能。",
+    "workspace.isolated": "工作区隔离",
+    "workspace.isolatedHint": "该技能属于工作区「{workspace}」，在当前会话上下文隔离不生效",
+    "refresh": "刷新"
+  };
+  const en = {
+    "entry.label": "Skill Center",
+    "entry.tooltip": "Skill center: browse and manage loaded skills",
+    "panel.title": "Skill Center",
+    "tab.list": "Skills",
+    "tab.create": "Create",
+    "tab.edit": "Edit skill",
+    "group.bundled": "System bundled",
+    "group.project-dsh": "Project skills (.dsh/skills)",
+    "group.project-agents": "Project skills (.agents/skills)",
+    "group.custom": "Custom directories",
+    "group.user-dsh": "User skills (~/.dsh/skills)",
+    "group.user-agents": "User skills (~/.agents/skills)",
+    "group.runtime": "Runtime registered",
+    "groupHint.bundled": "Global skills shipped with DSH and its plugins",
+    "groupHint.project-dsh": "Located in the project directory, scoped to its workspace",
+    "groupHint.project-agents": "Located in the project directory, scoped to its workspace",
+    "groupHint.custom": "customSkillDirs config",
+    "groupHint.user-dsh": "Global skills (~/.dsh/skills), shared across all projects",
+    "groupHint.user-agents": "Global skills (~/.agents/skills), shared across all projects",
+    "groupHint.runtime": "Skills registered at runtime by plugins",
+    "list.loading": "Loading…",
+    "list.loadFailed": "Failed to load: {error}",
+    "list.empty": "No skills loaded yet.",
+    "list.count": "{count}",
+    "list.when": "When: {when}",
+    "list.invokable": "Invokable: {marks}",
+    "list.invokableTooltip": "The model can invoke this skill automatically; manual /skill commands remain available",
+    "list.linked": "symlinked",
+    "list.noFile": "No local file",
+    "list.noFileTooltip": "This skill is registered at runtime or shipped by a plugin, so it has no SKILL.md file",
+    "list.noFileHint": "This skill has no local SKILL.md file, so it cannot be enabled/disabled, edited, or deleted here.",
+    "list.providerFile": "Provided by plugin",
+    "list.providerFileTooltip": "This skill has a file supplied by its plugin provider, outside the skill roots this panel scans",
+    "list.providerFileHint": "This skill is supplied by a plugin and does have a SKILL.md file, but it sits outside the skill roots this panel scans, so it cannot be edited or deleted here. Its switch only changes what this panel considers invocable; the model still loads the skill.",
+    "list.mark.model": "model",
+    "list.mark.user": "user",
+    "provider.filesystem": "Filesystem",
+    "provider.tooltip": "Skill source: {provider}",
+    "list.enabled": "Enabled: invokable by the model (click to disable)",
+    "list.disabled": "Disabled: not invokable by the model (click to enable)",
+    "list.toggleFailed": "Operation failed: {error}",
+    "list.delete": "Delete",
+    "list.deleteConfirm": "Delete skill \"{name}\"? It moves into .trash.",
+    "list.deleteFailed": "Delete failed: {error}",
+    "list.edit": "Edit",
+    "create.root": "Location",
+    "create.root.user": "User skills (~/.dsh/skills, available to all projects)",
+    "create.root.project": "Project skills (current project .dsh/skills)",
+    "create.name": "Skill name (kebab-case, same as the directory name)",
+    "create.namePlaceholder": "e.g. my-workflow",
+    "create.description": "Description (how the model decides when to trigger)",
+    "create.whenToUse": "When to use (optional)",
+    "create.content": "Instructions (SKILL.md body, Markdown)",
+    "create.submit": "Create skill",
+    "create.empty": "Skill name/description/content must not be empty",
+    "create.created": "Created: {path}",
+    "create.failed": "Create failed: {error}",
+    "create.note": "The skill takes effect immediately (skill-filesystem hot-scans). Its content is injected into the model context as instructions — do not put sensitive information in it.",
+    "edit.name": "Skill name (fixed)",
+    "edit.loading": "Loading the skill…",
+    "edit.loadFailed": "Failed to load: {error}",
+    "edit.submit": "Save changes",
+    "edit.back": "Back to list",
+    "edit.failed": "Save failed: {error}",
+    "edit.note": "Only the description, when-to-use, and body change: the name, location, and enabled state stay as they are. The edit takes effect immediately (skill-filesystem hot-scans).",
+    "filter.workspaceLabel": "Workspace",
+    "filter.workspaceAll": "All workspaces",
+    "filter.workspaceCurrent": "Current workspace ({name})",
+    "filter.searchLabel": "Search",
+    "filter.searchPlaceholder": "Filter by name or description",
+    "filter.empty": "No skills match \"{query}\"",
+    "filter.emptyWorkspace": "No skills under the current filter.",
+    "workspace.isolated": "Workspace isolated",
+    "workspace.isolatedHint": "This skill belongs to workspace \"{workspace}\" and is isolated from the current session context",
+    "refresh": "Refresh"
+  };
+  /**
+   * Shared panel helpers: the active-dictionary pick (document-language based)
+   * and the tiny {name} interpolator. All copy stays in locales.ts.
+   */
+  /** Active dictionary, picked by the document language at call time. */
+  function dictionary() {
+    return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? { ...en } : { ...zh };
+  }
+  /**
+   * SDK translate seat wired by the browser apply() once ctx.locale is bound
+   * (setRuntimeTranslate): reads the ACTIVE locale at call time, so plain-DOM
+   * surfaces follow a runtime language switch. The document-language pick stays
+   * as the unwired fallback (locale service absent, module-scope early callers).
+   */
+  let runtimeT;
+  /** Wire the SDK translate seat; pass undefined to restore the document-language pick. */
+  function setRuntimeTranslate(t) {
+    runtimeT = t;
+  }
+  /** Translate a key with optional {name} template params (current language). */
+  function tt(key, values) {
+    if (runtimeT !== void 0) return runtimeT(key, values);
+    let text = dictionary()[key] ?? key;
+    if (values !== void 0) for (const [name, value] of Object.entries(values)) text = text.replaceAll(`{${name}}`, String(value));
+    return text;
+  }
+  /**
+   * The panel stylesheet.
+   *
+   * Authored against the suite role tokens: the shipped aliases this panel
+   * used to read are now `--dshui-*` roles, the input fill is the second
+   * surface role, the code family is the mono token, and every radius, gap,
+   * padding, font size, weight, line height and transition comes from the
+   * token scale. Class names keep their CSS-module hash, so the selectors
+   * below are the ones the components use, unchanged.
+   */
+  const css = `
+    .ptK59a_view { height: 100%; min-height: 0; overflow: hidden }
+
+    .ptK59a_panel {
+      background: var(--dshui-surface-base);
+      min-width: 0;
+      height: 100%;
+      min-height: 0;
+      color: var(--dshui-text-primary);
+      font-family: var(--dshui-font-family);
+      flex-direction: column;
+      gap: var(--dshui-space-4);
+      padding: var(--dshui-space-5) var(--dshui-space-6) var(--dshui-space-6);
+      display: flex;
+    }
+
+    .ptK59a_panelHeader { flex: none; align-items: center; gap: var(--dshui-space-4); display: flex }
+
+    .ptK59a_panelTitle {
+      color: var(--dshui-text-primary);
+      white-space: nowrap;
+      flex: 1;
+      margin: 0;
+      font-size: var(--dshui-text-size-lg);
+      font-weight: var(--dshui-weight-semibold);
+    }
+
+    .ptK59a_tabBar { border-bottom: 1px solid var(--dshui-border-1); flex: none; gap: var(--dshui-space-1); display: flex }
+
+    .ptK59a_tab {
+      color: var(--dshui-text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      background: 0 0;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: var(--dshui-radius-sm) var(--dshui-radius-sm) 0 0;
+      padding: var(--dshui-space-3) var(--dshui-space-5);
+      font-size: var(--dshui-text-size-md);
+    }
+
+    .ptK59a_tab:hover { color: var(--dshui-text-primary); background: var(--dshui-surface-hover) }
+
+    .ptK59a_tab[data-active] {
+      color: var(--dshui-text-primary);
+      border-bottom-color: var(--dshui-business);
+      font-weight: var(--dshui-weight-semibold);
+    }
+
+    .ptK59a_panelContent { flex-direction: column; flex: 1; min-height: 0; display: flex; overflow: hidden }
+    .ptK59a_fillBody { flex-direction: column; flex: 1; gap: var(--dshui-space-4); min-height: 0; display: flex; overflow: hidden }
+    .ptK59a_tabBody { flex-direction: column; flex: 1; gap: var(--dshui-space-4); min-height: 0; display: flex; overflow-y: auto }
+    .ptK59a_toolbar { flex-wrap: wrap; flex: none; align-items: center; gap: var(--dshui-space-4); display: flex }
+
+    .ptK59a_search {
+      min-width: 120px;
+      color: var(--dshui-text-primary);
+      background: var(--dshui-surface-2);
+      border: 1px solid var(--dshui-border-2);
+      border-radius: var(--dshui-radius-sm);
+      outline: none;
+      flex: 0 260px;
+      padding: var(--dshui-space-3) var(--dshui-space-4);
+      font-size: var(--dshui-text-size-md);
+    }
+
+    .ptK59a_search::placeholder { color: var(--dshui-text-tertiary) }
+
+    .ptK59a_select {
+      color: var(--dshui-text-primary);
+      background: var(--dshui-surface-2);
+      border: 1px solid var(--dshui-border-2);
+      border-radius: var(--dshui-radius-sm);
+      outline: none;
+      padding: var(--dshui-space-3) var(--dshui-space-4);
+      font-size: var(--dshui-text-size-md);
+    }
+
+    .ptK59a_toolbarSpacer { flex: 1 }
+
+    .ptK59a_checkboxLabel {
+      color: var(--dshui-text-secondary);
+      cursor: pointer;
+      align-items: center;
+      gap: var(--dshui-space-3);
+      font-size: var(--dshui-text-size-sm);
+      display: inline-flex;
+    }
+
+    .ptK59a_ghostButton {
+      color: var(--dshui-text-primary);
+      border: 1px solid var(--dshui-border-2);
+      cursor: pointer;
+      white-space: nowrap;
+      background: 0 0;
+      border-radius: var(--dshui-radius-sm);
+      padding: var(--dshui-space-2) var(--dshui-space-5);
+      font-size: var(--dshui-text-size-sm);
+    }
+
+    .ptK59a_ghostButton:hover:not(:disabled) { background: var(--dshui-surface-hover) }
+    .ptK59a_ghostButton:disabled { opacity: .45; cursor: default }
+
+    .ptK59a_formActions { align-items: center; gap: var(--dshui-space-4); display: flex }
+
+    .ptK59a_primaryButton {
+      color: var(--dshui-text-on-brand);
+      background: var(--dshui-brand-fill);
+      cursor: pointer;
+      white-space: nowrap;
+      border: none;
+      border-radius: var(--dshui-radius-sm);
+      align-self: flex-start;
+      padding: var(--dshui-space-3) var(--dshui-space-5);
+      font-size: var(--dshui-text-size-md);
+      font-weight: var(--dshui-weight-semibold);
+    }
+
+    .ptK59a_primaryButton:hover:not(:disabled) { background: var(--dshui-brand-hover) }
+    .ptK59a_primaryButton:disabled { opacity: .5; cursor: default }
+
+    .ptK59a_linkButton {
+      color: var(--dshui-business);
+      cursor: pointer;
+      white-space: nowrap;
+      background: 0 0;
+      border: none;
+      padding: 0;
+      font-size: var(--dshui-text-size-sm);
+    }
+
+    .ptK59a_linkButton:hover:not(:disabled) { text-decoration: underline }
+    .ptK59a_linkButton:disabled { opacity: .45; cursor: default }
+    .ptK59a_linkButton[data-danger] { color: var(--dshui-danger) }
+
+    .ptK59a_banner {
+      border: 1px solid var(--dshui-border-2);
+      color: var(--dshui-text-secondary);
+      overflow-wrap: anywhere;
+      border-radius: var(--dshui-radius-sm);
+      padding: var(--dshui-space-4) var(--dshui-space-5);
+      font-size: var(--dshui-text-size-sm);
+      line-height: var(--dshui-line-normal);
+    }
+
+    .ptK59a_banner[data-kind=ok] { color: var(--dshui-success); border-color: var(--dshui-success) }
+    .ptK59a_banner[data-kind=error] { color: var(--dshui-danger); border-color: var(--dshui-danger) }
+
+    .ptK59a_empty {
+      text-align: center;
+      color: var(--dshui-text-tertiary);
+      padding: var(--dshui-space-7) var(--dshui-space-5);
+      font-size: var(--dshui-text-size-sm);
+    }
+
+    .ptK59a_list {
+      border: 1px solid var(--dshui-border-1);
+      border-radius: var(--dshui-radius-md);
+      flex-direction: column;
+      flex: 1;
+      gap: var(--dshui-space-5);
+      min-height: 0;
+      padding: var(--dshui-space-4) var(--dshui-space-5) var(--dshui-space-4);
+      display: flex;
+      overflow-y: auto;
+    }
+
+    .ptK59a_group { flex-direction: column; gap: var(--dshui-space-3); display: flex }
+    .ptK59a_groupTitle { color: var(--dshui-text-primary); margin: 0; font-size: var(--dshui-text-size-md); font-weight: var(--dshui-weight-semibold) }
+    .ptK59a_count { color: var(--dshui-text-secondary); margin-left: var(--dshui-space-3); font-weight: var(--dshui-weight-regular) }
+    .ptK59a_groupHint { color: var(--dshui-text-secondary); margin: 0; font-size: var(--dshui-text-size-xs) }
+
+    .ptK59a_skillRow { border-bottom: 1px solid var(--dshui-border-1); padding: var(--dshui-space-4) 0 }
+    .ptK59a_skillRow:last-child { border-bottom: none }
+    .ptK59a_skillRow:hover { background: var(--dshui-surface-hover) }
+
+    .ptK59a_skillHeader { flex-wrap: wrap; align-items: center; gap: var(--dshui-space-4); display: flex }
+
+    .ptK59a_skillName {
+      color: var(--dshui-text-primary);
+      font-size: var(--dshui-text-size-md);
+      font-weight: var(--dshui-weight-semibold);
+      font-family: var(--dshui-font-mono);
+    }
+
+    .ptK59a_badge {
+      border: 1px solid var(--dshui-border-2);
+      color: var(--dshui-text-secondary);
+      white-space: nowrap;
+      border-radius: var(--dshui-radius-pill);
+      padding: var(--dshui-space-1) var(--dshui-space-4);
+      font-size: var(--dshui-text-size-xs);
+      line-height: var(--dshui-line-normal);
+      display: inline-block;
+    }
+
+    .ptK59a_badgeWorkspace { color: var(--dshui-text-secondary) }
+    .ptK59a_badgeInvokable { color: var(--dshui-success); border-color: var(--dshui-success) }
+    .ptK59a_badgeIsolated { color: var(--dshui-warn); border-color: var(--dshui-warn) }
+    .ptK59a_skillIsolated { opacity: .76 }
+    .ptK59a_skillIsolated:hover { opacity: .98 }
+
+    .ptK59a_switch {
+      cursor: pointer;
+      background: 0 0;
+      border: none;
+      border-radius: var(--dshui-radius-pill);
+      align-items: center;
+      margin-left: auto;
+      padding: var(--dshui-space-1);
+      display: inline-flex;
+    }
+
+    .ptK59a_switch:disabled { opacity: .45; cursor: default }
+
+    .ptK59a_switchTrack {
+      background: var(--dshui-border-2);
+      border-radius: var(--dshui-radius-pill);
+      flex: none;
+      width: 30px;
+      height: 16px;
+      transition: background var(--dshui-duration-base);
+      position: relative;
+    }
+
+    .ptK59a_switchThumb {
+      background: var(--dshui-surface-base);
+      border-radius: var(--dshui-radius-circle);
+      width: 12px;
+      height: 12px;
+      transition: left var(--dshui-duration-base);
+      position: absolute;
+      top: 2px;
+      left: 2px;
+    }
+
+    .ptK59a_switch[aria-checked=true] .ptK59a_switchTrack { background: var(--dshui-success) }
+    .ptK59a_switch[aria-checked=true] .ptK59a_switchThumb { left: 16px }
+    .ptK59a_deleteButton { margin-left: var(--dshui-space-2) }
+
+    .ptK59a_skillDesc { color: var(--dshui-text-primary); margin: var(--dshui-space-3) 0 0; font-size: var(--dshui-text-size-sm); line-height: var(--dshui-line-normal) }
+    .ptK59a_skillWhen { color: var(--dshui-text-secondary); margin: var(--dshui-space-2) 0 0; font-size: var(--dshui-text-size-xs) }
+
+    .ptK59a_skillPath {
+      color: var(--dshui-text-tertiary);
+      font-size: var(--dshui-text-size-xs);
+      font-family: var(--dshui-font-mono);
+      word-break: break-all;
+      margin: var(--dshui-space-3) 0 0;
+    }
+
+    .ptK59a_form { flex-direction: column; gap: var(--dshui-space-4); max-width: 640px; display: flex }
+    .ptK59a_field { flex-direction: column; gap: var(--dshui-space-2); display: flex }
+    .ptK59a_fieldLabel { color: var(--dshui-text-secondary); font-size: var(--dshui-text-size-sm); font-weight: var(--dshui-weight-semibold) }
+
+    .ptK59a_input {
+      color: var(--dshui-text-primary);
+      background: var(--dshui-surface-2);
+      border: 1px solid var(--dshui-border-2);
+      resize: vertical;
+      border-radius: var(--dshui-radius-sm);
+      outline: none;
+      padding: var(--dshui-space-3) var(--dshui-space-4);
+      font-family: inherit;
+      font-size: var(--dshui-text-size-md);
+    }
+
+    .ptK59a_input:focus { border-color: var(--dshui-business) }
+    .ptK59a_input::placeholder { color: var(--dshui-text-tertiary) }
+    .ptK59a_input:disabled { opacity: .55 }
+    .ptK59a_textarea { min-height: 140px; font-family: var(--dshui-font-mono) }
+    .ptK59a_note { color: var(--dshui-text-tertiary); margin: 0; font-size: var(--dshui-text-size-xs); line-height: var(--dshui-line-loose) }
+  `
+
+  // The sheet lives in the runtime slot of this component.
+  rt.style('skill-explorer', css)
+
+  var panelCss = {
+    "badge": "ptK59a_badge",
+    "badgeInvokable": "ptK59a_badgeInvokable",
+    "badgeIsolated": "ptK59a_badgeIsolated",
+    "badgeWorkspace": "ptK59a_badgeWorkspace",
+    "banner": "ptK59a_banner",
+    "checkboxLabel": "ptK59a_checkboxLabel",
+    "count": "ptK59a_count",
+    "deleteButton": "ptK59a_deleteButton",
+    "empty": "ptK59a_empty",
+    "field": "ptK59a_field",
+    "fieldLabel": "ptK59a_fieldLabel",
+    "fillBody": "ptK59a_fillBody",
+    "form": "ptK59a_form",
+    "formActions": "ptK59a_formActions",
+    "ghostButton": "ptK59a_ghostButton",
+    "group": "ptK59a_group",
+    "groupHint": "ptK59a_groupHint",
+    "groupTitle": "ptK59a_groupTitle",
+    "input": "ptK59a_input",
+    "linkButton": "ptK59a_linkButton",
+    "list": "ptK59a_list",
+    "note": "ptK59a_note",
+    "panel": "ptK59a_panel",
+    "panelContent": "ptK59a_panelContent",
+    "panelHeader": "ptK59a_panelHeader",
+    "panelTitle": "ptK59a_panelTitle",
+    "primaryButton": "ptK59a_primaryButton",
+    "search": "ptK59a_search",
+    "select": "ptK59a_select",
+    "skillDesc": "ptK59a_skillDesc",
+    "skillHeader": "ptK59a_skillHeader",
+    "skillIsolated": "ptK59a_skillIsolated",
+    "skillName": "ptK59a_skillName",
+    "skillPath": "ptK59a_skillPath",
+    "skillRow": "ptK59a_skillRow",
+    "skillWhen": "ptK59a_skillWhen",
+    "switch": "ptK59a_switch",
+    "switchThumb": "ptK59a_switchThumb",
+    "switchTrack": "ptK59a_switchTrack",
+    "tab": "ptK59a_tab",
+    "tabBar": "ptK59a_tabBar",
+    "tabBody": "ptK59a_tabBody",
+    "textarea": "ptK59a_textarea",
+    "toolbar": "ptK59a_toolbar",
+    "toolbarSpacer": "ptK59a_toolbarSpacer",
+    "view": "ptK59a_view"
+  };
+  /**
+   * Create tab: the new-skill form (user or project root).
+   *
+   * The host's create route needs the workspace the panel is showing, which the
+   * list payload carries. The inactive tab unmounts, so a user who opens this
+   * tab first has no cwd: the first submit resolves it with one list call and
+   * reuses it afterwards.
+   */
+  /** The create tab body. */
+  function CreateTab({ api }) {
+    const [root, setRoot] = react.useState("user");
+    const [name, setName] = react.useState("");
+    const [description, setDescription] = react.useState("");
+    const [whenToUse, setWhenToUse] = react.useState("");
+    const [content, setContent] = react.useState("");
+    const [cwd, setCwd] = react.useState(void 0);
+    const [busy, setBusy] = react.useState(false);
+    const [feedback, setFeedback] = react.useState(void 0);
+    const submit = async (event) => {
+      event.preventDefault();
+      if (name.trim() === "" || description.trim() === "" || content.trim() === "") {
+        setFeedback({
+          text: tt("create.empty"),
+          kind: "error"
+        });
+        return;
+      }
+      setBusy(true);
+      try {
+        const workspace = cwd ?? (await api.list()).cwd;
+        setCwd(workspace);
+        const result = await api.create({
+          root,
+          name: name.trim(),
+          description: description.trim(),
+          whenToUse: whenToUse.trim() || void 0,
+          content,
+          cwd: workspace
+        });
+        setFeedback({
+          text: tt("create.created", { path: result.path }),
+          kind: "ok"
+        });
+        setName("");
+        setDescription("");
+        setWhenToUse("");
+        setContent("");
+      } catch (err) {
+        setFeedback({
+          text: tt("create.failed", { error: err instanceof Error ? err.message : String(err) }),
+          kind: "error"
+        });
+      } finally {
+        setBusy(false);
+      }
+    };
+    return jsx("div", {
+      className: panelCss.tabBody,
+      children: jsxs("form", {
+        className: panelCss.form,
+        onSubmit: (event) => {
+          submit(event);
+        },
+        children: [
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.root")
+            }), jsxs("select", {
+              className: panelCss.select,
+              value: root,
+              onChange: (event) => {
+                setRoot(event.target.value);
+              },
+              children: [jsx("option", {
+                value: "user",
+                children: tt("create.root.user")
+              }), jsx("option", {
+                value: "project",
+                children: tt("create.root.project")
+              })]
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.name")
+            }), jsx("input", {
+              className: panelCss.input,
+              value: name,
+              placeholder: tt("create.namePlaceholder"),
+              onChange: (event) => {
+                setName(event.target.value);
+              }
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.description")
+            }), jsx("input", {
+              className: panelCss.input,
+              value: description,
+              onChange: (event) => {
+                setDescription(event.target.value);
+              }
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.whenToUse")
+            }), jsx("input", {
+              className: panelCss.input,
+              value: whenToUse,
+              onChange: (event) => {
+                setWhenToUse(event.target.value);
+              }
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.content")
+            }), jsx("textarea", {
+              className: `${panelCss.input} ${panelCss.textarea}`,
+              value: content,
+              onChange: (event) => {
+                setContent(event.target.value);
+              }
+            })]
+          }),
+          jsx("button", {
+            type: "submit",
+            className: panelCss.primaryButton,
+            disabled: busy,
+            children: tt("create.submit")
+          }),
+          feedback !== void 0 && jsx("p", {
+            className: panelCss.banner,
+            "data-kind": feedback.kind,
+            children: feedback.text
+          }),
+          jsx("p", {
+            className: panelCss.note,
+            children: tt("create.note")
+          })
+        ]
+      })
+    });
+  }
+  /**
+   * Edit tab: the in-place editor for one skill.
+   *
+   * The list carries metadata only, so the host re-reads the file before the form
+   * is shown and writes it back on save; the name and the location are fixed, and
+   * the enabled state keeps its own control on the row.
+   */
+  /** The edit tab body. */
+  function EditTab({ api, skill, onDone, onCancel }) {
+    const skillPath = skill.path ?? "";
+    const [description, setDescription] = react.useState("");
+    const [whenToUse, setWhenToUse] = react.useState("");
+    const [content, setContent] = react.useState("");
+    const [loading, setLoading] = react.useState(true);
+    const [busy, setBusy] = react.useState(false);
+    const [error, setError] = react.useState(void 0);
+    react.useEffect(() => {
+      let cancelled = false;
+      const load = async () => {
+        try {
+          const current = await api.read(skill.name, skillPath);
+          if (cancelled) return;
+          setDescription(current.description);
+          setWhenToUse(current.whenToUse ?? "");
+          setContent(current.content);
+          setError(void 0);
+        } catch (err) {
+          if (cancelled) return;
+          setError(tt("edit.loadFailed", { error: err instanceof Error ? err.message : String(err) }));
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      };
+      load();
+      return () => {
+        cancelled = true;
+      };
+    }, [
+      api,
+      skill.name,
+      skillPath
+    ]);
+    const submit = async (event) => {
+      event.preventDefault();
+      if (description.trim() === "" || content.trim() === "") {
+        setError(tt("create.empty"));
+        return;
+      }
+      setBusy(true);
+      setError(void 0);
+      try {
+        await api.update({
+          name: skill.name,
+          path: skillPath,
+          description: description.trim(),
+          whenToUse: whenToUse.trim() || void 0,
+          content
+        });
+        onDone();
+      } catch (err) {
+        setError(tt("edit.failed", { error: err instanceof Error ? err.message : String(err) }));
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (loading) return jsx("div", {
+      className: panelCss.tabBody,
+      children: jsx("p", {
+        className: panelCss.empty,
+        children: tt("edit.loading")
+      })
+    });
+    return jsx("div", {
+      className: panelCss.tabBody,
+      children: jsxs("form", {
+        className: panelCss.form,
+        onSubmit: (event) => {
+          submit(event);
+        },
+        children: [
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("edit.name")
+            }), jsx("input", {
+              className: panelCss.input,
+              value: skill.name,
+              readOnly: true
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.description")
+            }), jsx("input", {
+              className: panelCss.input,
+              value: description,
+              onChange: (event) => {
+                setDescription(event.target.value);
+              }
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.whenToUse")
+            }), jsx("input", {
+              className: panelCss.input,
+              value: whenToUse,
+              onChange: (event) => {
+                setWhenToUse(event.target.value);
+              }
+            })]
+          }),
+          jsxs("label", {
+            className: panelCss.field,
+            children: [jsx("span", {
+              className: panelCss.fieldLabel,
+              children: tt("create.content")
+            }), jsx("textarea", {
+              className: `${panelCss.input} ${panelCss.textarea}`,
+              value: content,
+              onChange: (event) => {
+                setContent(event.target.value);
+              }
+            })]
+          }),
+          jsxs("div", {
+            className: panelCss.formActions,
+            children: [jsx("button", {
+              type: "button",
+              className: panelCss.ghostButton,
+              disabled: busy,
+              onClick: onCancel,
+              children: tt("edit.back")
+            }), jsx("button", {
+              type: "submit",
+              className: panelCss.primaryButton,
+              disabled: busy,
+              children: tt("edit.submit")
+            })]
+          }),
+          error !== void 0 && jsx("p", {
+            className: panelCss.banner,
+            "data-kind": "error",
+            children: error
+          }),
+          jsx("p", {
+            className: panelCss.note,
+            children: tt("edit.note")
+          })
+        ]
+      })
+    });
+  }
+  /**
+   * Match rank of one skill against a lowercased needle: 0 when the name hits,
+   * 1 when only the description hits, undefined when neither does. An empty
+   * needle matches everything at rank 0.
+   */
+  function matchRank(skill, needle) {
+    if (needle === "") return 0;
+    if (skill.name.toLowerCase().includes(needle)) return 0;
+    if (skill.description.toLowerCase().includes(needle)) return 1;
+  }
+  /**
+   * Whether a skill survives the workspace axis. Skills without a workspace
+   * root are global and stay visible in every selection; that is the pre-search
+   * behavior and the search must not change it.
+   */
+  function inWorkspace(skill, workspace) {
+    if (workspace === "all") return true;
+    return skill.workspaceRoot === void 0 || skill.workspaceRoot === workspace;
+  }
+  /**
+   * Apply both axes to a payload's groups: workspace filter first, then the
+   * query (name hits ranked before description hits, stable within a rank).
+   * Empty groups are dropped so the caller renders only what has content.
+   * @param groups - host payload groups in host order.
+   * @param filter - workspace + query.
+   * @returns the visible groups; the input is never mutated.
+   */
+  function selectGroups(groups, filter) {
+    const needle = filter.query.trim().toLowerCase();
+    return groups.map((group) => {
+      const ranked = group.skills.filter((skill) => inWorkspace(skill, filter.workspace)).map((skill) => ({
+        skill,
+        rank: matchRank(skill, needle)
+      })).filter((row) => row.rank !== void 0);
+      if (needle !== "") ranked.sort((left, right) => left.rank - right.rank);
+      return {
+        ...group,
+        skills: ranked.map((row) => row.skill)
+      };
+    }).filter((group) => group.skills.length > 0);
+  }
+  /**
+   * Skills tab: the grouped skill list with the search / workspace toolbar and
+   * the per-row enable switch, edit and delete actions.
+   *
+   * The host route family is the only data source; a failed refresh keeps the
+   * previous payload visible with an inline error.
+   */
+  /** Localized provider label with fallback to the raw provider id. */
+  function providerLabel(provider) {
+    const key = `provider.${provider}`;
+    return key in zh ? tt(key) : provider;
+  }
+  /**
+   * Whether this row carries an enable switch.
+   *
+   * A row with a writable path switches by rewriting its own SKILL.md
+   * frontmatter. A plugin-provided file (issue #1854) has no such path, so its
+   * switch is recorded in the panel's own store; a truly fileless registration
+   * has nothing to switch and still shows none.
+   * @param skill - the row's entry.
+   * @returns whether the row offers the switch.
+   */
+  function canToggle(skill) {
+    return skill.path !== void 0 || skill.fileState === "provider-file";
+  }
+  /**
+   * The local-file badge for a row that the write routes cannot serve.
+   *
+   * A skill with a plugin-supplied file and a skill with no file at all are
+   * different facts (issue #1842): the first is "Provided by plugin", only the
+   * second is "No local file". Both are pathless, so neither offers file
+   * controls.
+   * @param skill - the row's entry.
+   * @returns the badge copy and its tooltip.
+   */
+  function localFileBadge(skill) {
+    return skill.fileState === "provider-file" ? {
+      label: tt("list.providerFile"),
+      tooltip: tt("list.providerFileTooltip")
+    } : {
+      label: tt("list.noFile"),
+      tooltip: tt("list.noFileTooltip")
+    };
+  }
+  /** The explanation shown under a row the write routes cannot serve. */
+  function localFileHint(skill) {
+    return skill.fileState === "provider-file" ? tt("list.providerFileHint") : tt("list.noFileHint");
+  }
+  /** Marks shown next to a skill (model/user invocable). */
+  function invokableMarks(skill) {
+    const marks = [];
+    if (skill.modelInvocable) marks.push(tt("list.mark.model"));
+    if (skill.userInvocable) marks.push(tt("list.mark.user"));
+    return marks.join(" / ");
+  }
+  /** One skill row: name, badges, enable switch, edit and delete actions. */
+  function SkillRow({ skill, api, onChanged, onEdit }) {
+    const [busy, setBusy] = react.useState(false);
+    const [error, setError] = react.useState(void 0);
+    const busyRef = react.useRef(false);
+    const toggle = async () => {
+      if (busyRef.current || !canToggle(skill)) return;
+      busyRef.current = true;
+      setBusy(true);
+      setError(void 0);
+      try {
+        if (skill.path !== void 0) await api.setEnabled(skill.name, skill.path, !skill.modelInvocable);
+        else await api.setProviderEnabled(skill.name, skill.provider, !skill.modelInvocable);
+        onChanged();
+      } catch (err) {
+        setError(tt("list.toggleFailed", { error: err instanceof Error ? err.message : String(err) }));
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    };
+    const remove = async () => {
+      const path = skill.path;
+      if (path === void 0) return;
+      if (!window.confirm(tt("list.deleteConfirm", { name: skill.name }))) return;
+      if (busyRef.current) return;
+      busyRef.current = true;
+      setBusy(true);
+      setError(void 0);
+      try {
+        await api.remove(skill.name, path);
+        onChanged();
+      } catch (err) {
+        setError(tt("list.deleteFailed", { error: err instanceof Error ? err.message : String(err) }));
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    };
+    const isIsolated = skill.isActiveWorkspace === false;
+    const fileBadge = skill.path === void 0 ? localFileBadge(skill) : void 0;
+    return jsxs("article", {
+      className: `${panelCss.skillRow}${isIsolated ? ` ${panelCss.skillIsolated}` : ""}`,
+      "data-dsh-part": "skill-row",
+      children: [
+        jsxs("header", {
+          className: panelCss.skillHeader,
+          children: [
+            jsx("span", {
+              className: panelCss.skillName,
+              children: skill.name
+            }),
+            skill.workspaceName !== void 0 && jsx("span", {
+              className: `${panelCss.badge} ${panelCss.badgeWorkspace}`,
+              children: skill.workspaceName
+            }),
+            isIsolated && jsx("span", {
+              className: `${panelCss.badge} ${panelCss.badgeIsolated}`,
+              title: tt("workspace.isolatedHint", { workspace: skill.workspaceName ?? "" }),
+              children: tt("workspace.isolated")
+            }),
+            skill.provider !== void 0 && jsx("span", {
+              className: panelCss.badge,
+              title: tt("provider.tooltip", { provider: providerLabel(skill.provider) }),
+              children: providerLabel(skill.provider)
+            }),
+            skill.linked === true && jsx("span", {
+              className: panelCss.badge,
+              children: tt("list.linked")
+            }),
+            fileBadge !== void 0 && jsx("span", {
+              className: panelCss.badge,
+              title: fileBadge.tooltip,
+              children: fileBadge.label
+            }),
+            (skill.modelInvocable || skill.userInvocable) && jsx("span", {
+              className: `${panelCss.badge} ${panelCss.badgeInvokable}`,
+              title: tt("list.invokableTooltip"),
+              children: tt("list.invokable", { marks: invokableMarks(skill) })
+            }),
+            canToggle(skill) && jsx("button", {
+              type: "button",
+              className: panelCss.switch,
+              role: "switch",
+              "aria-checked": skill.modelInvocable,
+              "aria-label": skill.modelInvocable ? tt("list.enabled") : tt("list.disabled"),
+              title: skill.modelInvocable ? tt("list.enabled") : tt("list.disabled"),
+              disabled: busy,
+              onClick: () => {
+                toggle();
+              },
+              children: jsx("span", {
+                className: panelCss.switchTrack,
+                children: jsx("span", { className: panelCss.switchThumb })
+              })
+            }),
+            skill.path !== void 0 && skill.linked !== true && jsx("button", {
+              type: "button",
+              className: panelCss.linkButton,
+              disabled: busy,
+              onClick: () => {
+                onEdit(skill);
+              },
+              children: tt("list.edit")
+            }),
+            skill.path !== void 0 && skill.linked !== true && jsx("button", {
+              type: "button",
+              className: `${panelCss.linkButton} ${panelCss.deleteButton}`,
+              "data-danger": "",
+              disabled: busy,
+              onClick: () => {
+                remove();
+              },
+              children: tt("list.delete")
+            })
+          ]
+        }),
+        jsx("p", {
+          className: panelCss.skillDesc,
+          children: skill.description
+        }),
+        skill.whenToUse !== void 0 && skill.whenToUse !== "" && jsx("p", {
+          className: panelCss.skillWhen,
+          children: tt("list.when", { when: skill.whenToUse })
+        }),
+        skill.path !== void 0 && jsx("div", {
+          className: panelCss.skillPath,
+          children: skill.path
+        }),
+        skill.path === void 0 && jsx("p", {
+          className: panelCss.skillWhen,
+          children: localFileHint(skill)
+        }),
+        error !== void 0 && jsx("p", {
+          className: panelCss.banner,
+          "data-kind": "error",
+          children: error
+        })
+      ]
+    });
+  }
+  /** The skills tab body. */
+  function SkillsTab({ api, onEdit }) {
+    const [payload, setPayload] = react.useState(void 0);
+    const [selectedWorkspace, setSelectedWorkspace] = react.useState("all");
+    const [query, setQuery] = react.useState("");
+    const [error, setError] = react.useState(void 0);
+    const [loading, setLoading] = react.useState(true);
+    const loadSeq = react.useRef(0);
+    const load = async () => {
+      const seq = ++loadSeq.current;
+      setLoading(true);
+      try {
+        const next = await api.list();
+        if (seq !== loadSeq.current) return;
+        setPayload(next);
+        setError(void 0);
+      } catch (err) {
+        if (seq !== loadSeq.current) return;
+        setError(tt("list.loadFailed", { error: err instanceof Error ? err.message : String(err) }));
+      } finally {
+        if (seq === loadSeq.current) setLoading(false);
+      }
+    };
+    react.useEffect(() => {
+      load();
+    }, [api]);
+    const refreshButton = loading ? void 0 : jsx("button", {
+      type: "button",
+      className: panelCss.ghostButton,
+      onClick: () => {
+        load();
+      },
+      children: tt("refresh")
+    });
+    if (payload === void 0) return jsx("div", {
+      className: panelCss.fillBody,
+      children: loading ? jsx("p", {
+        className: panelCss.empty,
+        children: tt("list.loading")
+      }) : jsxs(Fragment, { children: [jsx("p", {
+        className: panelCss.empty,
+        children: error
+      }), jsx("div", {
+        className: panelCss.toolbar,
+        children: refreshButton
+      })] })
+    });
+    const visibleGroups = selectGroups(payload.groups, {
+      workspace: selectedWorkspace,
+      query
+    });
+    const visibleCount = visibleGroups.reduce((total, group) => total + group.skills.length, 0);
+    return jsxs("div", {
+      className: panelCss.fillBody,
+      children: [
+        jsxs("div", {
+          className: panelCss.toolbar,
+          "data-dsh-part": "filter-bar",
+          children: [
+            jsx("input", {
+              className: panelCss.search,
+              type: "search",
+              value: query,
+              spellCheck: false,
+              "aria-label": tt("filter.searchLabel"),
+              placeholder: tt("filter.searchPlaceholder"),
+              onChange: (event) => {
+                setQuery(event.target.value);
+              },
+              onKeyDown: (event) => {
+                if (event.key === "Escape" && query !== "") setQuery("");
+              }
+            }),
+            payload.workspaces !== void 0 && payload.workspaces.length > 1 && jsxs("select", {
+              className: panelCss.select,
+              value: selectedWorkspace,
+              "aria-label": tt("filter.workspaceLabel"),
+              onChange: (event) => {
+                setSelectedWorkspace(event.target.value);
+              },
+              children: [jsx("option", {
+                value: "all",
+                children: tt("filter.workspaceAll")
+              }), payload.workspaces.map((ws) => jsx("option", {
+                value: ws.root,
+                children: ws.active ? tt("filter.workspaceCurrent", { name: ws.name }) : ws.name
+              }, ws.root))]
+            }),
+            jsx("div", { className: panelCss.toolbarSpacer }),
+            refreshButton
+          ]
+        }),
+        error !== void 0 && jsx("p", {
+          className: panelCss.banner,
+          "data-kind": "error",
+          children: error
+        }),
+        visibleCount === 0 ? jsx("p", {
+          className: panelCss.empty,
+          children: query.trim() === "" ? tt("filter.emptyWorkspace") : tt("filter.empty", { query: query.trim() })
+        }) : jsx("div", {
+          className: panelCss.list,
+          children: visibleGroups.map((group) => {
+            const groupKey = `group.${group.key}`;
+            const hintKey = `groupHint.${group.key}`;
+            const title = groupKey in zh ? tt(groupKey) : group.title;
+            const hint = hintKey in zh ? tt(hintKey) : group.hint;
+            return jsxs("section", {
+              className: panelCss.group,
+              children: [
+                jsxs("h3", {
+                  className: panelCss.groupTitle,
+                  children: [title, jsx("span", {
+                    className: panelCss.count,
+                    children: tt("list.count", { count: String(group.skills.length) })
+                  })]
+                }),
+                hint !== "" && jsx("p", {
+                  className: panelCss.groupHint,
+                  children: hint
+                }),
+                group.skills.map((skill) => jsx(SkillRow, {
+                  skill,
+                  api,
+                  onChanged: () => {
+                    load();
+                  },
+                  onEdit
+                }, skill.name))
+              ]
+            }, group.key);
+          })
+        })
+      ]
+    });
+  }
+  /**
+   * The skill center panel shell: a title header, a tab bar, and the active
+   * tab's content.
+   *
+   * The tab and the editor target live in the controller, not in component
+   * state: the layout mounts this page only while the panel is selected, so
+   * local state would drop the open tab and any in-progress edit on every panel
+   * switch. The inactive tab unmounts, so the tab that needs the workspace
+   * resolves it itself and the list refetches when it returns.
+   *
+   * The edit tab appears only while a skill is being edited: the list row hands
+   * the chosen skill over, and leaving the editor returns to the list.
+   */
+  /** The skill center panel. */
+  function SkillPanel({ controller, api }) {
+    const { activeTab, editing } = react.useSyncExternalStore((listener) => controller.subscribe(listener), () => controller.getSnapshot());
+    const tabs = [
+      {
+        id: "skills",
+        label: () => tt("tab.list")
+      },
+      {
+        id: "create",
+        label: () => tt("tab.create")
+      },
+      ...editing === void 0 ? [] : [{
+        id: "edit",
+        label: () => tt("tab.edit")
+      }]
+    ];
+    return jsxs("div", {
+      className: panelCss.panel,
+      "data-dsh-plugin": "skill-explorer",
+      children: [
+        jsx("div", {
+          className: panelCss.panelHeader,
+          children: jsx("h2", {
+            className: panelCss.panelTitle,
+            children: tt("panel.title")
+          })
+        }),
+        jsx("div", {
+          className: panelCss.tabBar,
+          role: "tablist",
+          "data-dsh-part": "tab-bar",
+          children: tabs.map((tab) => jsx("button", {
+            type: "button",
+            role: "tab",
+            "aria-selected": activeTab === tab.id,
+            "data-active": activeTab === tab.id ? "" : void 0,
+            "data-dsh-part": "tab",
+            className: panelCss.tab,
+            onClick: () => {
+              controller.setActiveTab(tab.id);
+            },
+            children: tab.label()
+          }, tab.id))
+        }),
+        jsxs("div", {
+          className: panelCss.panelContent,
+          children: [
+            activeTab === "skills" && jsx(SkillsTab, {
+              api,
+              onEdit: (skill) => {
+                controller.openEditor(skill);
+              }
+            }),
+            activeTab === "create" && jsx(CreateTab, { api }),
+            activeTab === "edit" && editing !== void 0 && jsx(EditTab, {
+              api,
+              skill: editing,
+              onDone: () => {
+                controller.closeEditor();
+              },
+              onCancel: () => {
+                controller.closeEditor();
+              }
+            })
+          ]
+        })
+      ]
+    });
+  }
+  /** Row order among the shell's global panel rows (Plugins 0, Schedule 10, board 20). */
+  const PANEL_ORDER = 30;
+  /**
+   * The sidebar row glyph the shell asks for at its own size and active state.
+   * The shell owns the button, label, tooltip and rail geometry; this component
+   * draws only the glyph, like every other panel row.
+   *
+   * The glyph carries `data-dsh-panel-entry` because it is the only DOM this
+   * panel's own code owns inside that shell-owned row: the L2 contract (skins)
+   * resolves which row belongs to which plugin through it, since the shell
+   * stamps no per-entry hook of its own (see contracts/semantic-attrs-v1.md).
+   * @param props - the shell's icon share: square edge and selection state.
+   * @returns the decorative skill-center glyph.
+   */
+  function SkillExplorerPanelIcon({ size }) {
+    return jsxs("svg", {
+      "data-dsh-panel-entry": SKILL_EXPLORER_PANEL_ID,
+      viewBox: "0 0 16 16",
+      width: size,
+      height: size,
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: "1.3",
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      "aria-hidden": "true",
+      children: [jsx("path", { d: "M8 3.2C6.6 2 4.5 2 3 2v10.5c1.5 0 3.6 0 5 1.3 1.4-1.3 3.5-1.3 5-1.3V2c-1.5 0-3.6 0-5 1.2z" }), jsx("path", { d: "M8 3.2v10.6" })]
+    });
+  }
+  /**
+   * The main-slot page. The layout mounts it only while this panel is selected,
+   * so the conversation keeps the center column untouched the rest of the time;
+   * the wrapper carries the pinned `data-dsh-skill-explorer-view` semantic
+   * anchor (L2 contract, skins) the takeover container used to own.
+   * @param props - the framework main-slot share plus this entry's injected face.
+   * @returns the skill center page.
+   */
+  function SkillExplorerPanelPage({ controller, api }) {
+    return jsx("div", {
+      className: panelCss.view,
+      "data-dsh-skill-explorer-view": "",
+      "data-dsh-plugin": "skill-explorer",
+      children: jsx(SkillPanel, {
+        controller,
+        api
+      })
+    });
+  }
+  /**
+   * Register the skill center's sidebar row and center-column page.
+   *
+   * Both seats are declared by shell plugins this package does not depend on at
+   * runtime, so each registration is wrapped in `ctx.slots.inject`: the callback
+   * runs only after the owning entry declares the seat, and a shell that never
+   * declares it leaves the panel simply absent instead of failing boot.
+   * @param ctx - client root context (services: slots).
+   * @param controller - the controller the page and the row drive.
+   * @param api - the skill center API client the page operates through.
+   * @returns disposer releasing both registrations.
+   */
+  function registerSkillExplorerPanel(ctx, controller, api) {
+    const slots = ctx.slots;
+    const disposers = [];
+    disposers.push(slots.inject("sidebar.panellist", () => slots.register({
+      name: "sidebar.panellist",
+      id: SKILL_EXPLORER_PANEL_ID,
+      order: PANEL_ORDER,
+      label: () => tt("entry.label")
+    }, SkillExplorerPanelIcon)));
+    disposers.push(slots.inject("main", () => slots.register({
+      name: "main",
+      key: SKILL_EXPLORER_PANEL_ID,
+      inject: () => ({
+        controller,
+        api
+      })
+    }, SkillExplorerPanelPage)));
+    return () => {
+      for (const dispose of disposers.splice(0)) dispose();
+    };
+  }
+  const VISITOR_KEY = "dsh-web-ui-telemetry-visitor";
+  const DAY_KEY_PREFIX = "dsh-web-ui-telemetry-day:";
+  const ENDPOINT = "https://dsh-market.com/api/telemetry/event";
+  /** The building package's version, when the bundle carries it. */
+  function bakedVersion() {
+    try {
+      return "0.4.7";
+    } catch {
+      return;
+    }
+  }
+  /** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
+  function visitorId() {
+    try {
+      const existing = localStorage.getItem(VISITOR_KEY);
+      if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
+      const fresh = crypto.randomUUID().replaceAll("-", "");
+      localStorage.setItem(VISITOR_KEY, fresh);
+      return fresh;
+    } catch {
+      return null;
+    }
+  }
+  /** Drop stale per-day dedup keys so localStorage does not grow forever. */
+  function pruneDayKeys(today) {
+    try {
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key !== null && key.startsWith(DAY_KEY_PREFIX) && key !== DAY_KEY_PREFIX + today) localStorage.removeItem(key);
+      }
+    } catch {}
+  }
+  /**
+   * Fire the daily heartbeat for the given items at most once per UTC day per
+   * browser. Never throws and never blocks the caller. Items without an explicit
+   * version inherit the bundle's baked build version.
+   */
+  function reportDailyHeartbeat(items) {
+    try {
+      if (items.length === 0) return;
+      const today = (new Date()).toISOString().slice(0, 10);
+      if (navigator.webdriver) return;
+      if (localStorage.getItem(DAY_KEY_PREFIX + today) !== null) return;
+      const visitor = visitorId();
+      if (visitor === null) return;
+      pruneDayKeys(today);
+      const payloadItems = items.map((item) => {
+        const out = { name: item.name };
+        const version = item.version ?? bakedVersion();
+        if (version !== void 0) out.version = version;
+        if (item.channel !== void 0) out.channel = item.channel;
+        return out;
+      });
+      const body = JSON.stringify({
+        kind: "heartbeat",
+        visitor,
+        items: payloadItems
+      });
+      fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+        keepalive: true
+      }).then((response) => {
+        if (response.ok) localStorage.setItem(DAY_KEY_PREFIX + today, "1");
+      }).catch(() => {});
+    } catch {}
+  }
+
+  /**
+   * Mount the skill center surfaces.
+   *
+   * The three services are waited for locally instead of being declared on the
+   * plugin, so a shell without a `slots` seat or without a layout leaves the
+   * panel simply absent instead of failing the suite's boot.
+   *
+   * @param ctx - client root context.
+   */
+  function install(ctx) {
+    reportDailyHeartbeat([{ name: '@linxin666/dsh-client-ui-skill-explorer' }])
+
+    ctx.inject(['slots', 'locale', 'layout'], (scope) => {
+      scope.effect(() => {
+        try {
+          return scope.locale.register(NS, { zh, en })
+        } catch {
+          return () => {}
+        }
+      }, 'ui-copy/skill-explorer: dictionaries')
+
+      try {
+        setRuntimeTranslate(scope.locale.bind(NS))
+      } catch {
+        // An unwired translate seat falls back to the document-language pick.
+      }
+
+      const api = new SkillApi()
+      const controller = new PanelController({ panel: { select: (panelId) => {
+        (scope.get?.('layout'))?.selectPanel?.(panelId)
+      } } })
+      const disposers = []
+      try {
+        disposers.push(registerSkillExplorerPanel(scope, controller, api))
+        const layoutFace = scope.get?.('layout')
+        if (layoutFace?.panelInfo !== undefined) {
+          const sync = () => {
+            const active = layoutFace.panelInfo.getSnapshot().activePanelId
+            controller.syncPanelSelection(active === 'skill-explorer' ? SKILL_EXPLORER_PANEL_ID : null)
+          }
+          sync()
+          disposers.push(layoutFace.panelInfo.subscribe(sync))
+        }
+      } catch (error) {
+        rt.warn('panel registration failed')
+        rt.error(error)
+      }
+
+      scope.effect(() => () => {
+        for (const dispose of disposers.splice(0)) dispose()
+      }, 'ui-copy/skill-explorer: ui mounts')
+    })
+  }
+
+  install(rt.ctx)
+}

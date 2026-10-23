@@ -1,0 +1,794 @@
+/**
+ * Status-line phrases.
+ *
+ * Replaces the turn status line the harness shows while a turn runs
+ * (en "Deep diving for 12s", zh "深度求索中，用时12秒") with a rotating phrase,
+ * typed out one character at a time under a rainbow gradient.
+ *
+ * Where the line lives on dsh 0.2.0:
+ *
+ *   div[data-chat-running]                    the running row in the conversation
+ *     ├─ span(class*=_visuallyHidden)         screen-reader announcement; never touched
+ *     ├─ span(class*=_runningDivider)
+ *     └─ span(class*=_runningContent)
+ *          ├─ span(class*=_runningIcon)      the whale tail; left alone
+ *          └─ span(class*=_runningText)      the host line ("深度求索中，用时12秒")
+ *
+ * The host owns that last span and rewrites its text every second, so this
+ * component never writes into it: it reads the host text (that is where the
+ * elapsed time comes from), hides the span, and appends its own line — a text
+ * span plus a clock span — right after it. Hiding the host span is what removes
+ * the host's own shimmer sweep, which would otherwise fight the gradient here.
+ *
+ * Phrase selection mirrors the upstream plugin this was extracted from
+ * (dsh-status-rotator, MIT, by 01Virex): a shuffle bag per list, so a phrase is
+ * not repeated until the bag is exhausted, with the last few picks filtered out
+ * when the bag refills. One difference on purpose: the phrase list is one
+ * multi-line string from a single settings box, one phrase per line, instead of
+ * a phase-aware phrase bank with presets and schedules.
+ *
+ * The suite owns the scanning and the sheet: this component registers a DOM pass
+ * through `rt.observe` (one observer and one frame for the whole suite) and
+ * injects its CSS through `rt.style` (one registry, replaceable in place), so
+ * there is no observer, no rescan timer and no hand-rolled `<style>` here.
+ */
+function dshuiComponent_status_phrases(rt) {
+  const react = rt.require('react')
+  if (react === null) {
+    rt.warn('react is not in this boot graph; the status line phrases are skipped')
+    return
+  }
+
+  // ══ constants ══
+
+  /** The suite's config entry: the settings form for the whole bundle. */
+  const ENTRY_ID = 'ui-copy'
+  const SETTINGS_NS = 'status-phrases'
+
+  /** How often the phrase changes (the upstream default). */
+  const ROTATE_MS = 10000
+  /** Typewriter interval per character (ms); 0 = show the whole phrase at once. */
+  const TYPE_SPEED_MS = 30
+  /** Phrases to exclude when the shuffle bag refills, so two bags never collide. */
+  const RECENT_LIMIT = 3
+  /** Rainbow palette and flow speed (upstream defaults; shared by both themes). */
+  const GRADIENT_COLORS = ['#ff5f6d', '#ffc371', '#ffdd55', '#7dff7d', '#5fd4ff', '#a78bfa', '#ff8adb']
+  const GRADIENT_SPEED_S = 4
+  /** Config caps: a huge paste must not stall rotation or the settings write. */
+  const MAX_PHRASES = 500
+  const MAX_PHRASE_LENGTH = 160
+
+  const RUNNING_ROW_SELECTOR = '[data-chat-running]'
+  const RUNNING_TEXT_SELECTOR = '[class*="runningText"]'
+
+  /** Class names this component owns. */
+  const LINE_CLASS = 'dsp-line'
+  const TEXT_CLASS = 'dsp-text'
+  const CLOCK_CLASS = 'dsp-clock'
+  const RAINBOW_CLASS = 'dsp-rainbow'
+
+  /**
+   * The host's turn-opening text and its "running + duration" text. Both are
+   * resolved from dsh's chat dictionary live (see resolveDiveLabel /
+   * resolveDiveDurationPrefix); the known values here are only the fallback for
+   * a dictionary that is not available.
+   */
+  const DIVE_LABEL_KEY = 'chat.deepDiving'
+  const KNOWN_DIVE_LABELS = ['Deep diving...', '深度求索中...']
+  const DIVE_DURATION_LABEL_KEY = 'message.turnProcess.deepDivingFor'
+  const KNOWN_DIVE_DURATION_PREFIXES = ['Deep diving for ', '深度求索中，用时', '深度求索中,用时']
+
+  /** Built-in phrases for an empty settings box (neutral, on the same note as 正在求索). */
+  const DEFAULT_PHRASES = [
+    '正在深度求索…',
+    '正在整理思路…',
+    '正在推演下一步…',
+    '正在翻找线索…',
+    '正在核对上下文…',
+    '正在权衡几种方案…',
+    '正在构建推理链…',
+    '正在打捞被埋掉的细节…',
+    '正在把答案拼起来…',
+    '正在落笔写回复…',
+  ]
+
+  // ══ pure functions ══
+
+  /**
+   * Split the settings box into phrases: one per line, ignoring blank lines and
+   * lines starting with `#`. Lines are trimmed and clipped to the caps, so one
+   * paste cannot stall rotation or the settings write.
+   *
+   * @param text - the raw contents of the settings box.
+   * @returns the phrase list (possibly empty).
+   */
+  function parsePhrases(text) {
+    if (typeof text !== 'string' || text.length === 0) return []
+    const out = []
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim()
+      if (line.length === 0 || line.startsWith('#')) continue
+      out.push(line.length > MAX_PHRASE_LENGTH ? line.slice(0, MAX_PHRASE_LENGTH) : line)
+      if (out.length >= MAX_PHRASES) break
+    }
+    return out
+  }
+
+  /**
+   * Resolve the host's turn-opening text. tChat is dsh's "chat" translator
+   * (nullable); a dictionary fallback echoes the key back or returns a template
+   * with `{…}`, and both count as unavailable, so the known text is used instead.
+   *
+   * @param tChat - the translator, or null.
+   * @param locale - the active UI language ("zh" / "en" / …).
+   * @returns the host's turn-opening text.
+   */
+  function resolveDiveLabel(tChat, locale) {
+    let value = ''
+    try {
+      value = typeof tChat === 'function' ? String(tChat(DIVE_LABEL_KEY)) : ''
+    } catch (error) { /* ignore */ }
+    if (value.length > 0 && value !== DIVE_LABEL_KEY && !/\{/.test(value)) return value
+    return locale === 'zh' ? KNOWN_DIVE_LABELS[1] : KNOWN_DIVE_LABELS[0]
+  }
+
+  /**
+   * Resolve the prefix of the "running + duration" text (with `{duration}`
+   * passed as empty). A dictionary that is not registered echoes the key back,
+   * an unexpanded template still carries `{…}`, and both count as unavailable.
+   *
+   * @param tChat - the translator, or null.
+   * @param locale - the active UI language.
+   * @returns the duration prefix, for example "深度求索中，用时".
+   */
+  function resolveDiveDurationPrefix(tChat, locale) {
+    let value = ''
+    try {
+      value = typeof tChat === 'function' ? String(tChat(DIVE_DURATION_LABEL_KEY, { duration: '' })) : ''
+    } catch (error) { /* ignore */ }
+    if (value.length > 0 && value !== DIVE_DURATION_LABEL_KEY && !/\{/.test(value)) return value
+    return locale === 'zh' ? KNOWN_DIVE_DURATION_PREFIXES[1] : KNOWN_DIVE_DURATION_PREFIXES[0]
+  }
+
+  /**
+   * Classify the host status text as "turn running" and take out the duration:
+   *   hit  → the duration string (empty while the opening text has none)
+   *   miss (Worked / Took 12s / Failed / anything else) → null
+   * The prefix is the one resolved for the active language first, then the known
+   * prefixes (the dictionary and the DOM can disagree for an instant during a
+   * language switch).
+   *
+   * @param text - the host status element's text.
+   * @param label - the turn-opening text for the active language.
+   * @param durationPrefix - the duration prefix for the active language.
+   * @returns the duration text, or null.
+   */
+  function matchDiveText(text, label, durationPrefix) {
+    const t = String(text || '')
+    const prefixes = [durationPrefix].concat(KNOWN_DIVE_DURATION_PREFIXES)
+      .filter((p) => typeof p === 'string' && p.length > 0)
+    for (const prefix of prefixes) {
+      if (t.startsWith(prefix)) return t.slice(prefix.length).trim()
+    }
+    if (t.startsWith(label) || KNOWN_DIVE_LABELS.some((l) => t.startsWith(l))) return ''
+    return null
+  }
+
+  /** Shuffle (Fisher-Yates, leaving the input alone). */
+  function shuffle(list) {
+    const out = list.slice()
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = out[i]
+      out[i] = out[j]
+      out[j] = tmp
+    }
+    return out
+  }
+
+  /**
+   * Shuffle bag: no phrase repeats until the list is exhausted, and a refilled
+   * bag drops the last `recentLimit` picks, so no two bags collide either. The
+   * bag reopens whenever the list changes.
+   *
+   * @returns `{ next(list) }`, or null for an empty list.
+   */
+  function createShuffleBag() {
+    let bag = []
+    let recent = []
+    let signature = null
+    return {
+      next(list) {
+        if (!Array.isArray(list) || list.length === 0) return null
+        const current = list.join('\u0000')
+        if (current !== signature) {
+          signature = current
+          bag = []
+        }
+        if (bag.length === 0) {
+          const fresh = list.filter((t) => recent.indexOf(t) < 0)
+          bag = shuffle(fresh.length > 0 ? fresh : list)
+        }
+        const picked = bag.shift()
+        recent = [picked].concat(recent).slice(0, RECENT_LIMIT)
+        return picked
+      },
+    }
+  }
+
+  /**
+   * Measure a phrase's pixel width with canvas. The host row is a flex container
+   * with the clock right after this text, so a typewriter that grows the text
+   * every 30ms would nudge the clock sideways; locking the full width before
+   * typing and releasing it afterwards keeps the clock still.
+   *
+   * @param text - the text to measure.
+   * @param el - the element whose font metrics are used.
+   * @returns the pixel width, or 0 when it cannot be measured.
+   */
+  function measureText(text, el) {
+    try {
+      if (typeof getComputedStyle !== 'function') return 0
+      const cs = getComputedStyle(el)
+      if (!measureText.canvas) measureText.canvas = document.createElement('canvas')
+      const context = measureText.canvas.getContext && measureText.canvas.getContext('2d')
+      if (!context) return 0
+      context.font = [cs.fontStyle, cs.fontVariant, cs.fontWeight, cs.fontSize, cs.fontFamily].join(' ')
+      return context.measureText(text).width
+    } catch (error) {
+      return 0
+    }
+  }
+
+  // ══ styles ══
+
+  /**
+   * `.dsp-line` follows dsh ≤0.1.6's `.turnStatus` (26px high / nowrap /
+   * inline-flex / its own shimmer gradient); only the layout part is kept here,
+   * because the flowing gradient belongs to the rainbow class on the text span.
+   * The clock follows `.turnStatusClock` (13px, 8px gap, caption colour,
+   * tabular-nums). The host's content font size and its delta are read through
+   * its own `--dsh-content-*` variables, so the user's font scaling still
+   * applies; everything this component decides comes from a `--dshui-*` token.
+   */
+  const STYLESHEET = `
+.${LINE_CLASS}{display:inline-flex;align-items:center;flex:none;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;height:calc(26px + var(--dsh-content-font-delta,0px));font-family:var(--dshui-font-family);font-size:var(--dsh-content-font-size,var(--dshui-text-size-base));font-weight:var(--dshui-weight-medium);line-height:calc(22px + var(--dsh-content-font-delta,0px))}
+.${LINE_CLASS} > .${CLOCK_CLASS}{flex:none;margin-left:var(--dshui-space-4);font-weight:var(--dshui-weight-regular);font-size:var(--dsh-content-font-size-secondary,var(--dshui-text-size-md));font-variant-numeric:tabular-nums;color:var(--dshui-text-caption,currentColor);-webkit-text-fill-color:var(--dshui-text-caption,currentColor)}
+.${TEXT_CLASS}{display:inline-block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap}
+.${TEXT_CLASS}.${RAINBOW_CLASS}{background-image:linear-gradient(90deg,${GRADIENT_COLORS.join(', ')}, ${GRADIENT_COLORS[0]});background-size:200% 100%;background-repeat:repeat-x;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dsp-flow ${GRADIENT_SPEED_S}s linear infinite}
+@keyframes dsp-flow{to{background-position:200% 0}}
+@media (prefers-reduced-motion:reduce){.${TEXT_CLASS}.${RAINBOW_CLASS}{animation:none;background-position:0 0}}
+.dsp-row{display:flex;align-items:flex-start;gap:var(--dshui-space-4);padding:var(--dshui-space-6) 0;border-bottom:var(--dshui-border-width) solid var(--dshui-border-2)}
+.dsp-rowText{display:flex;flex-direction:column;flex:1;gap:var(--dshui-space-2);min-width:0;padding-right:var(--dshui-space-7)}
+.dsp-title{color:var(--dshui-text-primary);font-size:var(--dshui-text-size-base);font-weight:var(--dshui-weight-regular);line-height:22px}
+.dsp-desc{color:var(--dshui-text-tertiary);font-size:var(--dshui-text-size-sm);font-weight:var(--dshui-weight-regular);line-height:var(--dshui-line-normal)}
+.dsp-note{color:var(--dshui-danger,var(--dshui-text-tertiary));font-size:var(--dshui-text-size-sm);font-weight:var(--dshui-weight-regular);line-height:var(--dshui-line-normal)}
+.dsp-control{display:flex;flex-direction:column;align-items:flex-end;gap:var(--dshui-space-4);flex:none}
+.dsp-input{box-sizing:border-box;width:340px;min-height:132px;resize:vertical;border:var(--dshui-border-width) solid var(--dshui-border-4);border-radius:var(--dshui-radius-sm);background:var(--dshui-surface-3);color:var(--dshui-text-primary);padding:var(--dshui-space-4) var(--dshui-space-5);font:inherit;font-size:var(--dshui-text-size-md);line-height:1.6}
+.dsp-input:focus{border-color:var(--dshui-brand);outline:none}
+.dsp-input::placeholder{color:var(--dshui-text-dimmed)}
+.dsp-input:disabled{opacity:.6;cursor:default}
+`
+
+  // ══ runtime state ══
+
+  /**
+   * The phrases in force.
+   *
+   * Seeded from the host-injected configuration (`ui-copy.statusPhrases.phrases`,
+   * which is what a fresh page render carries); the settings form, when one
+   * exists, becomes the live source and replaces it on every accepted write. An
+   * empty list means "do not take over", and the host's own line stays.
+   */
+  const configuredPhrases = parsePhrases(rt.option('phrases', ''))
+  let phrases = configuredPhrases.length > 0 ? configuredPhrases : DEFAULT_PHRASES.slice()
+  /** Shuffle bag, shared by every status line. */
+  const phraseBag = createShuffleBag()
+  /** Status row → its own line element. */
+  const lines = new Map()
+  /** Line element → typewriter state. */
+  const typists = new Map()
+  /** The dsh "chat" dictionary binding (may be null; rebound on a language switch). */
+  let chatT = null
+  /** The active UI language. */
+  let lastLocale = 'zh'
+  /** Diagnostics switch (URL carries `?dsp-debug=1`). */
+  let debug = false
+
+  const log = (...args) => {
+    if (debug) console.log('[status-phrases]', ...args)
+  }
+
+  // ══ DOM ══
+
+  /** The text node that carries the phrase (the only direct text node of the span). */
+  const textNodeOf = (line) => {
+    const span = line.querySelector(':scope > .' + TEXT_CLASS)
+    if (!span) return null
+    for (const node of span.childNodes) if (node.nodeType === 3) return node
+    return null
+  }
+
+  /** The clock element. */
+  const clockOf = (line) => line.querySelector(':scope > .' + CLOCK_CLASS)
+
+  /** Build a status line: the text span plus the clock span. */
+  function buildLine() {
+    const line = document.createElement('div')
+    line.className = LINE_CLASS
+    const text = document.createElement('span')
+    text.className = TEXT_CLASS + ' ' + RAINBOW_CLASS
+    text.appendChild(document.createTextNode(''))
+    line.appendChild(text)
+    const clock = document.createElement('span')
+    clock.className = CLOCK_CLASS
+    clock.setAttribute('aria-hidden', 'true')
+    clock.style.display = 'none'
+    line.appendChild(clock)
+    return line
+  }
+
+  /** Release the locked width. */
+  function unlockWidth(line, state) {
+    if (!state || state.locked !== true) return
+    try {
+      line.style.removeProperty('min-width')
+    } catch (error) { /* ignore */ }
+    state.locked = false
+  }
+
+  /** Typewriter: print text into the line one character at a time; interrupts a run in progress. */
+  function typeText(line, text) {
+    const node = textNodeOf(line)
+    if (!node) return
+    const state = typists.get(line) || { timer: null, locked: false }
+    if (state.timer !== null) clearInterval(state.timer)
+    unlockWidth(line, state)
+    if (TYPE_SPEED_MS <= 0) {
+      node.nodeValue = text
+      typists.delete(line)
+      return
+    }
+    // Lock the width first: with the whole phrase width fixed, the clock does
+    // not jump around while the line is being typed out.
+    const width = measureText(text, line)
+    if (width > 0) {
+      line.style.minWidth = Math.ceil(width) + 'px'
+      state.locked = true
+    }
+    let index = 0
+    node.nodeValue = ''
+    state.timer = setInterval(() => {
+      // React may have replaced the text node: look it up again every tick and
+      // give up when it is gone.
+      const current = textNodeOf(line)
+      if (!current) {
+        clearInterval(state.timer)
+        state.timer = null
+        unlockWidth(line, state)
+        typists.delete(line)
+        return
+      }
+      index++
+      current.nodeValue = text.slice(0, index)
+      if (index >= text.length) {
+        clearInterval(state.timer)
+        state.timer = null
+        unlockWidth(line, state)
+        typists.delete(line)
+      }
+    }, TYPE_SPEED_MS)
+    typists.set(line, state)
+  }
+
+  /** Clock: show the duration exactly as the host text carried it; hide when there is none. */
+  function setClock(line, duration) {
+    const clock = clockOf(line)
+    if (!clock) return
+    const show = typeof duration === 'string' && duration.length > 0
+    if (show && clock.textContent !== duration) clock.textContent = duration
+    clock.style.display = show ? '' : 'none'
+  }
+
+  /** Pick the next phrase for a line and type it; false when the list is empty (the caller releases the row). */
+  function refreshLine(line) {
+    if (phrases.length === 0) return false
+    const next = phraseBag.next(phrases)
+    if (next === null) return false
+    typeText(line, next)
+    return true
+  }
+
+  /** The host's text element inside a running row (the source of the duration, hidden by this component). */
+  const runningLabelOf = (row) => {
+    try {
+      return row.querySelector(RUNNING_TEXT_SELECTOR)
+    } catch (error) {
+      return null
+    }
+  }
+
+  /** Take over a running row: hide the host text and insert the status line after it. */
+  function adoptRow(row, labelEl) {
+    const existing = lines.get(row)
+    if (existing && existing.line.isConnected) {
+      syncRow(row)
+      return
+    }
+    const line = buildLine()
+    try {
+      const parent = labelEl.parentElement && labelEl.parentElement.isConnected ? labelEl.parentElement : row
+      parent.insertBefore(line, parent === row ? null : labelEl.nextSibling)
+    } catch (error) {
+      releaseRow(row)
+      return
+    }
+    lines.set(row, { line, label: labelEl })
+    try {
+      labelEl.style.display = 'none'
+    } catch (error) { /* ignore */ }
+    log('adopted, 宿主文本:', JSON.stringify((labelEl.textContent || '').slice(0, 40)))
+    if (!refreshLine(line)) releaseRow(row)
+  }
+
+  /** Sync a running row: refresh the clock; release when the host text no longer matches (turn ended). */
+  function syncRow(row) {
+    const entry = lines.get(row)
+    if (!entry) return
+    if (!row.isConnected || !entry.line.isConnected) {
+      releaseRow(row)
+      return
+    }
+    // A host re-render can replace the text element: claim it again by selector.
+    if (!entry.label.isConnected) {
+      const next = runningLabelOf(row)
+      if (!next) {
+        releaseRow(row)
+        return
+      }
+      entry.label = next
+      try {
+        next.style.display = 'none'
+      } catch (error) { /* ignore */ }
+    }
+    const duration = matchDiveText(
+      entry.label.textContent || '',
+      resolveDiveLabel(chatT, lastLocale),
+      resolveDiveDurationPrefix(chatT, lastLocale),
+    )
+    if (duration === null) {
+      releaseRow(row)
+      return
+    }
+    setClock(entry.line, duration)
+  }
+
+  /** Release a running row: drop the status line and put the host text back. */
+  function releaseRow(row) {
+    const entry = lines.get(row)
+    if (!entry) return
+    lines.delete(row)
+    const state = typists.get(entry.line)
+    if (state && state.timer !== null) clearInterval(state.timer)
+    typists.delete(entry.line)
+    try {
+      if (entry.line.isConnected) entry.line.remove()
+    } catch (error) { /* ignore */ }
+    try {
+      if (entry.label) entry.label.style.removeProperty('display')
+    } catch (error) { /* ignore */ }
+    log('released')
+  }
+
+  /**
+   * Scan a scope for running rows (the root itself may be one, or contain them).
+   *
+   * Only rows whose host text still reads as "running" are adopted, so an ended
+   * turn is never taken over and an adopted row is merely re-synced.
+   */
+  function scanRows(root) {
+    if (!(root instanceof Element)) return
+    const rows = []
+    try {
+      if (typeof root.matches === 'function' && root.matches(RUNNING_ROW_SELECTOR)) rows.push(root)
+      for (const row of root.querySelectorAll(RUNNING_ROW_SELECTOR)) rows.push(row)
+    } catch (error) {
+      return
+    }
+    const label = resolveDiveLabel(chatT, lastLocale)
+    const prefix = resolveDiveDurationPrefix(chatT, lastLocale)
+    for (const row of rows) {
+      const labelEl = runningLabelOf(row)
+      if (!labelEl) continue
+      if (matchDiveText(labelEl.textContent || '', label, prefix) === null) continue
+      adoptRow(row, labelEl)
+    }
+    for (const row of Array.from(lines.keys())) {
+      if (!row.isConnected) releaseRow(row)
+    }
+  }
+
+  /** Rotation: hand every adopted line a new phrase every ROTATE_MS. */
+  function rotate() {
+    for (const row of Array.from(lines.keys())) {
+      const entry = lines.get(row)
+      if (!entry) continue
+      if (!refreshLine(entry.line)) releaseRow(row)
+    }
+  }
+
+  /** Rescan right after the phrase list changes: an emptied list releases everything, a filled one adopts at once. */
+  function refreshAll() {
+    const label = resolveDiveLabel(chatT, lastLocale)
+    const prefix = resolveDiveDurationPrefix(chatT, lastLocale)
+    for (const row of Array.from(lines.keys())) {
+      const entry = lines.get(row)
+      if (!entry) continue
+      if (!row.isConnected || !entry.line.isConnected || phrases.length === 0) {
+        releaseRow(row)
+        continue
+      }
+      if (matchDiveText(entry.label.textContent || '', label, prefix) === null) {
+        releaseRow(row)
+        continue
+      }
+      refreshLine(entry.line)
+    }
+    if (phrases.length > 0) scanRows(document.body)
+  }
+
+  /**
+   * Install the sheet, the DOM pass and the rotation timer.
+   *
+   * The suite already owns the single MutationObserver and sweeps on one frame,
+   * so this registers a pass instead of observing the document again, and the
+   * pass does what the standalone rescan timer used to do: a full scan for rows
+   * the host mounted outside the mutation stream, plus a clock sync for every
+   * adopted row (host overlays and session switches change only styles, which no
+   * mutation reports).
+   *
+   * @returns the uninstaller.
+   */
+  function install() {
+    const removeSheet = rt.style('status-phrases', STYLESHEET)
+    const unobserve = rt.observe(() => {
+      scanRows(document.body)
+      for (const row of Array.from(lines.keys())) syncRow(row)
+    })
+
+    const rotator = setInterval(rotate, ROTATE_MS)
+    log('plugin active, locale =', lastLocale, ', phrases =', phrases.length)
+
+    return () => {
+      unobserve()
+      clearInterval(rotator)
+      for (const row of Array.from(lines.keys())) releaseRow(row)
+      for (const state of typists.values()) {
+        if (state.timer !== null) clearInterval(state.timer)
+      }
+      typists.clear()
+      removeSheet()
+    }
+  }
+
+  // ══ settings row: one line in Settings → General ══
+
+  /**
+   * The settings form handle for the suite.
+   *
+   * The rows share one config entry (`ui-copy`), so this form carries every
+   * component's block; without a handle (no settings document on this machine,
+   * or a changed seam) the built-in phrases keep working instead of throwing.
+   *
+   * @param scope - the injected context.
+   * @returns the form handle, or null.
+   */
+  function configFormOf(scope) {
+    try {
+      const forms = scope.configForms
+      if (!forms || typeof forms.get !== 'function') return null
+      const form = forms.get(ENTRY_ID)
+      return form && typeof form.getSnapshot === 'function' ? form : null
+    } catch (error) {
+      return null
+    }
+  }
+
+  /**
+   * The phrase text inside a form snapshot (`ui-copy.statusPhrases.phrases`).
+   *
+   * @param snapshot - `form.getSnapshot()`.
+   * @returns the stored text, or '' when the block is absent.
+   */
+  function storedTextOf(snapshot) {
+    try {
+      const value = snapshot && snapshot.value !== null && typeof snapshot.value === 'object' ? snapshot.value : {}
+      const block = value.statusPhrases !== null && typeof value.statusPhrases === 'object' ? value.statusPhrases : {}
+      return typeof block.phrases === 'string' ? block.phrases : ''
+    } catch (error) {
+      return ''
+    }
+  }
+
+  /** One locale dictionary (the row's own chrome). */
+  const zh = {
+    title: '状态行短语',
+    description: '每行一句,轮到哪句就替换掉宿主那句「深度求索中」。轮换间隔 10 秒,打字机逐字输出,文字跑彩虹流光。以 # 开头的行与空行忽略;整框留空则使用内置短语。',
+    placeholder: '正在深度求索…\n正在整理思路…',
+    active: '当前生效',
+    sentences: '句',
+    saveFailed: '保存失败,请重试',
+    unavailable: '这台机器上没有可写的设置文档,短语只能在回环地址的页面上编辑。',
+  }
+  const en = {
+    title: 'Status line phrases',
+    description: "One phrase per line; the active phrase replaces the host's “Deep diving…”. Rotation every 10s, typed out character by character under a rainbow sweep. Blank lines and lines starting with # are ignored; an empty box means the built-in list.",
+    placeholder: '正在深度求索…\n正在整理思路…',
+    active: 'Active',
+    sentences: 'phrases',
+    saveFailed: 'Could not save; try again',
+    unavailable: 'No writable settings document on this machine; edit the phrases from a loopback page.',
+  }
+
+  /**
+   * Subscribe to a config form's snapshots.
+   *
+   * @param form - a `ctx.configForms.get(id)` handle.
+   * @returns the current snapshot, refreshed on every change.
+   */
+  function useFormSnapshot(form) {
+    const [snapshot, setSnapshot] = react.useState(() => form.getSnapshot())
+    react.useEffect(() => form.subscribe(() => setSnapshot(form.getSnapshot())), [form])
+    return snapshot
+  }
+
+  /**
+   * One line in Settings → General: a multi-line text box, committed on blur or
+   * Ctrl/Cmd+Enter. An empty box writes `unset`, so the phrases fall back to the
+   * built-in list instead of becoming an empty status line.
+   *
+   * The write is one atomic namespace mutation carrying the nested path, so
+   * clearing really removes the key instead of storing an empty string.
+   */
+  function StatusPhrasesRow({ t, form }) {
+    const snapshot = useFormSnapshot(form)
+    const storedText = storedTextOf(snapshot)
+    const [draft, setDraft] = react.useState(storedText)
+    const [busy, setBusy] = react.useState(false)
+    const [failed, setFailed] = react.useState(false)
+
+    // When the stored value moves underneath the draft (a write from another
+    // window, or an accepted save) the draft follows it; a refused save leaves
+    // the draft in place so it can be submitted again.
+    react.useEffect(() => { setDraft(storedText) }, [storedText])
+
+    const commit = () => {
+      const value = draft.trim()
+      if (value === storedText.trim()) return
+      setBusy(true)
+      setFailed(false)
+      const write = value === ''
+        ? form.mutate([{ op: 'unset', path: ['statusPhrases', 'phrases'] }])
+        : form.mutate([{ op: 'set', path: ['statusPhrases', 'phrases'], value }])
+      Promise.resolve(write)
+        .then((accepted) => { if (!accepted) setFailed(true) })
+        .catch(() => setFailed(true))
+        .finally(() => setBusy(false))
+    }
+
+    const count = parsePhrases(draft).length
+    const notes = []
+    if (failed) notes.push(react.createElement('div', { className: 'dsp-note', key: 'save' }, t('saveFailed')))
+
+    const field = snapshot.status === 'unavailable'
+      ? react.createElement('div', { className: 'dsp-note', key: 'unavailable' }, t('unavailable'))
+      : react.createElement('textarea', {
+        key: 'box',
+        className: 'dsp-input',
+        value: draft,
+        readOnly: busy,
+        spellCheck: false,
+        rows: 8,
+        placeholder: t('placeholder'),
+        'aria-label': t('title'),
+        onChange: (event) => setDraft(event.target.value),
+        onBlur: commit,
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) event.currentTarget.blur()
+        },
+      })
+
+    return react.createElement('div', { className: 'dsp-row' }, [
+      react.createElement('div', { className: 'dsp-rowText', key: 'text' }, [
+        react.createElement('div', { className: 'dsp-title', key: 'title' }, t('title')),
+        react.createElement('div', { className: 'dsp-desc', key: 'desc' }, t('description')),
+        ...notes,
+      ]),
+      react.createElement('div', { className: 'dsp-control', key: 'control' }, [
+        react.createElement('div', { className: 'dsp-desc', key: 'count' }, t('active') + ' ' + count + ' ' + t('sentences')),
+        field,
+      ]),
+    ])
+  }
+
+  // ══ entry ══
+
+  /**
+   * Install the status line replacement and the settings row.
+   *
+   * The status line needs no service, so it goes up on the DOM first; the phrase
+   * list and the language are then filled in by their own seams, and the
+   * built-in phrases keep working when the config seam is absent.
+   *
+   * @param ctx - the client root context.
+   */
+  function apply(ctx) {
+    try {
+      debug = new URLSearchParams(location.search).get('dsp-debug') === '1'
+    } catch (error) { /* ignore */ }
+
+    rt.effect(install, 'ui-copy/status-phrases: status line')
+
+    ctx.inject(['locale'], (scope) => {
+      scope.effect(() => scope.locale.register(SETTINGS_NS, { zh, en }), 'ui-copy/status-phrases: dictionaries')
+      // bind's result does not follow a language switch, so bind again before
+      // every read.
+      const bindChat = () => {
+        try {
+          return typeof scope.locale.bind === 'function' ? scope.locale.bind('chat') : null
+        } catch (error) {
+          return null
+        }
+      }
+      chatT = bindChat()
+      try {
+        lastLocale = scope.locale.getLocale().active
+      } catch (error) { /* ignore */ }
+      scope.effect(() => scope.locale.subscribe(() => {
+        try {
+          chatT = bindChat()
+          const active = scope.locale.getLocale().active
+          if (active === lastLocale) return
+          lastLocale = active
+          log('locale →', active)
+          refreshAll()
+        } catch (error) { /* ignore */ }
+      }), 'ui-copy/status-phrases: locale changes')
+    })
+
+    ctx.inject(['configForms'], (scope) => {
+      const form = configFormOf(scope)
+      if (form === null) return
+      const read = () => {
+        let text = ''
+        try {
+          text = storedTextOf(form.getSnapshot())
+        } catch (error) {
+          text = ''
+        }
+        const parsed = parsePhrases(text)
+        phrases = parsed.length > 0 ? parsed : DEFAULT_PHRASES.slice()
+        log('phrases →', phrases.length, parsed.length > 0 ? '(configured)' : '(built-in)')
+      }
+      read()
+      scope.effect(() => form.subscribe(() => {
+        read()
+        refreshAll()
+      }), 'ui-copy/status-phrases: phrase changes')
+    })
+
+    ctx.inject(['slots', 'locale', 'configForms'], (scope) => {
+      const form = configFormOf(scope)
+      if (form === null) return
+      scope.slots.inject('settings.general.item', () => scope.slots.register({
+        name: 'settings.general.item',
+        id: SETTINGS_NS,
+        order: 13,
+        locale: SETTINGS_NS,
+        inject: () => ({ form }),
+      }, StatusPhrasesRow))
+    })
+  }
+
+  apply(rt.ctx)
+}

@@ -1,0 +1,1166 @@
+function dshuiComponent_copy(rt) {
+var SETTINGS_NS = 'ui-copy'
+var CONFIG_ENTRY_ID = 'ui-copy'
+
+/** Headline label inside the Hero's title group; the badge is its sibling. */
+var HEADLINE_SELECTOR = '[class*="titleGroup"] > span:first-child'
+/** The 预览版 badge sharing that title group. */
+var PREVIEW_BADGE_SELECTOR = '[class*="previewBadge"]'
+/** The composer's scrollport: one per mounted composer occurrence. */
+var COMPOSER_SCROLL_SELECTOR = '[data-input-scroll]'
+/** React's own copy of the current hint, on the editable surface. */
+var HINT_SOURCE_SELECTOR = '[data-placeholder]'
+/** The visible hint bubble. */
+var HINT_BUBBLE_SELECTOR = '[data-composer-placeholder]'
+
+/** Editable copy. Overridable field by field through the plugin's cordis config. */
+var DEFAULTS = {
+  /**
+   * Headline pools keyed by the primary subtag of `<html lang>`, which the
+   * locale plugin keeps in sync with the active language. An unknown language
+   * falls back to `zh`, then to the first pool given.
+   */
+  headline: {
+    zh: [
+      '有什么可以帮你的？',
+      '今天想做点什么？',
+      '我们来做点什么。',
+      '你想从哪里开始？',
+      '有什么要交给我？',
+      '从一句话开始吧。',
+      '慢慢说，我在。',
+      '今天也要一起忙吗？',
+      '想先聊哪一件？',
+      '把想法丢过来吧。',
+      '我在这儿，等你开口。',
+      '今天有什么新主意？',
+      '想造点什么出来？',
+      '下一步想去哪？',
+      '说说你在琢磨什么。',
+      '有难题就递过来。',
+      '先讲目标，我来拆。',
+      '从哪儿切入都行。',
+      '今天想折腾什么？',
+      '把最乱的那件拿来。',
+      '要我陪你做点什么？',
+      '一句话，剩下的我来。',
+      '先说说你想要什么。',
+      '开工前，聊两句？',
+      '这会儿想做什么？',
+      '有什么念头冒出来？',
+      '你想让我先做哪件？',
+      '拿不定主意？先说出来。',
+      '把草稿扔给我也行。',
+      '今天的第一件事是什么？',
+      '我来，你说。',
+      '计划、代码、文字，都行。',
+      '想清楚就说，没想清也行。',
+      '白饭加鲸鱼，随时开工。',
+      '先吃碗白饭再开工？',
+      '鲸鱼已就位，你说吧。',
+      '你动嘴，我动手。',
+      '键盘归你，脑子归我。',
+      '说吧，我在听。',
+      '想到哪说到哪。',
+      '要一起拆个难题吗？',
+      '今天想推进哪一格？',
+      '先挑最急的做？',
+      '有一个想法就够。',
+      '来，交代任务吧。',
+      '你要的东西，我来拼。',
+      '我先热个身。',
+      '懒得动脑就让我来。',
+      '有活干吗？',
+      '闲着也是闲着，做点什么？',
+      '把麻烦事说给我。',
+      '今天由你点单。',
+      '想听真话还是先开工？',
+      '我先看看你在忙什么。',
+      '有一句是一句。',
+      '说说看，多离谱都行。',
+      '文件、代码、思路，都能接。',
+      '你负责想，我负责跑。',
+      '先聊需求，还是直接动手？',
+      '给个方向就行。',
+      '我准备好被打断了。',
+      '一步到位很难，先说一步。',
+      '又想搞什么新东西？',
+      '上午的力气还够用吗？',
+      '深夜也要开工？',
+      '今天不赶时间，慢慢来。',
+      '灵光一闪也可以。',
+      '有新东西要试？',
+      '接着上回的也行。',
+      '从头开始也行。',
+      '想让我记住什么？',
+      '你一句话，我跑一趟。',
+      '把目标写在第一行。',
+      '要不要先列个清单？',
+      '动笔之前先说一句。',
+      '想省事就找我。',
+      '我能干粗活也能干细活。',
+      '这个问题听起来有意思。',
+      '来点真活吧。',
+      '摸鱼时间结束了？',
+      '先做容易的还是难的？',
+      '我猜你有事要说。',
+      '别站着，坐下聊。',
+      '任务单拿来。',
+      '今天走哪条路？',
+      '要不要先试试看？',
+      '想听建议还是照做？',
+      '说出来才好办。',
+      '有个开头就够了。',
+      '什么都可以问。',
+      '先不管对不对，先说。',
+      '想做大的还是小的？',
+      '鲸鱼的时间很贵的。',
+      '说正事还是闲聊？',
+      '我尾巴都拍热了。',
+      '好啦，开始吧。',
+      '就等你这一句。',
+      '想清楚了再按发送。',
+      '不着急，我一直在。',
+      '说吧，我记着呢。',
+    ],
+    en: [
+      'What can I help you with?',
+      'What are we building today?',
+      'Let us make something.',
+      'Where would you like to start?',
+      'What can I take off your plate?',
+      'Start with one sentence.',
+      'Take your time, I am here.',
+      'What are we up to today?',
+      'Which one should we do first?',
+      'Toss the idea over here.',
+      'I am listening whenever you are ready.',
+      'Got something new in mind?',
+      'What should we make?',
+      'Where to next?',
+      'Tell me what you are chewing on.',
+      'Hand me the hard one.',
+      'Goal first, I will break it down.',
+      'Start anywhere you like.',
+      'What are we tinkering with?',
+      'Bring me the messiest part.',
+      'Want some company for this?',
+      'One line, I do the rest.',
+      'Say what you want first.',
+      'A quick word before we start?',
+      'What is on your mind right now?',
+      'Any thought popping up?',
+      'Which one first, then?',
+      'Not sure? Say it out loud.',
+      'A rough draft is fine too.',
+      'What is the first thing today?',
+      'You talk, I type.',
+      'Plans, code, words, all fine.',
+      'Say it clear, or say it messy.',
+      'Rice first, then we work?',
+      'The whale is ready. Your move.',
+      'Say it. I am already typing.',
+      'Take the wheel, I run the engine.',
+      'Go ahead, I am listening.',
+      'Say it in any order.',
+      'Shall we take on a hard one?',
+      'What should we push today?',
+      'Start with the most urgent?',
+      'One idea is enough.',
+      'Come on, hand me the task.',
+      'I will put it together.',
+      'Let me warm up first.',
+      'Too tired to think? Let me.',
+      'Got work for me?',
+      'Nothing to do? Let us do something.',
+      'Send the trouble my way.',
+      'You pick, I deliver.',
+      'Truth first, or work first?',
+      'Let me see what you are up to.',
+      'One line at a time is fine.',
+      'Say it, however strange.',
+      'Files, code, ideas, I take them all.',
+      'You think, I run.',
+      'Requirements first, or hands on?',
+      'Just point me somewhere.',
+      'I am ready to be interrupted.',
+      'One step at a time is fine.',
+      'What are you building now?',
+      'Still have energy this morning?',
+      'Working late again?',
+      'No rush, take your time.',
+      'A flash of insight counts.',
+      'Something new to try?',
+      'Pick up the last thread?',
+      'Start from scratch?',
+      'What should I remember?',
+      'One word from you, one trip from me.',
+      'Put the goal on the first line.',
+      'Want to make a list first?',
+      'Say one thing before you type.',
+      'Save effort, ask me.',
+      'I do rough work and fine work.',
+      'This problem sounds interesting.',
+      'Give me real work.',
+      'Break time is over?',
+      'Easy one or hard one first?',
+      'I think you have something to say.',
+      'Do not stand there, sit and talk.',
+      'Hand me the task sheet.',
+      'Which road today?',
+      'Want to try it first?',
+      'Advice first, or just do it?',
+      'Say it and it gets done.',
+      'An opening is all I need.',
+      'Ask me anything.',
+      'Never mind right or wrong, just start.',
+      'Big or small?',
+      'The whale has things to do.',
+      'Business or small talk?',
+      'My tail is already wagging.',
+      'Alright, let us begin.',
+      'Just waiting on that line.',
+      'Think it through, then hit send.',
+      'No hurry, I am here.',
+      'Say it, I am keeping track.',
+      'Night owl mode again?',
+    ],
+  },
+  placeholders: {
+    '描述你想要构建的内容, / 调用指令, @ 文件或对话': [
+      '说点什么，剩下的我来',
+      '脑子里那团东西，倒出来吧',
+      '别客气，直接开口',
+      '想折腾点什么？',
+      '一句话就够，剩下的交给我',
+      '从随便哪句开始都行',
+      '半句话也能开工',
+      '讲个开头，我来接',
+      '说人话就行，别整理',
+      '想造什么，直接讲',
+      '卡住了就把问题丢过来',
+      '先说说最后想要的样子',
+      '不用组织语言，随手打',
+      '我来猜你想说什么？',
+      '把需求砸过来',
+      '粗糙的想法也收',
+      '手边有什么就说什么',
+      '说个大概，细节我来问',
+      '想让我先做哪件？',
+      '从一句抱怨开始也行',
+      '你起头，我接手',
+      '敲几个字就能开始',
+      '不用想清楚再说',
+      '我听着呢，慢慢讲',
+      '先讲讲你在烦什么',
+      '打几个字，我们就开始',
+      '说到一半也行',
+      '把半成品发来',
+      '这事交给我，你说细节',
+      '这行字不用完美',
+      '想到就敲，别润色',
+      '把难处说出来',
+      '三五个字也能开头',
+      '先说结果，过程我来补',
+      '有截图吗？描述也行',
+      '给我一个范围就够',
+      '说慢点，我跟得上',
+      '别怕说错，我会问',
+      '需求写一半也行',
+      '先讲背景再讲目标',
+      '想要什么就直接说',
+      '越具体越好',
+      '模糊也行，我来澄清',
+      '你负责许愿，我负责实现',
+      '说个方向，剩下我来想',
+      '有旧版本可以参考吗',
+      '描述一下理想结果',
+      '先把问题说出来',
+      '一句话概括也行',
+      '讲人话，别写成文档',
+      '我听关键词就懂',
+      '想改哪里，指给我看',
+      '这活我熟',
+      '先别管实现，说目标',
+      '你开口，我开工',
+      '我来兜底',
+      '空白框不是考题',
+      '随便打几个字',
+      '从最后一句话说起',
+      '想让我先看哪里？',
+      '把要求列成几条也行',
+      '说一件事就好',
+      '发半句也行',
+      '别删了重打，我懂',
+      '输入框不会咬人',
+      '想到哪写到哪',
+      '我准备好接话了',
+      '有草稿就贴上来',
+      '说慢一点也没关系',
+      '把链接或路径发来',
+      '要做什么，一句话',
+      '先定个小目标',
+      '说细节吧，我有耐心',
+      '打字累了就说语音',
+      '我这边不收版面费',
+      '讲话不用打草稿',
+      '把思路倒出来就好',
+      '你描述，我拼装',
+      '想清楚了就按回车',
+      '没想清楚就边打边想',
+      '打几个词我也能猜',
+      '从头讲也可以',
+      '先告诉我你想要什么感觉',
+      '我来问，你来答',
+      '这件事听起来不小',
+      '说重点，我记性好',
+      '你只要开个头',
+      '多说两句没坏处',
+      '表达不清也没关系',
+      '别把话憋着',
+      '我就在这行字下面',
+      '想做什么，尽管写',
+      '需要例子吗？你说',
+      '给我原料，我来炒',
+      '别客气，这本来就是我该干的',
+      '好了，开始打字吧',
+      '我等着你自己说',
+      '说什么都行，真的',
+      '想让我帮你想？',
+      '讲完就开始。',
+    ],
+    '发消息或创建任务, / 调用指令, @ 文件或对话': [
+      '接着聊，我听着',
+      '还有呢？继续说',
+      '下一句，请',
+      '想到什么说什么',
+      '接着说，别停',
+      '我还在，继续',
+      '然后呢？',
+      '有补充就发',
+      '说吧，我在看',
+      '要改哪里？',
+      '下一步做什么？',
+      '有新想法就丢过来',
+      '继续折腾？',
+      '再来一句',
+      '我等你把话说完',
+      '打岔也可以',
+      '换个方向也行',
+      '接着干，还是先缓缓？',
+      '有新指令就发',
+      '这个要改吗？',
+      '我这边没断。',
+      '说到一半也没关系',
+      '再来一轮？',
+      '有结果就接上',
+      '继续，别客气',
+      '下一件事？',
+      '慢慢补，不急',
+      '有想法就说',
+      '接着说下一步',
+      '继续，我跟着',
+      '要做到哪一步？',
+      '这版可以吗？',
+      '还要加点什么？',
+      '这里改不改？',
+      '换个说法试试？',
+      '有别的方案吗？',
+      '要不先这样？',
+      '想做就继续',
+      '休息一下也行',
+      '我随时在',
+      '你说停就停',
+      '这件事还没完',
+      '还有一行要改',
+      '再来一版',
+      '想听我的意见？',
+      '我建议先这样',
+      '要不要回退？',
+      '从头再来一次？',
+      '只改这一处',
+      '这处我记下了',
+      '接着说你的',
+      '我在等下文',
+      '有一处想问',
+      '把剩下的也发来',
+      '需要我先整理吗？',
+      '这条先放一放',
+      '接下来做什么？',
+      '你说了算',
+      '那就继续',
+      '收到，往下走',
+      '我这边没问题',
+      '需要重试吗？',
+      '有新要求就写',
+      '再补一句？',
+      '这轮做完了',
+      '继续下一轮？',
+      '想先看哪里？',
+      '我把细节列出来',
+      '还有哪里不顺？',
+      '接着说，我不打岔',
+      '有更新就告诉我',
+      '又来一条？',
+      '我接着上条做',
+      '这问得好',
+      '先做这个吧',
+      '你还没说完吧',
+      '我听着呢',
+      '继续写，别停',
+      '有想法随时发',
+      '再聊两句也行',
+      '想做新的？',
+      '换一个试试',
+      '我准备下一条了',
+      '说完了吗？',
+      '慢慢来，不催',
+      '还有补充？',
+      '那就按这个来',
+      '需要我复述一遍？',
+      '好的，下一步',
+      '这地方要调整',
+      '接着说结果',
+      '我记在这里',
+      '说个方向我改',
+      '还有一句',
+      '我在看，继续',
+      '下一句你起头',
+      '这一轮结束',
+      '继续还是暂停？',
+      '有什么要加的？',
+      '说吧，空白留给你',
+    ],
+    'Describe what you want to build, / commands, @ files or sessions': [
+      'Say the word, I take it from there',
+      'Let us see what is in your head',
+      'No need to be polite, just ask',
+      'What are we tinkering with?',
+      'One sentence is enough',
+      'Start anywhere, any line works',
+      'Half a thought is enough',
+      'Give me the opening, I take over',
+      'No need to tidy it up',
+      'Just say what you want built',
+      'Stuck? Toss the problem here',
+      'Describe how it should end',
+      'Type it messy, I will read',
+      'Let me guess what you mean?',
+      'Throw the requirement at me',
+      'Rough ideas are welcome',
+      'Whatever is on hand, say it',
+      'Roughly is fine, I will ask',
+      'What should I take first?',
+      'Start with a complaint if you like',
+      'You start, I continue',
+      'A few keys are enough',
+      'No need to think it through',
+      'I am listening, take your time',
+      'Tell me what is annoying you',
+      'A few words and we begin',
+      'Half a sentence works too',
+      'Send the draft as it is',
+      'Tell me the details, I handle it',
+      'This line need not be perfect',
+      'Type it, skip the polish',
+      'Tell me the hard part',
+      'Three words are enough to start',
+      'Result first, I fill the steps',
+      'Got a screenshot? Words work too',
+      'Give me a range and I will go',
+      'Slow down, I can keep up',
+      'Do not fear mistakes, I will ask',
+      'Half a spec is fine',
+      'Background first, then goal',
+      'Say what you want, directly',
+      'The more specific, the better',
+      'Vague is fine, I will clarify',
+      'You wish, I build',
+      'Point a direction, I do the rest',
+      'Is there an older version to compare?',
+      'Describe the ideal outcome',
+      'Say the problem out loud',
+      'One sentence summary works',
+      'Talk like a person, not a doc',
+      'I read keywords well',
+      'Point at what needs changing',
+      'I know this kind of work',
+      'Skip the how, give me the goal',
+      'You speak, I start',
+      'I will cover the gaps',
+      'An empty box is not a test',
+      'Just hit a few keys',
+      'Start from the last sentence',
+      'What should I look at first?',
+      'A short list of asks works',
+      'Just one thing at a time',
+      'Half a message is fine',
+      'Do not retype, I understand',
+      'The box does not bite',
+      'Type it in any order',
+      'I am ready for your line',
+      'Paste the draft if you have one',
+      'Take it slow, that is fine',
+      'Send the link or the path',
+      'One line: what should happen',
+      'Pick a small goal first',
+      'Give me details, I have patience',
+      'Tired of typing? Send voice',
+      'No formatting fee here',
+      'No script needed',
+      'Pour the thoughts out',
+      'You describe, I assemble',
+      'Think it through, then enter',
+      'Or think while typing',
+      'A few words are enough to guess',
+      'Start from the beginning',
+      'Tell me the feeling you want',
+      'I ask, you answer',
+      'This one sounds big',
+      'Give me the point, I remember well',
+      'You only need to start',
+      'Two more words will not hurt',
+      'Unclear is acceptable',
+      'Do not hold it in',
+      'I am right below this line',
+      'Write whatever you want done',
+      'Want an example? Just ask',
+      'Give me the ingredients',
+      'No need to be polite, it is my job',
+      'Alright, start typing',
+      'Waiting for your own words',
+      'Anything at all, truly',
+      'Want me to think for you?',
+      'Finish the sentence and we start',
+    ],
+    'Message or run a task, / commands, @ files or sessions': [
+      'Go on, I am listening',
+      'And then?',
+      'Your next line, please',
+      'Say whatever comes to mind',
+      'Keep going, do not stop',
+      'Still here, carry on',
+      'What comes next?',
+      'Send it if you have more',
+      'Go ahead, I am watching',
+      'What needs changing?',
+      'What is the next step?',
+      'Drop new ideas here',
+      'More tinkering?',
+      'One more line',
+      'Let me hear the rest',
+      'Interruptions are fine',
+      'A different direction works too',
+      'Keep going, or take a break?',
+      'Send the next command',
+      'Should this change?',
+      'I am still connected.',
+      'Half a sentence is fine too',
+      'Another round?',
+      'Pick it up where you left off',
+      'Continue, no need to hold back',
+      'What is next?',
+      'Take your time, no hurry',
+      'Say what is on your mind',
+      'Next step, then',
+      'Keep going, I am with you',
+      'How far should this go?',
+      'Is this version okay?',
+      'Anything to add?',
+      'Change this one?',
+      'Try another wording?',
+      'Any other options?',
+      'Shall we leave it here?',
+      'Keep going if you want',
+      'A break is fine too',
+      'I am around',
+      'Stop when you say so',
+      'This is not finished yet',
+      'One more line to edit',
+      'Another pass',
+      'Want my opinion?',
+      'I suggest this for now',
+      'Should we roll back?',
+      'Start over from scratch?',
+      'Only this spot changes',
+      'Noted this one',
+      'Go on with your part',
+      'I am waiting for more',
+      'I have one question',
+      'Send the rest too',
+      'Want me to tidy it up?',
+      'Let us leave this for now',
+      'What comes after this?',
+      'Your call',
+      'Then let us continue',
+      'Got it, moving on',
+      'No issues on my side',
+      'Retry needed?',
+      'Write new asks here',
+      'One more line?',
+      'This round is done',
+      'Next round?',
+      'What do you want to see first?',
+      'I will list the details',
+      'Anything still off?',
+      'Talk, I will not cut in',
+      'Tell me about updates',
+      'Another one?',
+      'Continuing from the last',
+      'Good question',
+      'Let us do this first',
+      'You were not finished, right?',
+      'I am listening',
+      'Keep writing, do not stop',
+      'Send ideas whenever',
+      'Two more lines are fine',
+      'Want to start something new?',
+      'Try a different one',
+      'Ready for the next line',
+      'Are you done?',
+      'No rush at all',
+      'Anything else to add?',
+      'Then we go with this',
+      'Want me to repeat it back?',
+      'Alright, next step',
+      'This part needs a tweak',
+      'Tell me the result',
+      'I have it noted',
+      'Point a direction, I will change it',
+      'One more sentence',
+      'I am watching, go on',
+      'You start the next line',
+      'This round is over',
+      'Continue or pause?',
+      'Anything left to say?',
+      'The box is yours',
+    ],
+  },
+  /**
+   * Accent colour per theme. Empty leaves the shipped colour alone; a bare
+   * string paints both themes with the same value.
+   */
+  accent: {
+    light: '',
+    dark: '',
+  },
+  /** Hide the 预览版 badge next to the headline. */
+  hidePreviewBadge: true,
+  /** Extra CSS appended to this plugin's stylesheet, for anything not covered above. */
+  css: '',
+}
+
+/** Last line this plugin wrote, so a re-render never repeats it back to back. */
+var lastHeadline = null
+/** Same, per shipped hint sentence (the key names a state and a language). */
+var lastPlaceholder = new Map()
+
+/** See {@link DEFAULTS}. */
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** The line pool for the language the document is currently in. */
+function headlinePool(table) {
+  const primary = (document.documentElement.lang || '').toLowerCase().split('-')[0]
+  const pools = Object.values(table).filter((pool) => Array.isArray(pool) && pool.length > 0)
+  const own = primary !== '' && Array.isArray(table[primary]) && table[primary].length > 0 ? table[primary] : null
+  return own ?? table.zh ?? pools[0] ?? []
+}
+
+/**
+ * The accent tokens this plugin repaints: the neutral brand colour, the blue
+ * business colour, the link colour, and the shrunken alias the shipped theme
+ * emits for the active-tab caret and the settings page (`#4176e6`). The last
+ * name is spelled exactly as the bundle does; a release that drops it only
+ * leaves one unused declaration behind.
+ */
+var ACCENT_TOKENS = [
+  '--dsw-alias-brand-primary',
+  '--dsw-alias-brand-primary-new-colorprimary-new-color',
+  '--dsw-alias-link',
+  '--dsw-alias-state-business-primary',
+]
+
+/** `#rgb` / `#rrggbb` as 0-255 channels, or null for anything else. */
+function hexChannels(color) {
+  const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
+  if (match === null) return null
+  const digits = match[1]
+  const full = digits.length === 3 ? digits.replace(/./g, (digit) => digit + digit) : digits
+  return [0, 2, 4].map((at) => Number.parseInt(full.slice(at, at + 2), 16))
+}
+
+/** WCAG relative luminance, used only to pick ink that stays readable. */
+function luminance(channels) {
+  const linear = (value) => {
+    const channel = value / 255
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * linear(channels[0]) + 0.7152 * linear(channels[1]) + 0.0722 * linear(channels[2])
+}
+
+/**
+ * Black or white, whichever contrasts more with the accent fill.
+ * @returns the ink colour, or null when the accent is not a hex value and its
+ *   contrast cannot be measured here.
+ */
+function contrastInk(color) {
+  const channels = hexChannels(color)
+  if (channels === null) return null
+  const relative = luminance(channels)
+  return 1.05 / (relative + 0.05) > (relative + 0.05) / 0.05 ? '#ffffff' : '#0d0d0d'
+}
+
+/**
+ * The accent override for one theme.
+ *
+ * The colour lands on every token in {@link ACCENT_TOKENS} plus the values that
+ * cannot inherit from them: the primary button's hover shade, mixed toward black
+ * in light and white in dark so it deepens or lifts instead of flipping back to
+ * the shipped neutral, and the ink drawn on an accent fill.
+ *
+ * The declarations are rooted at `html body` and `html body *`: the shipped
+ * theme publishes its aliases on `body` and on `body *`, and this selector wins
+ * that tie by specificity rather than by sheet order, which the runtime
+ * stylesheets do not guarantee. No !important is used, so a component that
+ * remaps a token inside its own scope still wins.
+ *
+ * `--dsh-ui-copy-accent` and `--dsh-ui-copy-accent-ink` are published for the
+ * ask surface, whose own token layer remaps the harness tokens and would
+ * otherwise read back into itself.
+ *
+ * @param selector - the theme root selector, already specificity-boosted.
+ * @param color - accent colour for this theme; an empty string writes nothing.
+ * @param shade - the colour this theme's hover state mixes toward.
+ */
+function accentBlock(selector, color, shade) {
+  if (color === '') return ''
+  const declarations = ACCENT_TOKENS.map((token) => `${token}: ${color};`)
+  declarations.push(`--dsw-alias-button-primary-hover: color-mix(in srgb, ${color} 84%, ${shade});`)
+  const ink = contrastInk(color)
+  if (ink !== null) declarations.push(`--dsw-alias-label-primary-foreground: ${ink};`)
+  declarations.push(`--dshui-brand: ${color};`)
+  declarations.push(`--dshui-brand-fill: ${color};`)
+  declarations.push(`--dshui-link: ${color};`)
+  declarations.push(`--dshui-business: ${color};`)
+  declarations.push(`--dsh-ui-copy-accent: ${color};`)
+  if (ink !== null) declarations.push(`--dsh-ui-copy-accent-ink: ${ink};`)
+  return `${selector} {\n  ${declarations.join('\n  ')}\n}\n`
+}
+
+/** The two theme blocks, or nothing when no accent is configured. */
+function accentStylesheet(accent) {
+  return (
+    accentBlock('html body,\nhtml body *', accent.light, '#000000') +
+    accentBlock('html body[data-ds-dark-theme],\nhtml body[data-ds-dark-theme] *', accent.dark, '#ffffff')
+  )
+}
+
+/** A config value as an accent pair: a bare string paints both themes. */
+function accentFrom(value) {
+  if (typeof value === 'string') return { light: value, dark: value }
+  if (!isPlainObject(value)) return { ...DEFAULTS.accent }
+  const colour = (entry) => (typeof entry === 'string' ? entry : '')
+  return { light: colour(value.light), dark: colour(value.dark) }
+}
+
+/**
+ * Drop the characters that could break out of a declaration value. Everything
+ * else is passed through, so any CSS colour syntax the browser understands is
+ * accepted and an unparsable value simply leaves the token unset.
+ */
+function sanitizeColor(value) {
+  return typeof value === 'string' ? value.replace(/[;{}<>]/g, '').trim() : ''
+}
+
+/**
+ * The accent pair a config-form snapshot carries.
+ *
+ * @param snapshot - `form.getSnapshot()`.
+ * @returns `{ light, dark }`; an empty string means "leave the shipped colour".
+ */
+function accentOf(snapshot) {
+  const value = isPlainObject(snapshot) && isPlainObject(snapshot.value) ? snapshot.value : {}
+  const accent = isPlainObject(value.accent) ? value.accent : {}
+  return { light: sanitizeColor(accent.light), dark: sanitizeColor(accent.dark) }
+}
+
+/** A `#rrggbb` for the native colour input, which accepts nothing else. */
+function pickerHex(value) {
+  const channels = hexChannels(value)
+  if (channels === null) return '#888888'
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
+}
+
+/** The Settings → General row's text, one dictionary per language. */
+var ROW_TEXT = {
+  zh: {
+    title: 'UI 强调色',
+    description: '主按钮、开关、选中描边、链接、焦点环与业务态徽标的颜色，浅色与深色主题各配一个。留空表示沿用官方配色。',
+    light: '浅色',
+    dark: '深色',
+    inherit: '跟随官方',
+    clear: '清除',
+    saveFailed: '保存失败，请重试',
+    unavailable: '这台机器上没有可写的设置文档，强调色只能在回环地址的页面上编辑。',
+  },
+  en: {
+    title: 'UI accent',
+    description: 'Colour of primary buttons, switches, selected strokes, links, focus rings and business badges, one per theme. Empty keeps the shipped colour.',
+    light: 'Light',
+    dark: 'Dark',
+    inherit: 'Shipped',
+    clear: 'Clear',
+    saveFailed: 'Could not save; try again',
+    unavailable: 'No writable settings document on this machine; edit the accent from a loopback page.',
+  },
+}
+
+/**
+ * The Settings → General row's own chrome.
+ *
+ * It borrows the shipped alias tokens rather than hard-coding colours, so the
+ * row follows the active theme like the rows the other plugin bundles
+ * contribute next to it, and it keeps its own `duic-` prefix so nothing here
+ * can collide with a shipped class.
+ */
+var SETTINGS_CSS = `
+.duic-row{display:flex;align-items:flex-start;gap:8px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}
+.duic-rowText{display:flex;flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:24px}
+.duic-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}
+.duic-desc{color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:400;line-height:18px}
+.duic-note{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-tertiary));font-size:12px;font-weight:400;line-height:18px}
+.duic-control{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.duic-field{display:flex;align-items:center;gap:8px}
+.duic-fieldLabel{color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-tertiary));font-size:12px;line-height:18px;width:28px;text-align:right}
+.duic-picker{box-sizing:border-box;width:34px;height:28px;padding:2px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-3);cursor:pointer}
+.duic-picker::-webkit-color-swatch-wrapper{padding:0}
+.duic-picker::-webkit-color-swatch{border:none;border-radius:5px}
+.duic-picker-empty{opacity:.4}
+.duic-picker:disabled{cursor:default;opacity:.6}
+.duic-input{box-sizing:border-box;width:136px;height:28px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);padding:0 10px;font:inherit;font-size:13px}
+.duic-input:focus{border-color:var(--dsw-alias-brand-primary);outline:none}
+.duic-input::placeholder{color:var(--dsw-alias-label-dimmed)}
+.duic-input:disabled{opacity:.6;cursor:default}
+.duic-clear{flex:none;border:none;background:none;padding:0 2px;color:var(--dsw-alias-link);font:inherit;font-size:12px;line-height:18px;cursor:pointer}
+.duic-clear:disabled{cursor:default;opacity:.6}
+`
+
+
+/** Render the stylesheet: the badge rule, the accent override, the row, the caller's CSS. */
+function stylesheetFor(options) {
+  const badge = options.hidePreviewBadge ? `${PREVIEW_BADGE_SELECTOR} { display: none !important; }\n` : ''
+  return badge + accentStylesheet(options.accent) + SETTINGS_CSS + options.css
+}
+
+/** A config value as a list of lines: a bare string counts as a one-line pool. */
+function poolOf(value) {
+  if (typeof value === 'string') return value === '' ? [] : [value]
+  if (!Array.isArray(value)) return []
+  return value.filter((line) => typeof line === 'string' && line !== '')
+}
+
+/** One line from the pool, never the line just shown when the pool allows it. */
+function pickLine(pool, previous) {
+  if (pool.length === 0) return null
+  const candidates = pool.filter((line) => line !== previous)
+  return candidates[Math.floor(Math.random() * candidates.length)] || pool[0]
+}
+
+/**
+ * Swap the shipped headline for a pooled line.
+ *
+ * A line this plugin already wrote is left alone, so a re-render of unrelated
+ * parts of the tree does not reshuffle the headline; only React writing the
+ * shipped sentence back (a remount, or a language switch) draws a new line.
+ *
+ * @param table - the headline pools, keyed by language subtag.
+ */
+function applyHeadline(table) {
+  const label = document.querySelector(HEADLINE_SELECTOR)
+  if (label === null) return
+  const pool = headlinePool(table)
+  if (pool.length === 0 || pool.includes(label.textContent)) return
+  const next = pickLine(pool, lastHeadline)
+  if (next === null) return
+  label.textContent = next
+  lastHeadline = next
+}
+
+/**
+ * Rewrite the empty-state hint and the aria-label that mirrors it.
+ *
+ * The state is identified by the shipped sentence React passes down, which is
+ * the one thing on screen that never gets written here; the visible bubble being
+ * already in the pool is what marks this pass as ours.
+ *
+ * @param table - shipped sentence to line pool map.
+ */
+function applyPlaceholders(table) {
+  for (const scroll of document.querySelectorAll(COMPOSER_SCROLL_SELECTOR)) {
+    const editable = scroll.querySelector(HINT_SOURCE_SELECTOR)
+    if (editable === null) continue
+    const shipped = editable.getAttribute('data-placeholder')
+    const pool = shipped === null ? [] : poolOf(table[shipped])
+    if (pool.length === 0) continue
+    const bubble = scroll.querySelector(HINT_BUBBLE_SELECTOR)
+    if (bubble === null || pool.includes(bubble.textContent)) continue
+    const next = pickLine(pool, lastPlaceholder.get(shipped))
+    if (next === null) continue
+    lastPlaceholder.set(shipped, next)
+    bubble.textContent = next
+    if (editable.getAttribute('aria-label') === shipped) editable.setAttribute('aria-label', next)
+  }
+}
+
+/** One pass over every rule. */
+function applyCopy(options) {
+  applyHeadline(options.headline)
+  applyPlaceholders(options.placeholders)
+}
+
+/** External React, when this boot graph carries it; the settings row is the only consumer. */
+const React = rt.require('react')
+const h = React !== null && typeof React.createElement === 'function'
+  ? React.createElement
+  : () => null
+
+/**
+ * The config form for this plugin's row.
+ *
+ * `null` is every shape of "no editable settings on this page": the seam
+ * absent, the handle shaped differently after a release, or the lookup
+ * itself throwing. Callers keep the built-in defaults in that case.
+ *
+ * @param scope - a context with `configForms` injected.
+ * @returns the form handle, or null.
+ */
+function configFormOf(scope) {
+  try {
+    const forms = scope.configForms
+    if (forms === undefined || forms === null || typeof forms.get !== 'function') return null
+    const form = forms.get(CONFIG_ENTRY_ID)
+    if (form === undefined || form === null || typeof form.getSnapshot !== 'function') return null
+    return form
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Subscribe one component to a config form's snapshots.
+ *
+ * @param form - a `ctx.configForms.get(id)` handle.
+ * @returns the current snapshot, refreshed on every change.
+ */
+function useFormSnapshot(form) {
+  const [snapshot, setSnapshot] = React.useState(() => form.getSnapshot())
+  React.useEffect(() => form.subscribe(() => setSnapshot(form.getSnapshot())), [form])
+  return snapshot
+}
+
+/**
+ * One theme's colour: the native picker, the text field, and the clear
+ * button that puts the theme back on the shipped colour.
+ *
+ * The text field is what carries syntax the picker cannot show (`oklch()`,
+ * a colour name); both controls commit the same field, and an unchanged
+ * value is never written back.
+ */
+function AccentField({ t, labelKey, value, busy, onCommit }) {
+  const [draft, setDraft] = React.useState(value)
+  React.useEffect(() => setDraft(value), [value])
+
+  const commitDraft = () => {
+    if (draft !== value) onCommit(draft)
+  }
+
+  return h('div', { className: 'duic-field' }, [
+    h('div', { className: 'duic-fieldLabel', key: 'label' }, t(labelKey)),
+    h('input', {
+      key: 'picker',
+      className: value === '' ? 'duic-picker duic-picker-empty' : 'duic-picker',
+      type: 'color',
+      value: pickerHex(value),
+      disabled: busy,
+      'aria-label': t(labelKey),
+      onChange: (event) => {
+        setDraft(event.target.value)
+        onCommit(event.target.value)
+      },
+    }),
+    h('input', {
+      key: 'text',
+      className: 'duic-input',
+      type: 'text',
+      value: draft,
+      disabled: busy,
+      spellCheck: false,
+      placeholder: t('inherit'),
+      'aria-label': `${t('title')} · ${t(labelKey)}`,
+      onChange: (event) => setDraft(event.target.value),
+      onBlur: commitDraft,
+      onKeyDown: (event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+      },
+    }),
+    value === ''
+      ? null
+      : h('button', {
+        key: 'clear',
+        className: 'duic-clear',
+        type: 'button',
+        disabled: busy,
+        onClick: () => onCommit(''),
+      }, t('clear')),
+  ])
+}
+
+/**
+ * The Settings → General row.
+ *
+ * A save is one atomic namespace mutation carrying the nested path, so a
+ * cleared colour really removes the key instead of storing an empty string,
+ * and the two themes can never be written half-applied. The draft is
+ * replaced whenever the stored value moves underneath it, so a save the
+ * Host refused leaves the text in place to be submitted again.
+ */
+function AccentRow({ t, form }) {
+  const snapshot = useFormSnapshot(form)
+  const accent = accentOf(snapshot)
+  const [busy, setBusy] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
+  const unavailable = snapshot.status === 'unavailable'
+
+  const commit = (theme, next) => {
+    const value = sanitizeColor(next)
+    if (value === accent[theme]) return
+    setBusy(true)
+    setFailed(false)
+    const write = form.mutate([
+      value === '' ? { op: 'unset', path: ['accent', theme] } : { op: 'set', path: ['accent', theme], value },
+    ])
+    Promise.resolve(write)
+      .then((accepted) => {
+        if (!accepted) setFailed(true)
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setBusy(false))
+  }
+
+  const notes = []
+  if (failed) notes.push(h('div', { className: 'duic-note', key: 'failed' }, t('saveFailed')))
+  if (unavailable) notes.push(h('div', { className: 'duic-note', key: 'unavailable' }, t('unavailable')))
+
+  const control = unavailable
+    ? null
+    : h('div', { className: 'duic-control', key: 'control' }, [
+      h(AccentField, { key: 'light', t, labelKey: 'light', value: accent.light, busy, onCommit: (next) => commit('light', next) }),
+      h(AccentField, { key: 'dark', t, labelKey: 'dark', value: accent.dark, busy, onCommit: (next) => commit('dark', next) }),
+    ])
+
+  return h('div', { className: 'duic-row' }, [
+    h('div', { className: 'duic-rowText', key: 'text' }, [
+      h('div', { className: 'duic-title', key: 'title' }, t('title')),
+      h('div', { className: 'duic-desc', key: 'desc' }, t('description')),
+      ...notes,
+    ]),
+    control,
+  ])
+}
+
+/**
+ * Install the sheet and register the copy pass.
+ *
+ * The sheet and the pass both belong to this component's runtime slots: the
+ * suite owns the single MutationObserver, so this registers a pass instead of
+ * observing the document a second time, and the sheet replaces itself in place
+ * when the accent moves.
+ *
+ * @param options - normalized copy options; the accent is written back into this
+ *   object rather than replaced, so the passes keep reading the latest value.
+ * @returns a handle: `setAccent` repaints the sheet, `dispose` removes both.
+ */
+function start(options) {
+  const paint = rt.style('copy', stylesheetFor(options))
+  const unobserve = rt.observe(() => applyCopy(options))
+  return {
+    setAccent(accent) {
+      if (accent.light === options.accent.light && accent.dark === options.accent.dark) return
+      options.accent = accent
+      rt.style('copy', stylesheetFor(options))
+    },
+    dispose() {
+      unobserve()
+      paint()
+    },
+  }
+}
+
+/** Merge the component config over DEFAULTS, ignoring fields of the wrong shape. */
+function normalizeConfig(input, accent) {
+  const value = isPlainObject(input) ? input : {}
+  return {
+    headline: isPlainObject(value.headline) ? value.headline : DEFAULTS.headline,
+    placeholders: isPlainObject(value.placeholders) ? { ...DEFAULTS.placeholders, ...value.placeholders } : DEFAULTS.placeholders,
+    accent: accentFrom(accent),
+    hidePreviewBadge: typeof value.hidePreviewBadge === 'boolean' ? value.hidePreviewBadge : DEFAULTS.hidePreviewBadge,
+    css: typeof value.css === 'string' ? value.css : DEFAULTS.css,
+  }
+}
+
+/**
+ * Copy, accent and the settings row.
+ *
+ * The copy passes start at once because they need no service. The accent follows
+ * the config form when one exists - the form is the only surface that can write
+ * the profile from the page - and starts from the host-injected config, which is
+ * what a fresh page render carries.
+ */
+function install(ctx) {
+  const options = normalizeConfig(rt.config, rt.suite.accent)
+  let running = null
+
+  const mount = () => {
+    running = start(options)
+    return () => {
+      const previous = running
+      running = null
+      if (previous !== null) previous.dispose()
+    }
+  }
+  if (document.body !== null) rt.effect(mount, 'ui-copy/copy: overrides')
+  else document.addEventListener('DOMContentLoaded', () => rt.effect(mount, 'ui-copy/copy: overrides'), { once: true })
+
+  ctx.inject(['configForms'], (scope) => {
+    const form = configFormOf(scope)
+    if (form === null) return
+    const sync = () => {
+      const accent = accentOf(form.getSnapshot())
+      options.accent = accent
+      if (running !== null) running.setAccent(accent)
+    }
+    scope.effect(() => form.subscribe(sync), 'ui-copy/copy: accent changes')
+    sync()
+  })
+
+  ctx.inject(['locale'], (scope) => {
+    scope.effect(() => scope.locale.register(SETTINGS_NS, ROW_TEXT), 'ui-copy/copy: dictionaries')
+  })
+
+  ctx.inject(['slots', 'locale', 'configForms'], (scope) => {
+    const form = configFormOf(scope)
+    if (form === null) return
+    scope.slots.inject('settings.general.item', () => scope.slots.register({
+      name: 'settings.general.item',
+      id: SETTINGS_NS,
+      order: 14,
+      locale: SETTINGS_NS,
+      inject: () => ({ form }),
+    }, AccentRow))
+  })
+}
+
+install(rt.ctx)
+}

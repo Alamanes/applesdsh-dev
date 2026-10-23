@@ -1,12 +1,15 @@
 {
   "name": "dsh-ui-copy",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "DeepSeek Harness 界面改写插件：空态大标题轮换、输入框空置提示改写、预览版徽章隐藏、输入卡片的 Codex 视觉、ask_user 提问弹窗的 OpenAI 视觉、菜单开合动画，以及侧栏新会话按钮降噪。不动官方包，只经 DOM 与样式表。",
+  "description": "DeepSeek Harness 界面套件：一份包、一个浏览器入口、一套设计令牌。空态文案与输入提示轮换、输入卡片与 ask 弹窗外观、菜单动效、侧栏身份与底栏按钮、峰谷提示、状态行短语、会话删除、彻底重启、配额仪表、推理强度滑块、粒子鲸鱼壁纸、技能中心，全部作为可单独开关的组件挂在一起。",
   "keywords": [
     "dsh",
     "dsh-plugin",
     "deepseek-harness",
+    "ui-suite",
+    "design-tokens",
+    "theme",
     "copy",
     "i18n",
     "hero",
@@ -24,23 +27,8 @@
     ".": {
       "default": "./lib/index.js"
     },
-    "./ask": {
-      "default": "./lib/ask.js"
-    },
-    "./ask/locale/*.json": {
-      "default": "./locale/ask/*.json"
-    },
     "./client": {
       "default": "./lib/client.js"
-    },
-    "./composer": {
-      "default": "./lib/composer.js"
-    },
-    "./menu": {
-      "default": "./lib/menu.js"
-    },
-    "./sidebar": {
-      "default": "./lib/sidebar.js"
     },
     "./locale/*.json": {
       "default": "./locale/*.json"
@@ -49,10 +37,16 @@
   },
   "files": [
     "lib",
+    "src",
+    "scripts",
     "locale",
     "cordis.patch.yml",
     "README.md"
   ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check"
+  },
   "engines": {
     "node": ">=18",
     "dsh": ">=0.2.0-rc.2 <0.3.0-0"
@@ -63,8 +57,19 @@
     },
     "client": {
       "platform": "web",
+      "immediately": true,
       "inject": [
-        "@deepseek-ai/dsh-client-ui-conversation"
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-model-selection",
+        "@deepseek-ai/dsh-client-ui-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-connection"
       ]
     }
   },

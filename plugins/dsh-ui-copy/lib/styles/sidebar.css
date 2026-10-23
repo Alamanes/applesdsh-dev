@@ -16,6 +16,12 @@
    and reloading the page is enough: no rebuild, no restart, no stale
    stylesheet.
 
+   Tokens
+     This sheet is wired into the suite token layer: every colour, radius,
+     spacing, type size and weight below reads a `--dshui-*` token from
+     lib/styles/tokens.css, so light and dark follow the token layer rather
+     than this file.
+
    Scope
      Two locals of @deepseek-ai/dsh-client-ui-sidebar name the target: `_root`
      marks the sidebar column and `_newSession` the button. The column's
@@ -40,7 +46,7 @@
 
 /* --------------------------------------------------------------------------
    Button geometry
-   32px tall, 5px/8px padding, an 8px gap, no border, no fill of its own. The
+   32px tall, 4px/8px padding, an 8px gap, no border, no fill of its own. The
    height is the shipped 22px line plus the padding; `min-height` follows it, or
    the shipped 36px floor would hold the box open. `margin-bottom` replaces the
    column's own 12px, which was three times the 4px a panel row leaves between
@@ -51,17 +57,17 @@
   :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) {
   height: 32px !important;
   min-height: 32px !important;
-  padding: 5px 8px !important;
-  margin-bottom: 8px !important;
-  gap: 8px !important;
+  padding: var(--dshui-space-2) var(--dshui-space-4) !important;
+  margin-bottom: var(--dshui-space-4) !important;
+  gap: var(--dshui-space-4) !important;
   border: none !important;
-  border-radius: var(--dsw-radius-md);
+  border-radius: var(--dshui-radius-md);
   background: transparent !important;
   box-shadow: none !important;
   justify-content: flex-start !important;
   overflow: visible !important;
-  font-size: 14px !important;
-  font-weight: 400 !important;
+  font-size: var(--dshui-text-size-base) !important;
+  font-weight: var(--dshui-weight-regular) !important;
   line-height: 22px !important;
 }
 
@@ -69,14 +75,14 @@
    floating fills above at every theme and platform. */
 :is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
   :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]):hover {
-  background: var(--dsw-alias-interactive-bg-hover) !important;
+  background: var(--dshui-surface-hover) !important;
 }
 
 /* The panel rows carry a focus ring inset by 2px; the shipped button shipped
    without one, which is reason enough to add it. */
 :is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
   :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]):focus-visible {
-  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline: var(--dshui-ring-width) solid var(--dshui-border-focus);
   outline-offset: -2px;
 }
 
@@ -91,7 +97,7 @@
   :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) [class*="_newSessionContent"] {
   width: auto !important;
   justify-content: flex-start !important;
-  gap: 8px !important;
+  gap: var(--dshui-space-4) !important;
 }
 
 :is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
@@ -99,3 +105,12 @@
   width: 16px !important;
   height: 16px !important;
 }
+
+/* --------------------------------------------------------------------------
+   Token notes
+   · The 5px vertical padding folded into --dshui-space-2 (4px): the box height
+     is pinned at 32px, so the fold only moves the label's inset by one pixel.
+   · line-height stays 22px: it sets the label's optical centre inside that
+     fixed 32px box, and the unitless line scale would shift the text instead.
+   · outline-offset -2px is a placement value, not spacing, and stays literal.
+   -------------------------------------------------------------------------- */

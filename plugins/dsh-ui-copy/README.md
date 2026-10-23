@@ -1,191 +1,138 @@
 # dsh-ui-copy
 
-DeepSeek Harness 的界面改写插件。它不改动任何官方包：浏览器半只改写三处已渲染的文本、覆写强调色令牌，并在设置 → 通用设置里贡献「UI 强调色」一行；宿主半只声明这一行设置的可编辑字段，并把 ask 弹窗、输入卡片、菜单动画与侧栏四套资源内联进页面。
+DeepSeek Harness 的界面套件。一个包、一个浏览器入口、一套设计令牌：原本散在十几个插件里的界面改写，现在全部是这里的组件，逐项可开关，视觉只从令牌取值。
 
-| 目标 | 位置 | 行为 |
-| --- | --- | --- |
-| 空态大标题 | `hero.headline`（原为「探索未至之境」） | 从当前语言池中随机取一句；React 每次把原句写回时重新取，自己写的那句不会被反复打乱 |
-| 输入框空置提示 | hero 态与普通态各一组 | 每组随机取一句俏皮话，按 React 传入的原句识别状态，同时同步 `aria-label` |
-| 预览版徽章 | 标题右侧的 `预览版` | 整条隐藏 |
-| UI 强调色 | `--dsw-alias-brand-primary` 与 `--dsw-alias-link` / `--dsw-alias-state-business-primary` 两组令牌 | 在设置 → 通用设置里按主题各配一个颜色 |
-| ask 提问弹窗 | `ask_user_question` 的提问卡、计划审批卡、回答气泡 | 换成 OpenAI / ChatGPT 的视觉语言 |
-| 输入卡片 | 空态与普通态的 composer 卡片、编辑器、发送按钮、添加控件与用量数字 | 换成 Codex 风格的圆角卡片、配色与圆形发送按钮 |
-| 菜单开合 | 权限模式、模型、Dock 标签、右键菜单与各级子菜单 | 按展开方向缩放淡入；关闭时把菜单留在原位淡出 |
-| 侧栏「新会话」按钮 | 侧栏顶部的 `session.new` | 去掉描边、填充与居中，压成一枚 32px 的安静行键 |
+## 为什么合成一个包
 
-默认文案写在 `lib/client.js` 的 `DEFAULTS` 里：标题中英各 100 句，输入框按 hero / 会话与中英分成四池、每池 100 句，同一池内不重样，随机取一句；改成单元素数组即固定不轮换。`hidePreviewBadge` 默认 `true`；强调色两项默认为空，即完全不介入。
+`@deepseek-ai/dsh-client-modules` 对每个包只解析一个浏览器入口（`exports["./client"]`），插件页的一行就对应一个包。以前每加一个界面插件，就多一个自建 `MutationObserver`、多一张自己注入的 `<style>`、多一份对 ship DOM 何时挂载的猜测；它们抢同一个 slot、重复覆盖同一批 `--dsw-*` 令牌，出问题时也难判断是谁改的。
+
+合成一个包后：
+
+- **一个观察器**：所有组件的 DOM 扫描注册进同一个 rAF 节流的 `MutationObserver`，一帧只扫一遍。
+- **一次注入**：令牌与组件样式由宿主半边一次性写进 `<head>`，顺序固定，令牌永远在组件样式之前。
+- **一处失败只死一个组件**：每个组件工厂跑在自己的 `try`/`catch` 里，宿主升级删掉某个 slot，或某个外部包不在 boot graph 里，只让那一个组件退场。
+- **一处换肤**：所有组件读 `--dshui-*` 语义角色，主题就是覆盖这些角色。
+
+## 目录
+
+```
+dsh-ui-copy/
+├── cordis.patch.yml        一行 insert：id ui-copy
+├── package.json            单包；dsh.client.inject 是所有组件依赖的并集
+├── lib/
+│   ├── index.js            宿主半边：Config 声明、配置穿针、样式与页面脚本注入
+│   ├── client.js           浏览器半边：build 产物，勿手改
+│   ├── host/<key>.js       需要宿主能力的组件（路由、工具、扫描）
+│   ├── styles/tokens.css   设计令牌，唯一视觉真相
+│   └── styles/<key>.css    各组件样式表
+├── src/
+│   ├── core/runtime.js     组件运行时：观察器、样式注册、开关、故障隔离
+│   ├── core/entry.js       加载器外壳与组件注册表
+│   └── components/*.js     组件源码，一个文件一个组件
+└── scripts/
+    ├── build.mjs           把 src 拼成 lib/client.js
+    └── verify.mjs          契约自检
+```
 
 ## 组件
 
-这个包在插件页里摊成五行，各自可以单独停用：
+一个组件就是 `src/components/<nn>-<key>.js` 里的一个顶层函数。`<nn>` 只决定挂载顺序。宿主配置里的字段名见括号。
 
-| 组件 id | 入口 | 职责 |
+| 组件 | 文件 | 职责 |
 | --- | --- | --- |
-| `ui-copy` | `dsh-ui-copy`（宿主半只 + 浏览器半只） | 宿主半只声明强调色的可编辑字段；浏览器半只做文案改写与强调色覆写，并在设置 → 通用设置里贡献「UI 强调色」一行 |
-| `ui-copy-ask` | `dsh-ui-copy/ask`（宿主半只） | ask 弹窗的 OpenAI 视觉 |
-| `ui-copy-composer` | `dsh-ui-copy/composer`（宿主半只） | 输入卡片的 Codex 视觉 |
-| `ui-copy-menu` | `dsh-ui-copy/menu`（宿主半只） | 菜单的开合动画；样式与页面脚本一并内联 |
-| `ui-copy-sidebar` | `dsh-ui-copy/sidebar`（宿主半只） | 侧栏「新会话」按钮降噪 |
+| 文案改写（`copy`） | `10-copy.js` | 空态大标题轮换、输入框空置提示改写、预览版徽章隐藏、强调色设置行 |
+| 本地身份（`identity`） | `20-identity.js` | 侧栏左下角的名字与头像换成本机配置 |
+| 会话删除（`sessionDelete`） | `30-session-delete.js` | 会话行「…」菜单里的「删除会话」与确认弹窗 |
+| 峰谷提示（`peakValley`） | `40-peak-valley.js` | 侧栏底栏的峰谷时段与切换倒计时 |
+| 状态短语（`statusPhrases`） | `50-status-phrases.js` | 回合状态行的逐字彩虹短语 |
+| 侧栏底栏按钮（`footPanels`） | `60-foot-panels.js` | 插件 / 使用统计 / 技能中心三个面板收成底部图标按钮 |
+| 彻底重启（`restart`） | `70-restart.js` | 标题栏重启按钮与 `restart_dsh` 工具 |
+| 配额仪表（`quota`） | `80-quota.js` | 模型选择器旁的三枚额度环 |
+| 推理滑块（`effortSlider`） | `90-effort-slider.js` | Codex 风格的推理强度滑块 |
+| 鲸鱼壁纸（`whale`） | `100-whale.js` | 粒子鲸鱼背景 |
+| 技能中心（`skillExplorer`） | `110-skill-explorer.js` | 技能浏览与增删面板 |
 
-五行由 `cordis.patch.yml` 声明，同包不同入口 —— 官方 `@deepseek-ai/dsh-headless/startup`、`@deepseek-ai/dsh-tool-cordis/host` 用的是同一种做法。只想要其中一部分时，在插件页关掉对应开关，或在 profile 的 `cordis.patch.yml` 里给同 id 追加 `disabled: true`。
+另有四个纯样式组件，没有浏览器 JS，只由宿主半边注入样式表：`ask`（提问弹窗）、`composer`（输入卡片）、`menu`（菜单开合动画，配套 `lib/menu.page.js`）、`sidebar`（侧栏「新会话」按钮降噪）。
 
-插件的标题与描述取自包根的 `locale/zh.json`、`locale/en.json`（`meta.title` / `meta.description`）；五行组件共用同一份，因为元数据是按包解析的。
+## 主题
 
-## ask 弹窗的 OpenAI 视觉
+`lib/styles/tokens.css` 定义全部语义角色，默认值映射到宿主自己的 `--dsw-*` 令牌，所以 DSH 主题一变，整套跟着变。角色分七族：
 
-`lib/ask-surface.css` 把 `@deepseek-ai/dsh-client-ui-user-questions` 渲染的三块界面换成 OpenAI / ChatGPT 的设计语言。
+- **表面** `--dshui-surface-base` / `-1` / `-2` / `-3` / `-raised` / `-sunken` / `-hover` / `-selected` / `-pressed` / `-sidebar` / `-menu` / `-bubble`
+- **描边** `--dshui-border-1` … `-4`、`--dshui-border-focus`、`--dshui-border-width`
+- **文字** `--dshui-text-primary` / `-secondary` / `-tertiary` / `-caption` / `-dimmed` / `-link` / `-on-brand`
+- **品牌与状态** `--dshui-brand`、`-brand-fill`、`-brand-hover`、`-brand-ink`、`-link`、`-business`、`-danger`、`-warn`、`-success`
+- **圆角** `--dshui-radius-xs` … `-2xl`、`-pill`、`-circle`
+- **间距** `--dshui-space-0` … `-9`
+- **字体** `--dshui-font-family` / `-mono`、`--dshui-text-size-xs` … `-2xl`、`--dshui-line-tight` / `-normal` / `-loose`、`--dshui-weight-*`、`--dshui-tracking-*`
+- **动效** `--dshui-duration-instant` … `-slower`、`--dshui-ease-*`
+- **高度与层级** `--dshui-shadow-1` … `-3`、`-shadow-panel`、`-ring`、`--dshui-z-*`
 
-![浅色对比](docs/compare-light.png)
-
-> 左为官方默认，右为启用之后。深色对比见 `docs/compare-dark.png`。
-
-- **卡片** — 24px 圆角、1px 中性描边、两层柔和投影，纯白 / `#262626` 表面
-- **色板** — 全中性、去掉蓝移，正文 `#0d0d0d` / `#ececec`，次级与三级灰按 ChatGPT 的层级取值
-- **标题区** — eyebrow 转大写小字距标签，标题 17px/600 并收紧字距
-- **选项行** — 14px 圆角、44px 行高、悬停浅灰洗色，选中态改用 1px 描边而不是填充块
-- **自由回答框** — 内凹表面，聚焦时边框提亮
-- **底部操作** — 按钮胶囊化，主按钮黑底白字，深色下白底黑字
-- **计划审批卡与回答气泡** — 与提问卡同一套令牌和形态
-
-颜色与圆角是在作用域内**重映射设计令牌**（`--dsw-alias-*`、`--dsw-specific-*`、`--dsw-radius-*`）实现的，而不是逐个覆盖组件类名，因此经由像素库渲染的按钮、Markdown 会自动跟随，也不需要知道任何一个原始类名。三块界面分别锚在 `[data-question-key]`、`[data-plan-review-key]`、`[data-question-reply]` 上，弹窗之外没有任何影响。
-
-样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/ask-surface.css` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/ask-surface.css` 看当前内容。
-
-样式表里的类名取自 `dsh-client-ui-user-questions` 0.2.0-rc.2 的 CSS 模块 token（`y21zpG_*` 提问卡、`R7PCuq_*` 计划审批、`Dh9Boq_*` 回答气泡）。DSH 升级后这些前缀可能变化，此时装饰会失效而布局不会塌，因为每条依赖前缀的规则都配了结构选择器（`section` / `header` / `footer` / `textarea` / `role`）。重新对齐只需替换这三个前缀。
-
-## 输入卡片的 Codex 视觉
-
-`lib/composer-surface.css` 把 composer 输入卡片换成 Codex 风格。
-
-- **卡片** — 22px 圆角、1px `#3a3a3a` 描边、`#2a2a2a` 表面、一层极淡投影，宽度上限 720px、左右留白 20px
-- **编辑器** — 15px / 1.5 行高，占位文字 `#626262`；普通态最小高度 42px，空态 46px
-- **发送按钮** — 28px 圆形，可用时白底配深色箭头，禁用时 `#858585` 底配 `#2a2a2a` 箭头
-- **添加控件** — 去掉按钮底板，只留图标
-- **卡片下方的工作区半岛** — 只在新会话出现：宿主的 `_heroWorkspaceRow` 用 `order` 排到卡片之后，压成比卡片窄 68px、下圆角 16px、上直角的 `#1e1e1e` 条，与卡片无缝贴合，两者读作一体
-- **空态标题的留白** — 半岛要求卡片上下的间距归零，于是空态标题原本直接压在卡片上缘；这里补回 8px 的 `--dsh-ui-copy-hero-lead`，同时给座位等量的 `padding-top` 抵消垂直居中带来的上移，所以位移全落在卡片与半岛上，标题留在原处
-- **用量数字** — 允许换行，颜色取次级灰
-
-颜色按主题发布成 `--dsh-ui-copy-card-*`，写在 `[data-composer-card]` 与 `[data-composer-seat]` 两个作用域根上，浅色由 `body:not([data-ds-dark-theme])` 覆盖。每条规则都锚在这两个原生属性（或它们旁边的 CSS 模块局部类名）上，卡片之外没有任何影响。
-
-样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/composer-surface.css` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/composer-surface.css` 看当前内容。
-
-半岛用的是宿主自己那一行控件，所以新会话里选工作区、切模式都还是原生行为，没有新增 DOM，也没有重复实现导航逻辑。占位提示的颜色只落在提示气泡（`[data-composer-placeholder]`）上：可编辑表面带着同名属性 `<data-placeholder>`，给它上色会连用户输入的文字一起染灰。
-
-模型与推理强度控件不在这个组件里：那两样在原皮肤中是替换原生触发器的客户端逻辑，属于控件而非卡片外观。
-
-## 菜单的开合动画
-
-`lib/menu-motion.css` 管形态，`lib/menu-motion.page.js` 管时机，宿主半只把前者内联进 `<head>`、后者内联进 `<body>`。
-
-- **覆盖范围** — 所有经 `MenuSurface` 渲染的浮层：权限模式、模型、Dock 标签、右键菜单与各级子菜单。锚点是 MenuSurface 自己写的 `[data-menu-material="translucent"][role="menu"]`，与具体组件无关，也不依赖任何类名。
-- **入场** — 170ms 缩放淡入，锚在展开方向上：菜单在触发器上方展开就锚底边，在下方展开锚顶边，子菜单锚左边。方向由页面脚本测量 —— 记住最后一次 `pointerdown` 落在哪个按钮上，再比对该按钮与菜单的矩形关系；触发器未知时按菜单落在视口上半区还是下半区推断。
-- **首帧** — MenuSurface 挂载时先以 `visibility: hidden` 停在原点，等 `useLayoutEffect` 量完锚点才写入最终的 `left` / `top`。脚本在这期间把菜单与它身下的衬板按在 `opacity: 0`，等面转可见的那一帧才交给样式表，所以不会闪出停在左上角的半个菜单；连续 20 帧仍未转可见就照常显示，菜单不会因为动画而消失。
-- **退场** — React 关闭菜单走的是卸载，没有离场态可挂，因此脚本把菜单克隆进一个固定的惰性层，按它最后一帧的几何位置淡出，衬板一起淡出（只淡不缩，避免与菜单之间露缝）。克隆不接指针事件，也不进无障碍树。
-- **再按收起** — 宿主的「点外面关闭」判定并不总能看见触发器本身：工作区选择器把触发器留在菜单量测容器的外面，按下去会被当成点了页面别处，菜单先卸掉、触发器随后的点击又把它装回来，入场动画重放一遍而菜单始终不收。脚本在按下阶段拦住这种触发器（`[aria-haspopup="menu"][aria-expanded="true"]`）的 `pointerdown`，不让它继续冒泡，宿主那条外部点击判定就不执行，触发器自己的点击照常把菜单切成关闭。菜单关着时、或按的是页面别处时，事件照常传播。
-- **衬板** — macOS 上的菜单是半透明玻璃，身下另有一块不透明衬板 `[data-menu-backing]`，两者共用同一个 `--dsh-menu-anchor` 值；脚本用这个值配对，入场一起淡入，退场一起淡出。
-- **减少动态** — 系统开启「减弱动态效果」时两段动画都不播。
-- **调参** — 时长与缩放都写成了自定义属性（`--dsh-ui-copy-menu-enter-duration`、`--dsh-ui-copy-menu-enter-scale` 等），在自己的样式表里覆盖即可，不必改这两个文件。
-
-改 `lib/menu-motion.css` 或 `lib/menu-motion.page.js` 后刷新页面即生效，不需要重启或重装；调试时可以直连 `/dsh-ui-copy/menu-motion.css` 与 `/dsh-ui-copy/menu-motion.js` 看当前内容。
-
-## 侧栏「新会话」按钮降噪
-
-`lib/sidebar-surface.css` 把侧栏顶部那颗描边、有填充、居中的「新会话」大按钮压成一枚安静的行键：32px 行高、5px/8px 内边距、8px 图标间距、无描边、无自身填充、图标在前文字左对齐、悬停用面板行那种洗色，并补上原本缺失的焦点环。
-
-- 几何抄自同一张表的 `_panelRow` / `_panelList`（`gap: 8px`、`margin: 0 2px`、悬停 `--dsw-alias-interactive-bg-hover`），行高与内边距比面板行更紧。
-- 收紧的理由是位置变了：`dsh-sidebar-foot-panels` 把三条全局面板行搬去侧栏底部，这颗按钮成了品牌行与会话列表之间唯一的东西，官方那 36px 盒子加 12px 下边距在这个位置读起来是空档，于是收到 32px 与 8px。
-- 图标从 14px 提到 16px，与同列的面板行一致。
-- 作用域是侧栏列（`_3WPZCG_root`）的展开态；折叠成窄栏时官方本来就把这颗按钮画成 36px 图标键，不在覆盖范围内。
-- 覆写带 `!important`：这张表内联在组件样式之前，而侧栏的 CSS 模块是运行时注入的，同特异性下会赢。
-- `_3WPZCG_` 是 `@deepseek-ai/dsh-client-ui-sidebar` 0.2.1-rc.2 的 CSS 模块前缀。官方改哈希只会让这颗按钮回到原样，不会破坏布局，对齐只需替换这一个前缀。
-
-样式表由宿主半只从磁盘读取并内联进 `<head>`：改 `lib/sidebar-surface.css` 后刷新页面即生效，调试时直连 `/dsh-ui-copy/sidebar-surface.css`。
-
-## 改文案
-
-文案只活在浏览器半只的 `DEFAULTS` 里，改法就是编辑源码（保存后刷新页面即可，此插件无构建步骤）：
-
-```js
-// lib/client.js
-const DEFAULTS = {
-  headline: {
-    zh: ['有什么可以帮你的？', '……'],
-    en: ['What can I help you with?', '……'],
-  },
-  // 键是 React 传来的原句（一个状态一条，换语言再加），值是这一状态要显示的句子池
-  placeholders: {
-    '描述你想要构建的内容, / 调用指令, @ 文件或对话': ['说点什么，剩下的我来', '……'],
-    '发消息或创建任务, / 调用指令, @ 文件或对话': ['接着聊，我听着', '……'],
-  },
-  hidePreviewBadge: true,
-  css: '',
-}
-```
-
-想加任意其他改写，用 `css` 字段塞样式，或照 `applyPlaceholders` 的样子加一条规则。
-
-这几项为什么不走 profile 配置：浏览器半只是启动图里的一行（只带 id、url、rev），挂载时拿不到 profile 的 config，`apply(ctx, config)` 收到的永远是空对象。配置只有一条能到达页面的路 —— 宿主半只把字段声明成易变、页面再经 `configForms` 读，也就是下一节强调色走的那条。文案字段没有声明，所以 profile 里写了也不会有反应。
-
-## 改强调色
-
-设置 → 通用设置 里有一行「UI 强调色」：浅色与深色主题各一个色块加一个文本框。点色块开系统取色器，文本框接受任何 CSS 颜色写法（`#7c4dff`、`oklch(...)`、颜色名）；文本框清空即该主题恢复官方配色，有值时右侧出现「清除」按钮。改动即时生效，不需要重启宿主。
-
-这一行存在的条件是宿主半只（`lib/index.js`）里的声明：
-
-```js
-export const Config = Schema.object({
-  accent: Schema.object({
-    light: Schema.string().volatile(),
-    dark: Schema.string().volatile(),
-  }),
-})
-```
-
-`volatile` 不能省：设置接缝只为声明了易变字段的插件行投影表单，而只有易变字段能免重挂载地写进正在运行的引用。`accent.light` / `accent.dark` 分别对应两个主题，空字符串表示该主题不介入。
-
-设置界面写入的就是 profile 的 `cordis.patch.yml` 里同 id 的一行，所以手写同样有效、也可以手工改回：
+换肤只改 profile 里 `ui-copy` 这一行，不用碰任何组件：
 
 ```yaml
 - id: ui-copy
   name: dsh-ui-copy
   config:
+    theme:
+      light:
+        brand: '#7c4dff'
+        surface-2: '#f6f4ff'
+        radius-md: '14px'
+      dark:
+        brand: '#b79cff'
+        surface-2: '#221d33'
     accent:
       light: '#7c4dff'
       dark: '#b79cff'
 ```
 
-`accent` 把两族强调令牌统一成一个颜色：中性品牌色 `--dsw-alias-brand-primary`（主按钮填充、开关选中、选区描边、dock 提示）与蓝色业务色 `--dsw-alias-link`、`--dsw-alias-state-business-primary`（链接、焦点环、业务态徽标），再加设置页与活动标签条用的那个上游畸形别名 `--dsw-alias-brand-primary-new-colorprimary-new-color`。
+`theme.light` / `theme.dark` 接受任意 `--dshui-*` 角色名（可写 `brand`，也可写 `--dshui-brand`），宿主半边把它们渲染成两段覆盖块接在令牌层之后。`accent` 是强调色对，同时写 `--dshui-*` 与宿主自己的 `--dsw-*` 令牌，所以自绘组件和原生按钮会一起变色；留空表示完全跟随官方配色。
 
-- 派生值：主按钮悬停色按主题朝黑（浅色）或白（暗色）混合 16%；强调色上的文字在 `#rgb` / `#rrggbb` 输入下按 WCAG 对比度自动取黑或白，其它写法（`oklch()`、颜色名、`var()`）保留主题原本的文字色。
-- 令牌声明落在 `html body` 与 `html body *`，靠特异性压过官方主题的 `body` / `body *`，并且不使用 `!important`，因此在自身作用域内重映射令牌的组件（本插件的 ask 弹窗即是）仍然优先。
-- ask 弹窗经 `--dsh-ui-copy-accent` 与 `--dsh-ui-copy-accent-ink` 跟随同一个强调色；未配置时回落到官方中性色，视觉与之前一致。
-- 官方 `--dsw-static-deepseek-*` 调色板不改动。若仍有残留的蓝色，用 `css` 字段追加覆盖。
-- 此项是纯 CSS 变量覆写，主题切换、页面刷新都实时跟手，不需要重启宿主；只有改 `lib/index.js` 的字段声明才需要重启。
+## 开关
 
-## 安装
+每个组件在自己的配置块里认 `enabled`，默认 `true`。关掉一个组件等于：不挂载它的浏览器代码、不注入它的样式表、不执行它的宿主半边。
 
-profile 的 `package.json` 按此登记：
-
-```json
-"dependencies": {
-  "dsh-ui-copy": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-copy"
-},
-"dsh": {
-  "profile": {
-    "bundles": ["...", "dsh-ui-copy"]
-  }
-}
+```yaml
+- id: ui-copy
+  name: dsh-ui-copy
+  config:
+    whale:
+      enabled: false
+    quota:
+      brightness: 0.9
+    statusPhrases:
+      phrases: |-
+        宣读卡巴拉誓言中...
+        在中央数据库里翻页中...
 ```
 
-再在该 profile 目录执行 `pnpm install` 装好 `node_modules`，重启 DSH（或经插件页启用该行）后生效。停用只需从 `bundles` 里删掉 `dsh-ui-copy`。
+设置页写入的字段（如 `accent` 与各组件自己的文本域）标了 `volatile`，可以由页面实时编辑；其余字段写在 profile 里，刷新页面后生效。
 
-改代码时两条半只的生效时机不同：改 `lib/client.js` 或 `lib/ask-surface.css` 刷新页面即可；改 `lib/index.js` 必须重启 DSH —— 设置字段的声明由宿主进程在装载插件时读取，页面上拿到的 `configForms` 条目也来自那一刻。
+## 构建
 
-## 为什么不走 locale 与槽位
+```bash
+node scripts/build.mjs      # src/ -> lib/client.js
+node scripts/build.mjs --check
+node scripts/verify.mjs     # 契约自检：函数名、禁用写法、令牌残留、注册表
+```
 
-这两条路都试过，堵死：
+`lib/styles/*.css` 与 `lib/menu.page.js` 不需要构建，宿主半边每次渲染页面都从磁盘读，改完刷新即生效。只有 `src/` 下的 JS 需要重新 build。
 
-- `ctx.locale.register(ns, dict)` 在同一「命名空间 + 语言」已有词典时直接抛错，而 `conversation` 命名空间的 `zh`/`en` 由官方包先注册，插件覆盖不到 `hero.headline`。
-- Hero 区只开了 `conversation.hero.brand.mark` 一个槽（鱼形标志），标题文字没有座位；`conversation.composer` 虽为 chain 槽，但空会话时以 `fallbackOnly` 渲染，链上注册够不到 Hero。
+组件契约写在 [`src/components/README.md`](src/components/README.md)：`rt` 的每个成员、转换步骤、旧令牌到新角色的映射表。
 
-因此改用 DOM 改写，配 rAF 节流的 MutationObserver 在 React 重渲染后补回。代价是锚点依赖当前版本的结构：`titleGroup`、`previewBadge`、`data-placeholder`、`data-composer-placeholder`。官方若改结构与类名，改这里的四个选择器即可。
+## 排错
+
+| 现象 | 看哪里 |
+| --- | --- |
+| 整套没生效 | 页面控制台 `[ui-copy/bundle]`；确认 `globalThis.DSHUI_CONFIG` 已注入（`<head>` 里有一行 `window.DSHUI_CONFIG=...`） |
+| 某一个组件没生效 | 控制台 `[ui-copy/<key>]`；若说 `cannot load "<包名>"`，说明该包的 browser half 不在 boot graph，检查 `dsh.client.inject` |
+| 样式没跟上 | `/plugins/ui-copy/client.js` 是否为最新 build；`<head>` 里的 `<style data-dshui>` 是否包含该组件的表 |
+| 颜色还是旧的 | 组件是否残留 `--dsw-*`；`node scripts/verify.mjs` 会列出来 |
+| 宿主升级后某个组件消失 | 该组件依赖的 slot 名或 CSS 模块前缀变了；组件自己的注释里写了它锚定的选择器 |
+
+## 从 1.x 过来
+
+1.x 的 `dsh-ui-copy` 只有文案、ask、composer、menu、sidebar 五件事，摊成五行（`ui-copy`、`ui-copy-ask`、`ui-copy-composer`、`ui-copy-menu`、`ui-copy-sidebar`），设置里只有 `accent` 一行。2.0 把它们收进同一行，并接管了原先独立发布的十个界面插件。
+
+升级时：profile 的 `dsh.profile.bundles` 只留 `dsh-ui-copy` 一项，`cordis.patch.yml` 里删掉 `ui-copy-ask` / `ui-copy-composer` / `ui-copy-menu` / `ui-copy-sidebar` 以及被收编插件的行，把原来的 `dsh-local-identity.name` / `.avatar` 挪进 `ui-copy.identity`，`dsh-status-phrases.phrases` 挪进 `ui-copy.statusPhrases.phrases`。`accent` 字段的位置与含义没变。

@@ -9,6 +9,12 @@
    index response, so editing either file and reloading the page is enough:
    no rebuild, no restart.
 
+   Tokens
+     This sheet is wired into the suite token layer: the enter and exit
+     durations and both easing curves now fall back to `--dshui-duration-*`
+     and `--dshui-ease-*` from lib/styles/tokens.css, so the motion language
+     matches the rest of the bundle.
+
    Anchors
      `[data-menu-material="translucent"][role="menu"]` is the attribute pair
      MenuSurface writes on a menu surface itself, and `[data-menu-backing]` is
@@ -68,7 +74,7 @@
 }
 
 [data-dsh-ui-copy-enter] {
-  animation: dsh-ui-copy-menu-in var(--dsh-ui-copy-menu-enter-duration, 170ms) cubic-bezier(0.22, 0.68, 0.24, 1) both;
+  animation: dsh-ui-copy-menu-in var(--dsh-ui-copy-menu-enter-duration, var(--dshui-duration-base)) var(--dshui-ease-enter) both;
   transform-origin: var(--dsh-ui-copy-menu-origin, center top);
   will-change: transform, opacity;
 }
@@ -89,7 +95,7 @@
 }
 
 [data-dsh-ui-copy-leave] {
-  animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, 130ms) cubic-bezier(0.4, 0, 1, 1) both;
+  animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, var(--dshui-duration-fast)) var(--dshui-ease-exit) both;
   transform-origin: var(--dsh-ui-copy-menu-origin, center top);
   /* The clone is a translucent surface over live content; promoting it up front
      keeps the fade off the paint path that re-samples the blur. */
@@ -99,7 +105,7 @@
 /* The backing plate fades without scaling, so it never separates from the
    menu it sits under: the script pins its exit scale to 1. */
 [data-dsh-ui-copy-leave-backing] {
-  animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, 130ms) cubic-bezier(0.4, 0, 1, 1) both;
+  animation: dsh-ui-copy-menu-out var(--dsh-ui-copy-menu-exit-duration, var(--dshui-duration-fast)) var(--dshui-ease-exit) both;
 }
 
 /* On the macOS shell an opaque plate already sits under every translucent
@@ -123,3 +129,17 @@ html[data-platform='darwin'] [data-dsh-ui-copy-ghost] [data-menu-material] > [ar
     animation-duration: 1ms;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Token notes
+   · The enter duration keeps its 170ms default only as a `--dshui-duration-base`
+     (180ms) fallback, so a profile that writes the variable still wins.
+   · The exit duration folded from 130ms into `--dshui-duration-fast` (120ms).
+   · The enter curve folded from cubic-bezier(0.22, 0.68, 0.24, 1) into
+     `--dshui-ease-enter` (0.16, 1, 0.3, 1): same decelerating shape.
+   · The exit curve was already cubic-bezier(0.4, 0, 1, 1), i.e.
+     `--dshui-ease-exit` exactly; only the spelling changed.
+   · The 1ms in the reduced-motion guard is a functional zero, not a duration,
+     so it stays literal. The 0.96 / 0.98 scales inside @keyframes are motion
+     geometry and stay literal too.
+   -------------------------------------------------------------------------- */

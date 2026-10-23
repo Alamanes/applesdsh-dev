@@ -22,22 +22,19 @@
      The accent slot — the primary fill, its hover shade, the ink drawn on it and
      the focus colour — reads `--dsh-ui-copy-accent` and `--dsh-ui-copy-accent-ink`,
      which the browser half publishes when the profile configures `accent`. With
-     none configured the fallbacks keep the shipped neutral and this sheet renders
-     exactly as before. The harness accent tokens cannot be read directly here:
-     this block remaps them, and a token that refers back to its own remap
-     resolves to nothing.
+     none configured the fallback is `--dshui-brand` and `--dshui-brand-ink`, so
+     the card follows the shipped accent instead of a literal of its own.
 
-   Why tokens first
-     The colours, radii and strokes below are published as DSH alias tokens on
-     the scope root and on every descendant, then the mapping layer points the
-     harness tokens at them. Anything the surfaces render through a primitive
-     (Button, MarkdownText, StateDot) therefore follows without a rule of its
-     own, and no primitive class name has to be known.
-
-     The descendant half of that pair matters: the harness defines elevation and
-     static tokens as `body, body *`, so an element carries its own value rather
-     than inheriting one from an ancestor. Re-declaring on `*` inside the scope
-     wins that tie by specificity without needing !important.
+   Tokens
+     This sheet is wired into the suite token layer: every colour, radius,
+     spacing, type size, weight, tracking, duration and shadow below reads a
+     `--dshui-*` token from lib/styles/tokens.css, and the `--oai-*` names in
+     the scope block below are semantic aliases over those tokens rather than
+     literal values. Light and dark are therefore the token layer's job, and the
+     surfaces follow the shipped theme the way every other surface in this
+     bundle does. Anything the surfaces render through a primitive (Button,
+     MarkdownText, StateDot) follows the same layer without a rule of its own,
+     so no primitive class name has to be known.
 
    Why !important
      The component stylesheets are CSS modules injected at runtime, i.e. after
@@ -63,89 +60,32 @@
 
 :is([data-question-key], [data-plan-review-key], [data-question-reply]),
 :is([data-question-key], [data-plan-review-key], [data-question-reply]) * {
-  /* Palette — the blue cast the whale wallpaper publishes, so the card shares
-     the page's hue instead of fighting it with pure greys. */
-  --oai-surface: #fbfdff;
-  --oai-surface-2: #eef4fd;
-  --oai-surface-3: #e3edfa;
-  --oai-text: #10233d;
-  --oai-text-2: #526a86;
-  --oai-text-3: #7186a0;
-  --oai-text-4: #8799ae;
-  --oai-border: rgba(76, 105, 142, 0.16);
-  --oai-border-strong: rgba(66, 96, 134, 0.3);
-  --oai-accent: var(--dsh-ui-copy-accent, var(--dsw-alias-brand-primary, #0d0d0d));
-  --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, #000000);
-  --oai-accent-fg: var(--dsh-ui-copy-accent-ink, #ffffff);
-  --oai-warn-bg: #fdf6ec;
-  --oai-warn-fg: #8a5a00;
-  --oai-danger: #d92d20;
-  --oai-focus: var(--oai-accent);
+  /* Palette — semantic aliases over the suite token layer, so the card, its
+     ink, its edges and its accent all resolve through the shipped theme
+     instead of a hue this file used to publish. */
+  --oai-surface: var(--dshui-surface-1);
+  --oai-surface-2: var(--dshui-surface-2);
+  --oai-surface-3: var(--dshui-surface-3);
+  --oai-text: var(--dshui-text-primary);
+  --oai-text-2: var(--dshui-text-secondary);
+  --oai-text-3: var(--dshui-text-tertiary);
+  --oai-text-4: var(--dshui-text-caption);
+  --oai-border: var(--dshui-border-2);
+  --oai-border-strong: var(--dshui-border-3);
+  --oai-accent: var(--dsh-ui-copy-accent, var(--dshui-brand));
+  --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, var(--dshui-ink-solid));
+  --oai-accent-fg: var(--dsh-ui-copy-accent-ink, var(--dshui-brand-ink));
+  --oai-warn-bg: color-mix(in srgb, var(--dshui-warn) 12%, transparent);
+  --oai-warn-fg: var(--dshui-warn);
+  --oai-danger: var(--dshui-danger);
+  --oai-focus: var(--dshui-border-focus);
 
-  /* Mapping — harness tokens follow the palette. */
-  --dsw-specific-input-major: var(--oai-surface);
-  --dsw-specific-bubble: var(--oai-surface-2);
-  --dsw-alias-bg-base: var(--oai-surface);
-  --dsw-alias-bg-layer-1: var(--oai-surface);
-  --dsw-alias-bg-layer-2: var(--oai-surface);
-  --dsw-alias-bg-overlay: var(--oai-surface-2);
-  --dsw-alias-bg-module-platform: var(--oai-surface-2);
-  --dsw-alias-label-primary: var(--oai-text);
-  --dsw-alias-label-primary-foreground: var(--oai-accent-fg);
-  --dsw-alias-label-secondary: var(--oai-text-2);
-  --dsw-alias-label-tertiary: var(--oai-text-3);
-  --dsw-alias-label-caption: var(--oai-text-4);
-  --dsw-alias-label-dimmed: var(--oai-border-strong);
-  --dsw-alias-border-l1: color-mix(in srgb, var(--oai-border) 55%, transparent);
-  --dsw-alias-border-l2: var(--oai-border);
-  --dsw-alias-border-l2-darkmode-thin: var(--oai-border);
-  --dsw-alias-border-l3: var(--oai-border-strong);
-  --dsw-alias-border-l4: var(--oai-border-strong);
-  --dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--oai-text) 5%, transparent);
-  --dsw-alias-interactive-bg-active: color-mix(in srgb, var(--oai-text) 8%, transparent);
-  --dsw-alias-button-primary-fill: var(--oai-accent);
-  --dsw-alias-button-primary-hover: var(--oai-accent-hover);
-  --dsw-alias-button-primary-dimmed: var(--oai-surface-3);
-  --dsw-alias-state-business-primary: var(--oai-focus);
-  --dsw-alias-state-error-primary: var(--oai-danger);
-  --dsw-alias-state-warn-primary: var(--oai-warn-fg);
-  --dsw-alias-state-warn-tertiary: var(--oai-warn-bg);
-  --dsw-alias-button-info-fill: var(--oai-text-2);
-  --dsw-specific-sidebar-nav-item-active-accent: var(--oai-surface-3);
-  --dsw-alias-scrollbar-bg-l2: color-mix(in srgb, var(--oai-text) 18%, transparent);
-  --dsw-alias-scrollbar-hover-l2: color-mix(in srgb, var(--oai-text) 30%, transparent);
-
-  /* Geometry — ChatGPT's generous radii, one step off the harness scale. */
-  --dsw-radius-xl: 24px;
-  --dsw-radius-panel: 24px;
-  --dsw-radius-lg: 16px;
-  --dsw-radius-md: 12px;
-  --dsw-radius-sm: 8px;
-  --oai-card-radius: 24px;
-  --oai-row-radius: 14px;
-  --oai-field-radius: 16px;
-  --oai-chip-radius: 6px;
-  --oai-transition: 140ms cubic-bezier(0.2, 0, 0.2, 1);
-}
-
-body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-question-reply]),
-body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-question-reply]) * {
-  --oai-surface: #0c1e37;
-  --oai-surface-2: #13294a;
-  --oai-surface-3: #1b3358;
-  --oai-text: #eef5ff;
-  --oai-text-2: #aebdd0;
-  --oai-text-3: #7f91a8;
-  --oai-text-4: #62758d;
-  --oai-border: rgba(153, 190, 232, 0.16);
-  --oai-border-strong: rgba(174, 207, 243, 0.3);
-  --oai-accent: var(--dsh-ui-copy-accent, var(--dsw-alias-brand-primary, #ffffff));
-  --oai-accent-hover: color-mix(in srgb, var(--oai-accent) 84%, #ffffff);
-  --oai-accent-fg: var(--dsh-ui-copy-accent-ink, #0d0d0d);
-  --oai-warn-bg: rgba(245, 158, 11, 0.1);
-  --oai-warn-fg: #e3a94a;
-  --oai-danger: #f97066;
-  --oai-focus: var(--oai-accent);
+  /* Geometry — radii and motion from the token scale. */
+  --oai-card-radius: var(--dshui-radius-2xl);
+  --oai-row-radius: var(--dshui-radius-md);
+  --oai-field-radius: var(--dshui-radius-lg);
+  --oai-chip-radius: var(--dshui-radius-sm);
+  --oai-transition: var(--dshui-duration-fast) var(--dshui-ease-standard);
 }
 
 /* --------------------------------------------------------------------------
@@ -155,26 +95,19 @@ body[data-ds-dark-theme] :is([data-question-key], [data-plan-review-key], [data-
 [data-question-key] > section,
 [data-plan-review-key] > section {
   border-radius: var(--oai-card-radius) !important;
-  border: 1px solid var(--oai-border) !important;
+  border: var(--dshui-border-width-strong) solid var(--oai-border) !important;
   background: var(--oai-surface) !important;
   box-shadow:
-    0 1px 3px rgba(47, 72, 110, 0.08),
-    0 12px 32px rgba(47, 72, 110, 0.14) !important;
+    var(--dshui-shadow-1),
+    var(--dshui-shadow-3) !important;
   color: var(--oai-text) !important;
-}
-
-body[data-ds-dark-theme] [data-question-key] > section,
-body[data-ds-dark-theme] [data-plan-review-key] > section {
-  box-shadow:
-    0 1px 3px rgba(0, 3, 10, 0.45),
-    0 16px 40px rgba(0, 3, 10, 0.6) !important;
 }
 
 /* The frame keeps the composer's side clearance but breathes a little more. */
 [data-question-key],
 [data-plan-review-key] {
-  padding-top: 10px !important;
-  padding-bottom: 12px !important;
+  padding-top: var(--dshui-space-4) !important;
+  padding-bottom: var(--dshui-space-5) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -183,34 +116,34 @@ body[data-ds-dark-theme] [data-plan-review-key] > section {
 
 [data-question-key] > section > header,
 [data-plan-review-key] > section > header {
-  padding: 22px 20px 0 24px !important;
-  gap: 12px !important;
+  padding: var(--dshui-space-7) var(--dshui-space-6) 0 var(--dshui-space-7) !important;
+  gap: var(--dshui-space-5) !important;
 }
 
 [data-question-key] header h2,
 [data-plan-review-key] header h3 {
-  font-size: 17px !important;
+  font-size: var(--dshui-text-size-xl) !important;
   line-height: 25px !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.012em !important;
+  font-weight: var(--dshui-weight-semibold) !important;
+  letter-spacing: var(--dshui-tracking-tight) !important;
   color: var(--oai-text) !important;
 }
 
 [data-question-key] [class~='y21zpG_eyebrow'] {
-  font-size: 11px !important;
+  font-size: var(--dshui-text-size-xs) !important;
   line-height: 16px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.06em !important;
+  font-weight: var(--dshui-weight-semibold) !important;
+  letter-spacing: var(--dshui-tracking-wide) !important;
   text-transform: uppercase !important;
   color: var(--oai-text-3) !important;
-  margin-bottom: 6px !important;
+  margin-bottom: var(--dshui-space-3) !important;
 }
 
 /* Icon-only controls: circular, quiet, and only tinted on hover. */
 [data-question-key] header button[class~='y21zpG_iconButton'] {
   width: 28px !important;
   height: 28px !important;
-  border-radius: 999px !important;
+  border-radius: var(--dshui-radius-pill) !important;
   color: var(--oai-text-3) !important;
   transition: background var(--oai-transition), color var(--oai-transition) !important;
 }
@@ -221,7 +154,7 @@ body[data-ds-dark-theme] [data-plan-review-key] > section {
 }
 
 [data-question-key] [class~='y21zpG_waitStatus'] {
-  font-size: 12px !important;
+  font-size: var(--dshui-text-size-sm) !important;
   color: var(--oai-text-3) !important;
 }
 
@@ -230,20 +163,20 @@ body[data-ds-dark-theme] [data-plan-review-key] > section {
    -------------------------------------------------------------------------- */
 
 [data-question-key] [data-question-scroll] {
-  padding-bottom: 4px !important;
+  padding-bottom: var(--dshui-space-2) !important;
 }
 
 [data-question-key] [class~='y21zpG_detail'] {
-  margin: 0 24px 4px !important;
+  margin: 0 var(--dshui-space-7) var(--dshui-space-2) !important;
   color: var(--oai-text-2) !important;
-  font-size: 14px !important;
+  font-size: var(--dshui-text-size-base) !important;
   line-height: 23px !important;
 }
 
 [data-question-key] [role='radiogroup'],
 [data-question-key] [role='group'] {
-  padding: 8px 12px !important;
-  gap: 2px !important;
+  padding: var(--dshui-space-4) var(--dshui-space-5) !important;
+  gap: var(--dshui-space-1) !important;
 }
 
 /* Rows: no filled card, a hover wash, and a hairline ring once chosen. */
@@ -251,8 +184,8 @@ body[data-ds-dark-theme] [data-plan-review-key] > section {
 [data-question-key] [role='group'] > button,
 [data-question-key] [class~='y21zpG_customRow'] {
   border-radius: var(--oai-row-radius) !important;
-  border: 1px solid transparent !important;
-  padding: 9px 12px 9px 10px !important;
+  border: var(--dshui-border-width-strong) solid transparent !important;
+  padding: var(--dshui-space-4) var(--dshui-space-5) var(--dshui-space-4) var(--dshui-space-4) !important;
   min-height: 44px !important;
   transition: background var(--oai-transition), border-color var(--oai-transition) !important;
 }
@@ -278,14 +211,14 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 }
 
 [data-question-key] [class~='y21zpG_optionLabel'] {
-  font-size: 14px !important;
+  font-size: var(--dshui-text-size-base) !important;
   line-height: 22px !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.006em !important;
+  font-weight: var(--dshui-weight-medium) !important;
+  letter-spacing: var(--dshui-tracking-tight) !important;
 }
 
 [data-question-key] [class~='y21zpG_description'] {
-  font-size: 13px !important;
+  font-size: var(--dshui-text-size-md) !important;
   line-height: 20px !important;
   color: var(--oai-text-3) !important;
 }
@@ -297,16 +230,16 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
   border-radius: var(--oai-chip-radius) !important;
   background: var(--oai-surface-3) !important;
   color: var(--oai-text-2) !important;
-  font-size: 11px !important;
+  font-size: var(--dshui-text-size-xs) !important;
   line-height: 18px !important;
-  font-weight: 600 !important;
+  font-weight: var(--dshui-weight-semibold) !important;
   margin-top: 1px !important;
 }
 
 [data-question-key] [class~='y21zpG_checkbox']:before {
   width: 16px !important;
   height: 16px !important;
-  border: 1.5px solid var(--oai-border-strong) !important;
+  border: var(--dshui-border-width-strong) solid var(--oai-border-strong) !important;
   border-radius: var(--oai-chip-radius) !important;
   transition: background var(--oai-transition), border-color var(--oai-transition) !important;
 }
@@ -325,23 +258,23 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
   border-radius: var(--oai-chip-radius) !important;
   background: var(--oai-surface-3) !important;
   color: var(--oai-text-2) !important;
-  padding: 0 6px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.02em !important;
+  padding: 0 var(--dshui-space-3) !important;
+  font-size: var(--dshui-text-size-xs) !important;
+  font-weight: var(--dshui-weight-semibold) !important;
+  letter-spacing: var(--dshui-tracking-normal) !important;
   line-height: 18px !important;
 }
 
 [data-question-key] [class~='y21zpG_reviewNote'] {
   color: var(--oai-text-3) !important;
-  font-size: 13px !important;
-  padding: 8px 14px !important;
+  font-size: var(--dshui-text-size-md) !important;
+  padding: var(--dshui-space-4) var(--dshui-space-5) !important;
 }
 
 /* Free-text answer: inset surface, ring on focus, same radius as the rows. */
 [data-question-key] textarea,
 [data-question-key] textarea::placeholder {
-  font-size: 14px !important;
+  font-size: var(--dshui-text-size-base) !important;
   line-height: 24px !important;
 }
 
@@ -350,12 +283,12 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 }
 
 [data-question-key] [class~='y21zpG_customBlock'] {
-  border: 1px solid var(--oai-border) !important;
+  border: var(--dshui-border-width-strong) solid var(--oai-border) !important;
   border-radius: var(--oai-field-radius) !important;
   background: var(--oai-surface-2) !important;
-  margin: 8px 12px 0 !important;
+  margin: var(--dshui-space-4) var(--dshui-space-5) 0 !important;
   min-height: 68px !important;
-  --dsh-answer-field-padding: 12px 14px !important;
+  --dsh-answer-field-padding: var(--dshui-space-5) var(--dshui-space-5) !important;
   transition: border-color var(--oai-transition), background var(--oai-transition) !important;
 }
 
@@ -369,21 +302,21 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
    -------------------------------------------------------------------------- */
 
 [data-question-key] > section > footer {
-  margin-top: 14px !important;
-  padding: 0 14px 0 18px !important;
-  gap: 12px !important;
+  margin-top: var(--dshui-space-5) !important;
+  padding: 0 var(--dshui-space-5) 0 var(--dshui-space-6) !important;
+  gap: var(--dshui-space-5) !important;
 }
 
 [data-question-key] [class~='y21zpG_progress'] {
-  font-size: 13px !important;
-  font-weight: 500 !important;
+  font-size: var(--dshui-text-size-md) !important;
+  font-weight: var(--dshui-weight-medium) !important;
   color: var(--oai-text-3) !important;
   font-variant-numeric: tabular-nums !important;
 }
 
 [data-question-key] [class~='y21zpG_feedback'],
 [data-plan-review-key] [class~='R7PCuq_feedback'] {
-  font-size: 12px !important;
+  font-size: var(--dshui-text-size-sm) !important;
   line-height: 18px !important;
   color: var(--oai-danger) !important;
 }
@@ -392,18 +325,18 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 [data-question-key] [class~='y21zpG_footerActions'] button,
 [data-plan-review-key] [class~='R7PCuq_actions'] button {
   height: 36px !important;
-  border-radius: 999px !important;
-  padding: 0 18px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.006em !important;
+  border-radius: var(--dshui-radius-pill) !important;
+  padding: 0 var(--dshui-space-6) !important;
+  font-size: var(--dshui-text-size-base) !important;
+  font-weight: var(--dshui-weight-medium) !important;
+  letter-spacing: var(--dshui-tracking-tight) !important;
   transition: background var(--oai-transition), border-color var(--oai-transition),
     opacity var(--oai-transition) !important;
 }
 
 [data-question-key] [class~='y21zpG_footerActions'] button:first-child,
 [data-plan-review-key] [class~='R7PCuq_actions'] button:first-child {
-  border: 1px solid var(--oai-border-strong) !important;
+  border: var(--dshui-border-width-strong) solid var(--oai-border-strong) !important;
   background: transparent !important;
   color: var(--oai-text) !important;
 }
@@ -415,7 +348,7 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 
 [data-question-key] [class~='y21zpG_footerActions'] button:last-child,
 [data-plan-review-key] [class~='R7PCuq_actions'] button:last-child {
-  border: 1px solid transparent !important;
+  border: var(--dshui-border-width-strong) solid transparent !important;
   background: var(--oai-accent) !important;
   color: var(--oai-accent-fg) !important;
 }
@@ -426,7 +359,7 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 }
 
 [data-question-key] [class~='y21zpG_waitButton'] {
-  border-radius: 999px !important;
+  border-radius: var(--dshui-radius-pill) !important;
   height: 28px !important;
 }
 
@@ -435,48 +368,48 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
    -------------------------------------------------------------------------- */
 
 [data-plan-review-key] [class~='R7PCuq_strip'] {
-  padding: 13px 20px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.006em !important;
-  gap: 10px !important;
+  padding: var(--dshui-space-5) var(--dshui-space-6) !important;
+  font-size: var(--dshui-text-size-md) !important;
+  font-weight: var(--dshui-weight-medium) !important;
+  letter-spacing: var(--dshui-tracking-tight) !important;
+  gap: var(--dshui-space-4) !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_summary'] {
-  padding: 16px 24px 4px !important;
+  padding: var(--dshui-space-6) var(--dshui-space-7) var(--dshui-space-2) !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_title'] {
-  font-size: 16px !important;
+  font-size: var(--dshui-text-size-lg) !important;
   line-height: 24px !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.012em !important;
+  font-weight: var(--dshui-weight-semibold) !important;
+  letter-spacing: var(--dshui-tracking-tight) !important;
   white-space: normal !important;
   overflow: visible !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_description'] {
-  font-size: 13px !important;
+  font-size: var(--dshui-text-size-md) !important;
   line-height: 21px !important;
   color: var(--oai-text-2) !important;
-  margin-top: 6px !important;
+  margin-top: var(--dshui-space-3) !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_footer'] {
-  padding: 10px 16px 14px !important;
-  gap: 12px !important;
+  padding: var(--dshui-space-4) var(--dshui-space-6) var(--dshui-space-5) !important;
+  gap: var(--dshui-space-5) !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_actions'] {
-  gap: 10px !important;
+  gap: var(--dshui-space-4) !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_discuss'] {
-  gap: 7px !important;
+  gap: var(--dshui-space-3) !important;
 }
 
 [data-plan-review-key] [class~='R7PCuq_previewActions'] button {
-  border-radius: 999px !important;
+  border-radius: var(--dshui-radius-pill) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -484,64 +417,64 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
    -------------------------------------------------------------------------- */
 
 [data-question-reply] {
-  gap: 4px !important;
+  gap: var(--dshui-space-2) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_bubble'] {
-  border-radius: 18px !important;
+  border-radius: var(--dshui-radius-lg) !important;
   background: var(--oai-surface-2) !important;
-  padding: 10px 16px !important;
+  padding: var(--dshui-space-4) var(--dshui-space-6) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_labelRow'] {
-  gap: 4px !important;
+  gap: var(--dshui-space-2) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_label'] {
-  font-size: 12px !important;
+  font-size: var(--dshui-text-size-sm) !important;
   color: var(--oai-text-3) !important;
-  letter-spacing: 0.01em !important;
+  letter-spacing: var(--dshui-tracking-normal) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_summary'] {
-  font-size: 14px !important;
-  margin-top: 2px !important;
+  font-size: var(--dshui-text-size-base) !important;
+  margin-top: var(--dshui-space-1) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_details'] {
-  border-top: 1px solid var(--oai-border) !important;
-  margin-top: 10px !important;
-  padding-top: 10px !important;
+  border-top: var(--dshui-border-width-strong) solid var(--oai-border) !important;
+  margin-top: var(--dshui-space-4) !important;
+  padding-top: var(--dshui-space-4) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_header'],
 [data-question-reply] [class~='Dh9Boq_detail'],
 [data-question-reply] [class~='Dh9Boq_options'] {
   color: var(--oai-text-3) !important;
-  font-size: 12px !important;
+  font-size: var(--dshui-text-size-sm) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_answerLabel'] {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
+  font-size: var(--dshui-text-size-xs) !important;
+  font-weight: var(--dshui-weight-semibold) !important;
+  letter-spacing: var(--dshui-tracking-wide) !important;
   text-transform: uppercase !important;
   color: var(--oai-text-3) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_actions'] {
-  gap: 6px !important;
+  gap: var(--dshui-space-3) !important;
   height: 26px !important;
   color: var(--oai-text-3) !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_time'] {
-  font-size: 12px !important;
+  font-size: var(--dshui-text-size-sm) !important;
   font-variant-numeric: tabular-nums !important;
 }
 
 [data-question-reply] [class~='Dh9Boq_action'] {
-  border-radius: 999px !important;
+  border-radius: var(--dshui-radius-pill) !important;
   width: 26px !important;
   height: 26px !important;
   transition: background var(--oai-transition), color var(--oai-transition) !important;
@@ -559,7 +492,7 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 [data-question-key] :focus-visible,
 [data-plan-review-key] :focus-visible,
 [data-question-reply] :focus-visible {
-  outline: 2px solid var(--oai-focus) !important;
+  outline: var(--dshui-ring-width) solid var(--oai-focus) !important;
   outline-offset: 2px !important;
 }
 
@@ -581,15 +514,57 @@ body[data-ds-dark-theme] [data-question-key] [class~='y21zpG_customRowActive'] {
 
 @media (width <= 720px) {
   [data-question-key] > section > header {
-    padding: 18px 16px 0 18px !important;
+    padding: var(--dshui-space-6) var(--dshui-space-6) 0 var(--dshui-space-6) !important;
   }
 
   [data-question-key] [role='radiogroup'],
   [data-question-key] [role='group'] {
-    padding: 8px 8px !important;
+    padding: var(--dshui-space-4) var(--dshui-space-4) !important;
   }
 
   [data-question-key] > section > footer {
-    padding: 0 10px 0 14px !important;
+    padding: 0 var(--dshui-space-4) 0 var(--dshui-space-5) !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Token notes — folds that are not obvious from the mapping table
+   · The scope block's harness-alias remap and its radius overrides are gone:
+     they existed to push this file's palette into the harness primitives, and
+     the token layer already gives those primitives the same values. Nothing
+     inside the scope now re-writes a harness alias, so a token can no longer
+     resolve to its own remap.
+   · The `body[data-ds-dark-theme]` palette block and the dark-only
+     `box-shadow` override went with it. Every `--oai-*` slot now resolves a
+     theme-aware token, so the second block would have declared the exact same
+     values as the first one.
+   · Surface roles: --oai-surface → --dshui-surface-1 (layer 1, the card plane),
+     --oai-surface-2 → --dshui-surface-2 (the hover / selected / bubble wash),
+     --oai-surface-3 → --dshui-surface-3 (chips and badges one step higher).
+   · Ink roles: text / text-2 / text-3 / text-4 map straight onto
+     --dshui-text-primary / -secondary / -tertiary / -caption; the hairline and
+     the strong edge map onto --dshui-border-2 / --dshui-border-3.
+   · Accent hover keeps its 84% mix but mixes toward --dshui-ink-solid, which is
+     near-black in light and near-white in dark — exactly the two literals the
+     file used to hardcode.
+   · --oai-warn-bg had no background role in the suite, so it is derived as 12%
+     of --dshui-warn over the surface; --oai-warn-fg is --dshui-warn itself.
+   · Every 1px and 1.5px edge folded into --dshui-border-width-strong (1px): the
+     suite publishes only 0.5px and 1px, and the checkbox hairline at 1.5px was
+     the only 1.5px stroke in the file.
+   · Radii: 24px → --dshui-radius-2xl (exact), 18px and 16px → --dshui-radius-lg,
+     14px and 12px → --dshui-radius-md, 6px → --dshui-radius-sm, 999px →
+     --dshui-radius-pill.
+   · Spacing folded to the 2/4/6/8/12/16/24/32 scale, nearest step and the
+     smaller one on a tie: 5→4, 7→6, 9→8, 10→8, 13→12, 14→12, 18→16, 20→16,
+     22→24.
+   · Type: 16px folded to --dshui-text-size-lg (15px), the only size the suite
+     does not carry; the 11/12/13/14/17px sizes map exactly. Tracking: -0.012em
+     and -0.006em → --dshui-tracking-tight, 0.06em and 0.04em →
+     --dshui-tracking-wide, 0.02em and 0.01em → --dshui-tracking-normal.
+   · Metrics that stay literal on purpose: px line-heights (16/18/20/21/22/23/
+     24/25px) because they pin a box height the unitless scale cannot express;
+     the two 1ms reduced-motion zeros; the 2px outline-offset; and every width,
+     height, min-height, flex and z-index value, which the token layer does not
+     own.
+   -------------------------------------------------------------------------- */

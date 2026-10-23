@@ -3,38 +3,33 @@
 # 声明在 package.json 的 dsh.bundle.patch 中，使 `dsh plugin add` 或插件页
 # 安装时可直接把这一行插进所选 profile 的 cordis 配置。
 #
-# `id` 是 loader 行标签，与包名保持一致：插件页排障路径
-# /plugins/<id>/client.js 才指向同一个字符串。
-#
-# 文案与强调色改在 profile 的 cordis.patch.yml 里追加同 id 的一行，例如：
+# 2.0 起整套界面只剩一行：一个包、一个浏览器入口、一个 MutationObserver。
+# 组件不再各占一行，改由同一条 config 里的开关控制：
 #
 #   - id: ui-copy
 #     name: dsh-ui-copy
 #     config:
-#       hidePreviewBadge: true
-#       headline:
-#         zh: ['有什么可以帮你的？']
-#       placeholders:
-#         '描述你想要构建的内容, / 调用指令, @ 文件或对话': ['说点什么，剩下的我来']
-#       accent:
-#         light: '#7c4dff'
-#         dark: '#b79cff'
+#       copy:            { enabled: true, hidePreviewBadge: true }
+#       ask:             { enabled: true }
+#       composer:        { enabled: true }
+#       menu:            { enabled: true }
+#       sidebar:         { enabled: true }
+#       identity:        { enabled: true, name: '…', avatar: '…' }
+#       sessionDelete:   { enabled: true }
+#       footPanels:      { enabled: true }
+#       peakValley:      { enabled: true }
+#       statusPhrases:   { enabled: true, phrases: |-
+#                           …每行一句… }
+#       restart:         { enabled: true }
+#       quota:           { enabled: true }
+#       effortSlider:    { enabled: true }
+#       whale:           { enabled: true }
+#       skillExplorer:   { enabled: true }
+#       suite:           { enabled: true }
 #
-# 这个组合包摊成五行，各自可以在插件页单独停用：
-#
-#   ui-copy           浏览器半只的文案改写与强调色覆写
-#   ui-copy-ask       ask 弹窗的 OpenAI 视觉（宿主半只把 ask-surface.css 内联进页面）
-#   ui-copy-composer  输入卡片的 Codex 视觉（宿主半只把 composer-surface.css 内联进页面）
-#   ui-copy-menu      菜单的开合动画（宿主半只把 menu-motion.css 与 menu-motion.page.js 内联进页面）
-#   ui-copy-sidebar   侧栏「新会话」按钮降噪（宿主半只把 sidebar-surface.css 内联进页面）
+# 主题走同一行的 `theme` 与 `accent`：`theme.light` / `theme.dark` 覆盖任意
+# `--dshui-*` 角色（键写角色名，如 brand、surface-2），`accent` 是强调色对，
+# 留空即跟随官方配色。所有组件的视觉都从这层令牌取值，所以换肤只改这一处。
 - insert:
     - id: ui-copy
       name: dsh-ui-copy
-    - id: ui-copy-ask
-      name: dsh-ui-copy/ask
-    - id: ui-copy-composer
-      name: dsh-ui-copy/composer
-    - id: ui-copy-menu
-      name: dsh-ui-copy/menu
-    - id: ui-copy-sidebar
-      name: dsh-ui-copy/sidebar

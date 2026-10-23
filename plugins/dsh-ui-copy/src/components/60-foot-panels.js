@@ -1,0 +1,511 @@
+/**
+ * Sidebar foot panels: the global panel rows leave the sidebar's panel list and
+ * become compact icon buttons on the sidebar foot.
+ *
+ *   - the shipped rows stay where React drew them; the component only hides
+ *     them, marking the matching `<button>` in `nav.panelList` with
+ *     `data-dsh-foot-panels-hidden`. The list stops occupying the column once
+ *     every row in it is one of ours (its own rule marks it too), so the top of
+ *     the sidebar is New Session and the session list alone;
+ *   - the entry points are registered as a real `sidebar.footer.action` entry —
+ *     the slot the sidebar declares as "optional actions beside Settings at the
+ *     sidebar foot" — and drawn by the sidebar itself, so they inherit the
+ *     column state (`wide`, i.e. wide row versus 56px rail), the foot's own
+ *     alignment and the shipped hover/focus tokens.
+ *
+ * The ledger covers the panels the shipped bundles register (`plugins`,
+ * `schedules`) and the two third-party bundles register at `usage-stats` and
+ * `skill-explorer`. No package exports its panel id or its glyph, so each is
+ * inlined here; a bundle that disables itself or renames its id drops its button
+ * through the ledger check below.
+ *
+ * A click goes through `ctx.layout.selectPanel(id)`, the controller call the
+ * shipped row makes, so panel switching keeps the persisted selection, the
+ * pending-navigation abort and the main-panel guard unchanged. The active state
+ * is read from `ctx.layout.panelInfo`, the same selection source that marks the
+ * shipped row with `aria-current`.
+ *
+ * Why the list is DOM work and the buttons are a slot:
+ *
+ *   - The panel list is owned by the sidebar: it draws one row per
+ *     `sidebar.panellist` registration and owns the button. A plugin can add
+ *     entries to that slot, and it can take over a cell by reusing a shipped id,
+ *     but it cannot withdraw another plugin's registration, and occupying a cell
+ *     would still leave a row in the list. So the rows are hidden where they
+ *     land.
+ *   - The marks are re-applied from the suite's shared DOM sweep, because React
+ *     rebuilds a row on structural changes. Only an attribute React never
+ *     renders is written: `className`, `aria-label`, `aria-current` and the
+ *     click handler stay the shipped ones, so keyboard order and accessibility
+ *     of the hidden rows are untouched if the component is switched off.
+ *
+ * The buttons follow the panel ledger: a panel whose plugin is disabled
+ * disappears from the foot as well, and the wrapper renders nothing when no
+ * panel is offered.
+ */
+function dshuiComponent_foot_panels(rt) {
+  const React = rt.require('react')
+  if (React === null) {
+    rt.warn('react is not in this boot graph; foot-panels skipped')
+    return
+  }
+  const h = React.createElement
+
+  /**
+   * Only the tooltip comes from the primitives bundle; the buttons themselves
+   * are plain elements. A boot graph without that bundle therefore still gets
+   * the foot group, it just falls back to the native `title` tooltip.
+   */
+  const primitives = rt.require('@deepseek-ai/dsh-client-ui-primitives')
+  if (primitives === null) rt.warn('ui primitives are not in this boot graph; foot buttons fall back to title')
+
+  /** Locale namespace for the button labels; also the footer entry's `locale`. */
+  const NS = 'sidebar-foot-panels'
+
+  /** Simplified Chinese dictionary (the key-set source of truth). */
+  const zh = {
+    plugins: '插件',
+    usage: '使用统计',
+    skills: '技能中心',
+  }
+
+  /** English dictionary, checked complete against the zh key set. */
+  const en = {
+    plugins: 'Plugins',
+    usage: 'Usage statistics',
+    skills: 'Skill center',
+  }
+
+  /** The sidebar's list of global panel rows. */
+  const PANELLIST_SLOT = 'sidebar.panellist'
+
+  /** The sidebar's list of optional actions beside Settings. */
+  const FOOTER_SLOT = 'sidebar.footer.action'
+
+  /** The shipped panel list: the `nav` whose CSS-module class carries this suffix. */
+  const PANEL_LIST_SELECTOR = 'nav[class*="panelList"]'
+
+  /**
+   * Mark written on a shipped panel row — and on the list itself once every row
+   * in it is ours — so the component's stylesheet can take it out of flow.
+   *
+   * An attribute rather than a class: React rewrites `className` on its own
+   * re-renders, while an attribute it does not render survives every update of
+   * the element it was set on.
+   */
+  const HIDDEN_ATTR = 'data-dsh-foot-panels-hidden'
+
+  /**
+   * The panels this component relocates, in the order the buttons appear.
+   *
+   * `id` is the `sidebar.panellist` cell key, which is also the `main` slot key
+   * the panel page renders under, which is also what `ctx.layout.selectPanel`
+   * takes. `copy` names the label key in this component's dictionary. `Icon` is
+   * the glyph the owning package draws for its row, inlined because none of the
+   * three exports its icon component or its own panel id. The two third-party
+   * rows are both registered at order 30 — `usage-stats` by
+   * dsh-usage-statistics-panel, `skill-explorer` by
+   * @linxin666/dsh-client-ui-skill-explorer — so the button order below is the
+   * registration order, which is the order the list drew them in.
+   */
+  const PANELS = [
+    { id: 'plugins', copy: 'plugins', Icon: PinwheelIcon },
+    { id: 'usage-stats', copy: 'usage', Icon: BarChartIcon },
+    { id: 'skill-explorer', copy: 'skills', Icon: BookIcon },
+  ]
+
+  /**
+   * Panels this component takes off the list without giving them a foot button.
+   *
+   * `schedules` is the shipped Automation tasks panel. Leaving an id out of
+   * `PANELS` alone would not remove the row: the list still draws it from the
+   * seat client-ui-schedule registers, so it would simply reappear at the top
+   * of the column — the placement this component exists to clear. Hiding it here
+   * drops the entry point entirely. To bring the panel back, move the id into
+   * `PANELS` with a `copy` key and a glyph.
+   */
+  const HIDDEN_PANELS = ['schedules']
+
+  /** The cell keys this component claims, as a lookup for the ledger scan. */
+  const PANEL_IDS = new Set([...PANELS.map((panel) => panel.id), ...HIDDEN_PANELS])
+
+  /** The primitives tooltip, when this build still exports one. */
+  const Tooltip = primitives === null ? undefined : primitives.Tooltip
+
+  /**
+   * The component's stylesheet.
+   *
+   * The hidden-row rule is the whole point of the sheet; the button rules reuse
+   * the shipped icon-button geometry and tokens so the group reads as part of
+   * the foot rather than as a new control family.
+   */
+  const STYLESHEET = `
+[${HIDDEN_ATTR}] { display: none !important; }
+.dsh-fp-actions {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--dshui-space-1);
+  min-width: 0;
+  padding: 0 var(--dshui-space-1);
+}
+.dsh-fp-button {
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--dshui-radius-sm);
+  background: none;
+  color: var(--dshui-text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+.dsh-fp-button:hover { background: var(--dshui-surface-hover); }
+.dsh-fp-button[data-active='true'] {
+  background: var(--dshui-surface-hover);
+  color: var(--dshui-text-primary);
+}
+.dsh-fp-button:focus-visible {
+  outline: var(--dshui-ring-width) solid var(--dshui-border-focus);
+  outline-offset: -2px;
+}
+.dsh-fp-button[data-rail='true'] {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--dshui-radius-md);
+}
+.dsh-fp-glyph { display: inline-flex; align-items: center; justify-content: center; }
+`
+
+  /**
+   * The pinwheel client-ui-plugin-manager draws for its panel row.
+   *
+   * @param props - `size` in pixels.
+   * @returns the glyph.
+   */
+  function PinwheelIcon({ size = 16 }) {
+    return h(
+      'svg',
+      {
+        width: size,
+        height: size,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        strokeWidth: 1,
+        xmlns: 'http://www.w3.org/2000/svg',
+        'aria-hidden': 'true',
+      },
+      h('path', { key: 'w', d: 'M7.84457 5.06199C11.6605 4.93876 14.7962 6.14848 14.8484 7.76397C14.8875 8.97461 13.1838 10.0696 10.7215 10.5942', stroke: 'currentColor' }),
+      h('path', { key: 'n', d: 'M5.12742 8.07731C5.00419 4.26138 6.21391 1.12568 7.8294 1.07351C9.04004 1.03441 10.135 2.73808 10.6596 5.20037', stroke: 'currentColor' }),
+      h('path', { key: 'e', d: 'M8.02457 10.6802C4.20865 10.8034 1.07294 9.5937 1.02077 7.97821C0.981678 6.76758 2.68535 5.67262 5.14763 5.14798', stroke: 'currentColor' }),
+      h('path', { key: 's', d: 'M10.7476 7.89535C10.8708 11.7113 9.66109 14.847 8.0456 14.8991C6.83496 14.9382 5.74 13.2346 5.21536 10.7723', stroke: 'currentColor' }),
+    )
+  }
+
+  /**
+   * The bar-chart glyph dsh-usage-statistics-panel draws for its panel row.
+   *
+   * Its `StatsIcon` is the lucide `BarChart3` artwork, so it keeps that
+   * drawing's numbers — a 24-unit grid with a 2-unit stroke and round joins —
+   * instead of the 16-unit grid the shipped glyph above uses.
+   *
+   * @param props - `size` in pixels.
+   * @returns the glyph.
+   */
+  function BarChartIcon({ size = 16 }) {
+    return h(
+      'svg',
+      {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        xmlns: 'http://www.w3.org/2000/svg',
+        'aria-hidden': 'true',
+      },
+      h('path', { key: 'axes', d: 'M3 3v18h18' }),
+      h('path', { key: 'bar-tall', d: 'M18 17V9' }),
+      h('path', { key: 'bar-mid', d: 'M13 17V5' }),
+      h('path', { key: 'bar-low', d: 'M8 17v-3' }),
+    )
+  }
+
+  /**
+   * The open-book glyph @linxin666/dsh-client-ui-skill-explorer draws for its
+   * panel row.
+   *
+   * Copied from that package's `SkillExplorerPanelIcon`, which already lives on
+   * a 16-unit grid like the shipped glyph above; only the stroke width differs,
+   * at 1.3 rather than 1. Its `data-dsh-panel-entry` anchor is not reproduced:
+   * that attribute marks the glyph inside the sidebar's own row, and this button
+   * is not that row.
+   *
+   * @param props - `size` in pixels.
+   * @returns the glyph.
+   */
+  function BookIcon({ size = 16 }) {
+    return h(
+      'svg',
+      {
+        width: size,
+        height: size,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.3,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        xmlns: 'http://www.w3.org/2000/svg',
+        'aria-hidden': 'true',
+      },
+      h('path', { key: 'cover', d: 'M8 3.2C6.6 2 4.5 2 3 2v10.5c1.5 0 3.6 0 5 1.3 1.4-1.3 3.5-1.3 5-1.3V2c-1.5 0-3.6 0-5 1.2z' }),
+      h('path', { key: 'spine', d: 'M8 3.2v10.6' }),
+    )
+  }
+
+  /**
+   * The panels currently offered by the sidebar, as `{ id, copy, Icon }`.
+   *
+   * Read back from the `sidebar.panellist` ledger on every change, so a panel
+   * whose plugin is disabled loses its button instead of leaving a dead one.
+   */
+  let offered = []
+
+  /** Cells currently watching {@link offered}. */
+  const offeredListeners = new Set()
+
+  /**
+   * Replace the offered list when it really changed.
+   *
+   * Identity is the id sequence: `useSyncExternalStore` compares snapshots by
+   * reference, and a rebuilt list with the same ids must not re-render.
+   *
+   * @param next - the next list.
+   */
+  function setOffered(next) {
+    const same = next.length === offered.length && next.every((panel, index) => panel.id === offered[index].id)
+    if (same) return
+    offered = next
+    for (const listener of [...offeredListeners]) listener()
+  }
+
+  /**
+   * Subscribe one component to the offered list.
+   *
+   * @param listener - change callback.
+   * @returns the unsubscribe.
+   */
+  function subscribeOffered(listener) {
+    offeredListeners.add(listener)
+    return () => {
+      offeredListeners.delete(listener)
+    }
+  }
+
+  /**
+   * Read the offered list from React.
+   *
+   * @returns the current list.
+   */
+  function useOfferedPanels() {
+    return React.useSyncExternalStore(subscribeOffered, () => offered)
+  }
+
+  /**
+   * Wrap the layout controller's selection source as a hook.
+   *
+   * `ctx.layout.panelInfo` is the layout store's `panelInfo` slice: its
+   * `getSnapshot` hands back the very object the root store renders the shipped
+   * rows from, so a button highlights exactly when its row would have.
+   *
+   * @param layout - the injected `ctx.layout` service.
+   * @returns a hook returning the active panel id, or null for the conversation.
+   */
+  function activePanelHook(layout) {
+    const subscribe = (listener) => layout.panelInfo.subscribe(listener)
+    const getSnapshot = () => layout.panelInfo.getSnapshot().activePanelId
+    return () => React.useSyncExternalStore(subscribe, getSnapshot)
+  }
+
+  /**
+   * One foot button.
+   *
+   * @param props - the panel spec, its selection state, the column state, the
+   *   injected `selectPanel` and the bound translator.
+   * @returns the button, wrapped in the shipped tooltip when it is available.
+   */
+  function FootPanelButton({ panel, active, rail, selectPanel, t }) {
+    const label = t(panel.copy)
+    const button = h(
+      'button',
+      {
+        type: 'button',
+        className: 'dsh-fp-button',
+        'data-active': active ? 'true' : undefined,
+        'data-rail': rail ? 'true' : undefined,
+        'aria-label': label,
+        'aria-current': active ? 'page' : undefined,
+        title: typeof Tooltip === 'function' ? undefined : label,
+        onClick: () => selectPanel(panel.id),
+      },
+      h('span', { className: 'dsh-fp-glyph', 'aria-hidden': 'true' }, h(panel.Icon, { size: rail ? 18 : 16 })),
+    )
+    if (typeof Tooltip !== 'function') return button
+    return h(Tooltip, { label, delayMs: 500 }, button)
+  }
+
+  /**
+   * The foot group.
+   *
+   * @param props - the sidebar's owner share (`wide`), the injected selection
+   *   helpers, and the bound translator.
+   * @returns the group, or null while neither panel is offered.
+   */
+  function FootPanels({ wide, selectPanel, useActivePanelId, t }) {
+    const panels = useOfferedPanels()
+    const activeId = useActivePanelId()
+    if (panels.length === 0) return null
+    return h(
+      'div',
+      { className: 'dsh-fp-actions' },
+      panels.map((panel) =>
+        h(FootPanelButton, {
+          key: panel.id,
+          panel,
+          active: activeId === panel.id,
+          rail: !wide,
+          selectPanel,
+          t,
+        }),
+      ),
+    )
+  }
+
+  /**
+   * Install the stylesheet, the DOM pass and the footer entry.
+   *
+   * @param ctx - client root context, carrying `slots`, `layout` and `locale`.
+   * @returns the disposer that takes all three back out.
+   */
+  function mount(ctx) {
+    /** Row positions in `nav.panelList` this component hides; rebuilt with the ledger. */
+    let hiddenRows = []
+
+    // The suite's sheet registry owns the <style> element, so switching this
+    // component off removes its rules with it instead of leaving them behind.
+    const removeSheet = rt.style('foot-panels', STYLESHEET)
+
+    /**
+     * Re-read the panel ledger: which rows to hide, and which buttons to offer.
+     *
+     * The order is the sidebar's own — `entriesOfSlot` winners by `order`, the
+     * same list it maps to rows — so a hidden position and the row React drew
+     * there are the same row.
+     */
+    const reindex = () => {
+      const ids = ctx.slots
+        .entriesOfSlot(PANELLIST_SLOT)
+        .map((entry) => ({ id: entry.options.id, order: entry.options.order ?? 0 }))
+        .sort((a, b) => a.order - b.order)
+        .map((row) => row.id)
+      hiddenRows = ids.flatMap((id, index) => (PANEL_IDS.has(id) ? [index] : []))
+      setOffered(PANELS.filter((panel) => ids.includes(panel.id)))
+    }
+
+    /**
+     * Mark the rows at {@link hiddenRows}, and the list itself once every row in
+     * it is ours so its margin does not survive as an empty gap.
+     *
+     * Descendant buttons rather than direct children: the shipped row wraps its
+     * button in a tooltip, and a build that anchors the tooltip with an element
+     * of its own still leaves exactly one button per row. Every row not at a
+     * hidden position is unmarked, which is what keeps the component honest
+     * after a third panel is registered.
+     *
+     * Every write is guarded by the attribute's current value: this pass runs
+     * from the suite's shared observer, which also watches attributes, so an
+     * unconditional `setAttribute` would schedule the next sweep from inside
+     * this one and keep the frame loop turning forever.
+     */
+    const paint = () => {
+      const list = document.querySelector(PANEL_LIST_SELECTOR)
+      if (list === null) return
+      const rows = list.querySelectorAll('button')
+      let visible = 0
+      rows.forEach((row, index) => {
+        if (hiddenRows.includes(index)) {
+          if (!row.hasAttribute(HIDDEN_ATTR)) row.setAttribute(HIDDEN_ATTR, '')
+        } else {
+          if (row.hasAttribute(HIDDEN_ATTR)) row.removeAttribute(HIDDEN_ATTR)
+          visible += 1
+        }
+      })
+      const empty = rows.length > 0 && visible === 0
+      if (empty && !list.hasAttribute(HIDDEN_ATTR)) list.setAttribute(HIDDEN_ATTR, '')
+      else if (!empty && list.hasAttribute(HIDDEN_ATTR)) list.removeAttribute(HIDDEN_ATTR)
+    }
+
+    // The suite owns the single DOM observer and its frame budget, so the row
+    // marks are a registered pass rather than an observer of the body here.
+    const unobserve = rt.observe(paint)
+
+    const sync = () => {
+      reindex()
+      paint()
+    }
+
+    const offLedger = ctx.slots.subscribe(PANELLIST_SLOT, sync)
+    ctx.slots.inject(FOOTER_SLOT, () =>
+      ctx.slots.register(
+        {
+          name: FOOTER_SLOT,
+          id: 'foot-panels',
+          order: 10,
+          locale: NS,
+          inject: () => ({
+            selectPanel: (id) => ctx.layout.selectPanel(id),
+            useActivePanelId: activePanelHook(ctx.layout),
+          }),
+        },
+        FootPanels,
+      ),
+    )
+
+    sync()
+
+    return () => {
+      unobserve()
+      offLedger()
+      removeSheet()
+      setOffered([])
+      for (const marked of document.querySelectorAll(`[${HIDDEN_ATTR}]`)) marked.removeAttribute(HIDDEN_ATTR)
+    }
+  }
+
+  /**
+   * Client body: dictionaries first, then the page-side mount. The mount waits
+   * for `body` because the pass it installs sweeps it.
+   *
+   * The three services are waited for here rather than declared on the plugin,
+   * so a composition without them leaves this component inert and the rest of
+   * the suite running.
+   *
+   * @param ctx - client root context with `slots`, `layout` and `locale`.
+   */
+  function install(ctx) {
+    ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-copy/foot-panels: dictionaries')
+    if (document.body !== null) rt.effect(() => mount(ctx), 'ui-copy/foot-panels: foot group')
+    else document.addEventListener('DOMContentLoaded', () => rt.effect(() => mount(ctx), 'ui-copy/foot-panels: foot group'), { once: true })
+  }
+
+  rt.ctx.inject(['slots', 'layout', 'locale'], (scope) => install(scope))
+}

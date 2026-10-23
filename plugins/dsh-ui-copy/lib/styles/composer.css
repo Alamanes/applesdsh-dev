@@ -15,11 +15,14 @@
      the attributes do not reach; each one pairs a `$="_x"` form with `*="_x "`
      because a module local may be followed by another class.
 
-   Palette
-     Both themes are published as `--dsh-ui-copy-card-*` on the scope roots and
-     consumed below: a raised surface in the wallpaper's blue cast, a hairline
-     edge, the muted figure colour, the blue send fill with its disabled
-     stand-in, and the card's own shadow.
+   Tokens
+     This sheet is wired into the suite token layer. Both themes are published
+     as `--dsh-ui-copy-card-*` on the scope roots and consumed below, and every
+     one of those slots now reads a `--dshui-*` token from
+     lib/styles/tokens.css: the raised card surface, its hairline edge, the
+     muted figure ink, the send fill with its idle stand-in, and the card's own
+     shadow. Light and dark are the token layer's job, so this file no longer
+     carries a palette of its own.
 
    Why !important
      This sheet is inlined before the component stylesheets, which are CSS
@@ -37,30 +40,16 @@
 
 [data-composer-card],
 [data-composer-seat] {
-  --dsh-ui-copy-card-surface: #0c1e37;
-  --dsh-ui-copy-card-edge: #1d3556;
-  --dsh-ui-copy-card-ink: #eef5ff;
-  --dsh-ui-copy-card-muted: #7f91a8;
-  --dsh-ui-copy-card-shadow: 0 1px 6px rgba(0, 3, 10, 0.55);
-  --dsh-ui-copy-send-fill: #ffffff;
-  --dsh-ui-copy-send-ink: #08152a;
-  --dsh-ui-copy-send-idle: #46597a;
-  --dsh-ui-copy-send-idle-ink: #0c1e37;
-  --dsh-ui-copy-dock-surface: #08182c;
-}
-
-body:not([data-ds-dark-theme]) [data-composer-card],
-body:not([data-ds-dark-theme]) [data-composer-seat] {
-  --dsh-ui-copy-card-surface: #fbfdff;
-  --dsh-ui-copy-card-edge: #d9e4f3;
-  --dsh-ui-copy-card-ink: #10233d;
-  --dsh-ui-copy-card-muted: #7186a0;
-  --dsh-ui-copy-card-shadow: 0 1px 6px rgba(47, 72, 110, 0.1);
-  --dsh-ui-copy-send-fill: #4d6bfe;
-  --dsh-ui-copy-send-ink: #ffffff;
-  --dsh-ui-copy-send-idle: #bcc9dd;
-  --dsh-ui-copy-send-idle-ink: #ffffff;
-  --dsh-ui-copy-dock-surface: #e7eefa;
+  --dsh-ui-copy-card-surface: var(--dshui-surface-2);
+  --dsh-ui-copy-card-edge: var(--dshui-border-2);
+  --dsh-ui-copy-card-ink: var(--dshui-text-primary);
+  --dsh-ui-copy-card-muted: var(--dshui-text-tertiary);
+  --dsh-ui-copy-card-shadow: var(--dshui-shadow-1);
+  --dsh-ui-copy-send-fill: var(--dshui-brand-fill);
+  --dsh-ui-copy-send-ink: var(--dshui-brand-ink);
+  --dsh-ui-copy-send-idle: var(--dshui-surface-3);
+  --dsh-ui-copy-send-idle-ink: var(--dshui-text-tertiary);
+  --dsh-ui-copy-dock-surface: var(--dshui-neutral-fill-sunken);
 }
 
 /* --------------------------------------------------------------------------
@@ -85,10 +74,10 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 [class*="_cardWorkspaceTrigger "] {
   position: relative !important;
   background: var(--dsh-ui-copy-card-surface) !important;
-  border: 1px solid var(--dsh-ui-copy-card-edge) !important;
-  border-radius: 22px !important;
-  box-shadow: var(--dsh-ui-copy-card-shadow, 0 1px 6px #00000010) !important;
-  padding-top: 10px !important;
+  border: var(--dshui-border-width-strong) solid var(--dsh-ui-copy-card-edge) !important;
+  border-radius: var(--dshui-radius-xl) !important;
+  box-shadow: var(--dsh-ui-copy-card-shadow, var(--dshui-shadow-1)) !important;
+  padding-top: var(--dshui-space-4) !important;
 }
 
 [class$="_cardWorkspaceTrigger"]::after,
@@ -97,10 +86,10 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 }
 
 [data-composer-card] {
-  padding-top: 6px !important;
-  gap: 8px !important;
-  font-size: 15px !important;
-  line-height: 1.5 !important;
+  padding-top: var(--dshui-space-3) !important;
+  gap: var(--dshui-space-4) !important;
+  font-size: var(--dshui-text-size-lg) !important;
+  line-height: var(--dshui-line-normal) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -109,8 +98,8 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 
 [data-composer-card] [contenteditable] {
   min-height: 42px;
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: var(--dshui-text-size-lg);
+  line-height: var(--dshui-line-normal);
   caret-color: var(--dsh-ui-copy-card-ink);
 }
 
@@ -133,9 +122,9 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
-  padding: 6px !important;
+  padding: var(--dshui-space-3) !important;
   border: 0 !important;
-  border-radius: 50% !important;
+  border-radius: var(--dshui-radius-circle) !important;
   background: var(--dsh-ui-copy-send-fill) !important;
   color: var(--dsh-ui-copy-send-ink) !important;
   box-shadow: none !important;
@@ -177,7 +166,7 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
 
 [class*="_composerHero"] {
   gap: 0 !important;
-  --dsh-ui-copy-hero-lead: 8px;
+  --dsh-ui-copy-hero-lead: var(--dshui-space-4);
   /* The seat is centred vertically, so the lead below would lift the headline
      by half its height. This equal top padding keeps the headline where it was
      and leaves the card and its peninsula as the only things that move. */
@@ -198,9 +187,9 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   width: calc(100% - 68px) !important;
   align-self: center !important;
   margin: 0 34px !important;
-  padding: 5px 14px !important;
+  padding: var(--dshui-space-2) var(--dshui-space-5) !important;
   min-height: 38px !important;
-  border-radius: 0 0 16px 16px !important;
+  border-radius: 0 0 var(--dshui-radius-lg) var(--dshui-radius-lg) !important;
   background: var(--dsh-ui-copy-dock-surface) !important;
 }
 
@@ -216,8 +205,8 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   max-width: 100% !important;
   min-width: 0 !important;
   height: auto !important;
-  gap: 4px 10px !important;
-  padding: 4px 0 2px !important;
+  gap: var(--dshui-space-2) var(--dshui-space-4) !important;
+  padding: var(--dshui-space-2) 0 var(--dshui-space-1) !important;
   overflow: visible !important;
 }
 
@@ -228,10 +217,10 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   max-width: 100% !important;
   min-width: 0 !important;
   height: auto !important;
-  gap: 4px 8px !important;
+  gap: var(--dshui-space-2) var(--dshui-space-4) !important;
   overflow: visible !important;
   color: var(--dsh-ui-copy-card-muted);
-  font-size: 12px;
+  font-size: var(--dshui-text-size-sm);
   line-height: 20px;
 }
 
@@ -256,3 +245,23 @@ body:not([data-ds-dark-theme]) [data-composer-seat] {
   text-overflow: clip !important;
   overflow-wrap: anywhere;
 }
+
+/* --------------------------------------------------------------------------
+   Token notes
+   · The single `[data-composer-card], [data-composer-seat]` block now publishes
+     the palette for both themes, because every slot resolves a token that is
+     already theme-aware. The former `body:not([data-ds-dark-theme])` override
+     became redundant and is gone.
+   · The card surface folded from the wallpaper's blue-cast light/dark pair into
+     --dshui-surface-2 (the layer-2 card role in both themes).
+   · The send fill folded from the light blue / dark white pair into
+     --dshui-brand-fill, and its ink from the matching light/dark pair into
+     --dshui-brand-ink.
+   · The dock peninsula folded from its own shallow blue pair into
+     --dshui-neutral-fill-sunken: same "one step below the card" role.
+   · 10px, 5px, 14px, 10px and 2px paddings folded onto the nearest space step
+     (4/8/12/6 slots); the card's rounding stays 22px via
+     --dshui-radius-xl, which happens to be exactly 22px.
+   · 20px line-heights stay literal: they pin the usage figures' row height,
+     and the unitless line scale cannot express a px box.
+   -------------------------------------------------------------------------- */
