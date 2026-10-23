@@ -846,11 +846,22 @@ function dshuiComponent_whale(rt) {
  * area white — the wallpaper was rendering the entire time, underneath it.
  */
 var THEME_TOKEN_OVERRIDES = {
-  "--dsw-alias-bg-base": { light: "rgba(244, 248, 255, 0.72)", dark: "rgba(4, 9, 18, 0.20)" },
-  "--dsw-alias-bg-layer-1": { light: "rgba(248, 251, 255, 0.78)", dark: "rgba(6, 17, 34, 0.34)" },
-  "--dsw-alias-bg-layer-2": { light: "rgba(238, 245, 255, 0.90)", dark: "rgba(8, 23, 45, 0.84)" },
-  "--dsw-alias-bg-layer-3": { light: "rgba(232, 241, 253, 0.96)", dark: "rgba(10, 28, 53, 0.93)" },
-  "--dsw-specific-sidebar-fill": { light: "rgba(239, 246, 255, 0.96)", dark: "rgba(5, 15, 30, 0.95)" },
+  // The surfaces stay translucent so the canvas under the shell shows through.
+  // A theme palette publishes `--dshui-palette-*` for the same roles, and these
+  // mixes take their hue from it: the palette keeps its colours, the wallpaper
+  // keeps its alpha, and whichever layer lands last resolves to the same value
+  // because the token goes through `--dshui-wallpaper-*`, which only this layer
+  // defines. Without a palette the mixes fall back to the shipped ocean tones.
+  "--dsw-alias-bg-base": { light: "var(--dshui-wallpaper-base, rgba(244, 248, 255, 0.72))", dark: "var(--dshui-wallpaper-base, rgba(4, 9, 18, 0.20))" },
+  "--dshui-wallpaper-base": { light: "color-mix(in srgb, var(--dshui-palette-base, #f4f8ff) 72%, transparent)", dark: "color-mix(in srgb, var(--dshui-palette-base, #040912) 20%, transparent)" },
+  "--dsw-alias-bg-layer-1": { light: "var(--dshui-wallpaper-layer-1, rgba(248, 251, 255, 0.78))", dark: "var(--dshui-wallpaper-layer-1, rgba(6, 17, 34, 0.34))" },
+  "--dshui-wallpaper-layer-1": { light: "color-mix(in srgb, var(--dshui-palette-layer-1, #f8fbff) 78%, transparent)", dark: "color-mix(in srgb, var(--dshui-palette-layer-1, #061122) 34%, transparent)" },
+  "--dsw-alias-bg-layer-2": { light: "var(--dshui-wallpaper-layer-2, rgba(238, 245, 255, 0.90))", dark: "var(--dshui-wallpaper-layer-2, rgba(8, 23, 45, 0.84))" },
+  "--dshui-wallpaper-layer-2": { light: "color-mix(in srgb, var(--dshui-palette-layer-2, #eef5ff) 90%, transparent)", dark: "color-mix(in srgb, var(--dshui-palette-layer-2, #08172d) 84%, transparent)" },
+  "--dsw-alias-bg-layer-3": { light: "var(--dshui-wallpaper-layer-3, rgba(232, 241, 253, 0.96))", dark: "var(--dshui-wallpaper-layer-3, rgba(10, 28, 53, 0.93))" },
+  "--dshui-wallpaper-layer-3": { light: "color-mix(in srgb, var(--dshui-palette-layer-3, #e8f1fd) 96%, transparent)", dark: "color-mix(in srgb, var(--dshui-palette-layer-3, #0a1c35) 93%, transparent)" },
+  "--dsw-specific-sidebar-fill": { light: "var(--dshui-wallpaper-sidebar, rgba(239, 246, 255, 0.96))", dark: "var(--dshui-wallpaper-sidebar, rgba(5, 15, 30, 0.95))" },
+  "--dshui-wallpaper-sidebar": { light: "color-mix(in srgb, var(--dshui-palette-sidebar, #eff6ff) 96%, transparent)", dark: "color-mix(in srgb, var(--dshui-palette-sidebar, #050f1e) 95%, transparent)" },
   "--dsw-alias-label-primary": { light: "#10233d", dark: "#eef5ff" },
   "--dsw-alias-label-secondary": { light: "#526a86", dark: "#aebdd0" },
   "--dsw-alias-label-tertiary": { light: "#7186a0", dark: "#7f91a8" },
