@@ -27,7 +27,6 @@
   "files": [
     "lib",
     "locale",
-    "cordis.patch.yml",
     "README.md"
   ],
   "engines": {
@@ -35,9 +34,6 @@
     "dsh": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
     "client": {
       "platform": "web",
       "immediately": true,

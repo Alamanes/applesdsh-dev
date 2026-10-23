@@ -24,17 +24,12 @@
   "files": [
     "lib",
     "locale",
-    "cordis.patch.yml",
     "README.md"
   ],
   "engines": {
     "node": ">=18",
     "dsh": ">=0.2.0-rc.2 <0.3.0-0"
   },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
-  },
+  "dsh": {},
   "license": "MIT"
 }
