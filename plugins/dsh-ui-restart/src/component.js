@@ -172,6 +172,100 @@ function dshuiComponent_restart(rt) {
       return payload
     }
 
+    /**
+     * Offset the seat keeps while the right rail is closed; the stylesheet
+     * parks it there and the rail's own expand control sits 8px to its right.
+     */
+    const CLOSED_RIGHT = 48
+    /** Breathing room between this seat and the rail's control group. */
+    const GAP = 8
+
+    /**
+     * Right offset that clears the rail's control group.
+     *
+     * The right rail is a dockkit pane with a tab strip of its own. Opening it
+     * mounts a split glyph and seats fullscreen plus collapse against the
+     * window edge, so a fixed offset lands this button on top of the
+     * fullscreen glyph. The strip's seats are measured instead: sit down just
+     * left of the leftmost one.
+     *
+     * Seats are read even while the rail slides out of the window, which is
+     * what keeps the offset continuous during the close animation; the
+     * `CLOSED_RIGHT` floor takes over once the group has left the corner.
+     *
+     * @returns the offset in pixels, at least `CLOSED_RIGHT`.
+     */
+    const seatRight = () => {
+      const width = window.innerWidth
+      const toggle = document.querySelector('[data-sidebar-right-toggle]')
+      if (toggle === null) return CLOSED_RIGHT
+
+      let left = toggle.getBoundingClientRect().left
+      const strip = toggle.closest('[data-dockkit-strip]') ?? document
+      for (const el of strip.querySelectorAll('[data-dockkit-split-button], [data-sidebar-right-mode]')) {
+        const rect = el.getBoundingClientRect()
+        if (rect.width === 0) continue
+        if (rect.left < left) left = rect.left
+      }
+      return Math.max(CLOSED_RIGHT, Math.round(width - left + GAP))
+    }
+
+    /** The node the frame renders only while the rail is closed. */
+    const railMarker = () => document.querySelector('[data-sidebar-right-expand]')
+
+    /** Write the offset; only touches the DOM when the number moved. */
+    const sync = () => {
+      const seat = document.querySelector('.dsh-restart-seat')
+      if (seat === null) return
+      const next = `${seatRight()}px`
+      if (seat.style.right !== next) seat.style.right = next
+    }
+
+    let chase = 0
+
+    /**
+     * Chase the rail while it slides.
+     *
+     * The marker swaps the instant the rail starts moving, so sampling the
+     * control group's rect for a beat afterwards makes the seat travel with
+     * the buttons. Measuring once leaves the seat parked on its old offset
+     * until the slide ends and then teleports it; measuring for the whole
+     * slide is what reads as one smooth move.
+     *
+     * @param ms - how long the rail is expected to keep moving.
+     */
+    const follow = (ms) => {
+      if (chase !== 0) cancelAnimationFrame(chase)
+      const until = performance.now() + ms
+      const tick = () => {
+        sync()
+        chase = performance.now() < until ? requestAnimationFrame(tick) : 0
+      }
+      tick()
+    }
+
+    let railClosed = railMarker() !== null
+    const watcher = new MutationObserver(() => {
+      const closed = railMarker() !== null
+      if (closed === railClosed) return
+      railClosed = closed
+      follow(900)
+    })
+    watcher.observe(document.body, { childList: true, subtree: true })
+    window.addEventListener('resize', () => follow(400))
+
+    // The marker only swaps once React commits, which is already after the
+    // press. Starting the chase on the press itself means the seat samples on
+    // the frame the rail starts to move, not on the frame after.
+    const RAIL_SEATS = '[data-sidebar-right-expand], [data-sidebar-right-toggle], [data-sidebar-right-mode], [data-dockkit-split-button]'
+    document.addEventListener('pointerdown', (event) => {
+      const target = event.target
+      if (target instanceof Element && target.closest(RAIL_SEATS) !== null) follow(900)
+    }, true)
+
+    // The seat is mounted after this half runs; give it the first layout.
+    follow(600)
+
     ctx.slots.inject('shell.overlay', () => ctx.slots.register({
       name: 'shell.overlay',
       id: 'dsh-restart.seat',
