@@ -1,6 +1,4 @@
 function dshuiComponent_copy(rt) {
-var SETTINGS_NS = 'ui-copy'
-var CONFIG_ENTRY_ID = 'dshui-copy'
 
 /** Headline label inside the Hero's title group; the badge is its sibling. */
 var HEADLINE_SELECTOR = '[class*="titleGroup"] > span:first-child'
@@ -636,14 +634,6 @@ var DEFAULTS = {
       'The box is yours',
     ],
   },
-  /**
-   * Accent colour per theme. Empty leaves the shipped colour alone; a bare
-   * string paints both themes with the same value.
-   */
-  accent: {
-    light: '',
-    dark: '',
-  },
   /** Hide the 预览版 badge next to the headline. */
   hidePreviewBadge: true,
   /** Extra CSS appended to this plugin's stylesheet, for anything not covered above. */
@@ -668,190 +658,10 @@ function headlinePool(table) {
   return own ?? table.zh ?? pools[0] ?? []
 }
 
-/**
- * The accent tokens this plugin repaints: the neutral brand colour, the blue
- * business colour, the link colour, and the shrunken alias the shipped theme
- * emits for the active-tab caret and the settings page (`#4176e6`). The last
- * name is spelled exactly as the bundle does; a release that drops it only
- * leaves one unused declaration behind.
- */
-var ACCENT_TOKENS = [
-  '--dsw-alias-brand-primary',
-  '--dsw-alias-brand-primary-new-colorprimary-new-color',
-  '--dsw-alias-link',
-  '--dsw-alias-state-business-primary',
-]
-
-/** `#rgb` / `#rrggbb` as 0-255 channels, or null for anything else. */
-function hexChannels(color) {
-  const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
-  if (match === null) return null
-  const digits = match[1]
-  const full = digits.length === 3 ? digits.replace(/./g, (digit) => digit + digit) : digits
-  return [0, 2, 4].map((at) => Number.parseInt(full.slice(at, at + 2), 16))
-}
-
-/** WCAG relative luminance, used only to pick ink that stays readable. */
-function luminance(channels) {
-  const linear = (value) => {
-    const channel = value / 255
-    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
-  }
-  return 0.2126 * linear(channels[0]) + 0.7152 * linear(channels[1]) + 0.0722 * linear(channels[2])
-}
-
-/**
- * Black or white, whichever contrasts more with the accent fill.
- * @returns the ink colour, or null when the accent is not a hex value and its
- *   contrast cannot be measured here.
- */
-function contrastInk(color) {
-  const channels = hexChannels(color)
-  if (channels === null) return null
-  const relative = luminance(channels)
-  return 1.05 / (relative + 0.05) > (relative + 0.05) / 0.05 ? '#ffffff' : '#0d0d0d'
-}
-
-/**
- * The accent override for one theme.
- *
- * The colour lands on every token in {@link ACCENT_TOKENS} plus the values that
- * cannot inherit from them: the primary button's hover shade, mixed toward black
- * in light and white in dark so it deepens or lifts instead of flipping back to
- * the shipped neutral, and the ink drawn on an accent fill.
- *
- * The declarations are rooted at `html body` and `html body *`: the shipped
- * theme publishes its aliases on `body` and on `body *`, and this selector wins
- * that tie by specificity rather than by sheet order, which the runtime
- * stylesheets do not guarantee. No !important is used, so a component that
- * remaps a token inside its own scope still wins.
- *
- * `--dsh-ui-copy-accent` and `--dsh-ui-copy-accent-ink` are published for the
- * ask surface, whose own token layer remaps the harness tokens and would
- * otherwise read back into itself.
- *
- * @param selector - the theme root selector, already specificity-boosted.
- * @param color - accent colour for this theme; an empty string writes nothing.
- * @param shade - the colour this theme's hover state mixes toward.
- */
-function accentBlock(selector, color, shade) {
-  if (color === '') return ''
-  const declarations = ACCENT_TOKENS.map((token) => `${token}: ${color};`)
-  declarations.push(`--dsw-alias-button-primary-hover: color-mix(in srgb, ${color} 84%, ${shade});`)
-  const ink = contrastInk(color)
-  if (ink !== null) declarations.push(`--dsw-alias-label-primary-foreground: ${ink};`)
-  declarations.push(`--dshui-brand: ${color};`)
-  declarations.push(`--dshui-brand-fill: ${color};`)
-  declarations.push(`--dshui-link: ${color};`)
-  declarations.push(`--dshui-business: ${color};`)
-  declarations.push(`--dsh-ui-copy-accent: ${color};`)
-  if (ink !== null) declarations.push(`--dsh-ui-copy-accent-ink: ${ink};`)
-  return `${selector} {\n  ${declarations.join('\n  ')}\n}\n`
-}
-
-/** The two theme blocks, or nothing when no accent is configured. */
-function accentStylesheet(accent) {
-  return (
-    accentBlock('html body,\nhtml body *', accent.light, '#000000') +
-    accentBlock('html body[data-ds-dark-theme],\nhtml body[data-ds-dark-theme] *', accent.dark, '#ffffff')
-  )
-}
-
-/** A config value as an accent pair: a bare string paints both themes. */
-function accentFrom(value) {
-  if (typeof value === 'string') return { light: value, dark: value }
-  if (!isPlainObject(value)) return { ...DEFAULTS.accent }
-  const colour = (entry) => (typeof entry === 'string' ? entry : '')
-  return { light: colour(value.light), dark: colour(value.dark) }
-}
-
-/**
- * Drop the characters that could break out of a declaration value. Everything
- * else is passed through, so any CSS colour syntax the browser understands is
- * accepted and an unparsable value simply leaves the token unset.
- */
-function sanitizeColor(value) {
-  return typeof value === 'string' ? value.replace(/[;{}<>]/g, '').trim() : ''
-}
-
-/**
- * The accent pair a config-form snapshot carries.
- *
- * @param snapshot - `form.getSnapshot()`.
- * @returns `{ light, dark }`; an empty string means "leave the shipped colour".
- */
-function accentOf(snapshot) {
-  const value = isPlainObject(snapshot) && isPlainObject(snapshot.value) ? snapshot.value : {}
-  const accent = isPlainObject(value.accent) ? value.accent : {}
-  return { light: sanitizeColor(accent.light), dark: sanitizeColor(accent.dark) }
-}
-
-/** A `#rrggbb` for the native colour input, which accepts nothing else. */
-function pickerHex(value) {
-  const channels = hexChannels(value)
-  if (channels === null) return '#888888'
-  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
-}
-
-/** The Settings → General row's text, one dictionary per language. */
-var ROW_TEXT = {
-  zh: {
-    title: 'UI 强调色',
-    description: '主按钮、开关、选中描边、链接、焦点环与业务态徽标的颜色，浅色与深色主题各配一个。留空表示沿用官方配色。',
-    light: '浅色',
-    dark: '深色',
-    inherit: '跟随官方',
-    clear: '清除',
-    saveFailed: '保存失败，请重试',
-    unavailable: '这台机器上没有可写的设置文档，强调色只能在回环地址的页面上编辑。',
-  },
-  en: {
-    title: 'UI accent',
-    description: 'Colour of primary buttons, switches, selected strokes, links, focus rings and business badges, one per theme. Empty keeps the shipped colour.',
-    light: 'Light',
-    dark: 'Dark',
-    inherit: 'Shipped',
-    clear: 'Clear',
-    saveFailed: 'Could not save; try again',
-    unavailable: 'No writable settings document on this machine; edit the accent from a loopback page.',
-  },
-}
-
-/**
- * The Settings → General row's own chrome.
- *
- * It borrows the shipped alias tokens rather than hard-coding colours, so the
- * row follows the active theme like the rows the other plugin bundles
- * contribute next to it, and it keeps its own `duic-` prefix so nothing here
- * can collide with a shipped class.
- */
-var SETTINGS_CSS = `
-.duic-row{display:flex;align-items:flex-start;gap:8px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}
-.duic-rowText{display:flex;flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:24px}
-.duic-title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}
-.duic-desc{color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:400;line-height:18px}
-.duic-note{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-tertiary));font-size:12px;font-weight:400;line-height:18px}
-.duic-control{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
-.duic-field{display:flex;align-items:center;gap:8px}
-.duic-fieldLabel{color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-tertiary));font-size:12px;line-height:18px;width:28px;text-align:right}
-.duic-picker{box-sizing:border-box;width:34px;height:28px;padding:2px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-3);cursor:pointer}
-.duic-picker::-webkit-color-swatch-wrapper{padding:0}
-.duic-picker::-webkit-color-swatch{border:none;border-radius:5px}
-.duic-picker-empty{opacity:.4}
-.duic-picker:disabled{cursor:default;opacity:.6}
-.duic-input{box-sizing:border-box;width:136px;height:28px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);padding:0 10px;font:inherit;font-size:13px}
-.duic-input:focus{border-color:var(--dsw-alias-brand-primary);outline:none}
-.duic-input::placeholder{color:var(--dsw-alias-label-dimmed)}
-.duic-input:disabled{opacity:.6;cursor:default}
-.duic-clear{flex:none;border:none;background:none;padding:0 2px;color:var(--dsw-alias-link);font:inherit;font-size:12px;line-height:18px;cursor:pointer}
-.duic-clear:disabled{cursor:default;opacity:.6}
-`
-
-
-/** Render the stylesheet: the badge rule, the accent override, the row, the caller's CSS. */
+/** Render the stylesheet: the badge rule plus the caller's own CSS. */
 function stylesheetFor(options) {
   const badge = options.hidePreviewBadge ? `${PREVIEW_BADGE_SELECTOR} { display: none !important; }\n` : ''
-  return badge + accentStylesheet(options.accent) + SETTINGS_CSS + options.css
+  return badge + options.css
 }
 
 /** A config value as a list of lines: a bare string counts as a one-line pool. */
@@ -927,170 +737,19 @@ const h = React !== null && typeof React.createElement === 'function'
   : () => null
 
 /**
- * The config form for this plugin's row.
- *
- * `null` is every shape of "no editable settings on this page": the seam
- * absent, the handle shaped differently after a release, or the lookup
- * itself throwing. Callers keep the built-in defaults in that case.
- *
- * @param scope - a context with `configForms` injected.
- * @returns the form handle, or null.
- */
-function configFormOf(scope) {
-  try {
-    const forms = scope.configForms
-    if (forms === undefined || forms === null || typeof forms.get !== 'function') return null
-    const form = forms.get(CONFIG_ENTRY_ID)
-    if (form === undefined || form === null || typeof form.getSnapshot !== 'function') return null
-    return form
-  } catch {
-    return null
-  }
-}
-
-/**
- * Subscribe one component to a config form's snapshots.
- *
- * @param form - a `ctx.configForms.get(id)` handle.
- * @returns the current snapshot, refreshed on every change.
- */
-function useFormSnapshot(form) {
-  const [snapshot, setSnapshot] = React.useState(() => form.getSnapshot())
-  React.useEffect(() => form.subscribe(() => setSnapshot(form.getSnapshot())), [form])
-  return snapshot
-}
-
-/**
- * One theme's colour: the native picker, the text field, and the clear
- * button that puts the theme back on the shipped colour.
- *
- * The text field is what carries syntax the picker cannot show (`oklch()`,
- * a colour name); both controls commit the same field, and an unchanged
- * value is never written back.
- */
-function AccentField({ t, labelKey, value, busy, onCommit }) {
-  const [draft, setDraft] = React.useState(value)
-  React.useEffect(() => setDraft(value), [value])
-
-  const commitDraft = () => {
-    if (draft !== value) onCommit(draft)
-  }
-
-  return h('div', { className: 'duic-field' }, [
-    h('div', { className: 'duic-fieldLabel', key: 'label' }, t(labelKey)),
-    h('input', {
-      key: 'picker',
-      className: value === '' ? 'duic-picker duic-picker-empty' : 'duic-picker',
-      type: 'color',
-      value: pickerHex(value),
-      disabled: busy,
-      'aria-label': t(labelKey),
-      onChange: (event) => {
-        setDraft(event.target.value)
-        onCommit(event.target.value)
-      },
-    }),
-    h('input', {
-      key: 'text',
-      className: 'duic-input',
-      type: 'text',
-      value: draft,
-      disabled: busy,
-      spellCheck: false,
-      placeholder: t('inherit'),
-      'aria-label': `${t('title')} · ${t(labelKey)}`,
-      onChange: (event) => setDraft(event.target.value),
-      onBlur: commitDraft,
-      onKeyDown: (event) => {
-        if (event.key === 'Enter') event.currentTarget.blur()
-      },
-    }),
-    value === ''
-      ? null
-      : h('button', {
-        key: 'clear',
-        className: 'duic-clear',
-        type: 'button',
-        disabled: busy,
-        onClick: () => onCommit(''),
-      }, t('clear')),
-  ])
-}
-
-/**
- * The Settings → General row.
- *
- * A save is one atomic namespace mutation carrying the nested path, so a
- * cleared colour really removes the key instead of storing an empty string,
- * and the two themes can never be written half-applied. The draft is
- * replaced whenever the stored value moves underneath it, so a save the
- * Host refused leaves the text in place to be submitted again.
- */
-function AccentRow({ t, form }) {
-  const snapshot = useFormSnapshot(form)
-  const accent = accentOf(snapshot)
-  const [busy, setBusy] = React.useState(false)
-  const [failed, setFailed] = React.useState(false)
-  const unavailable = snapshot.status === 'unavailable'
-
-  const commit = (theme, next) => {
-    const value = sanitizeColor(next)
-    if (value === accent[theme]) return
-    setBusy(true)
-    setFailed(false)
-    const write = form.mutate([
-      value === '' ? { op: 'unset', path: ['accent', theme] } : { op: 'set', path: ['accent', theme], value },
-    ])
-    Promise.resolve(write)
-      .then((accepted) => {
-        if (!accepted) setFailed(true)
-      })
-      .catch(() => setFailed(true))
-      .finally(() => setBusy(false))
-  }
-
-  const notes = []
-  if (failed) notes.push(h('div', { className: 'duic-note', key: 'failed' }, t('saveFailed')))
-  if (unavailable) notes.push(h('div', { className: 'duic-note', key: 'unavailable' }, t('unavailable')))
-
-  const control = unavailable
-    ? null
-    : h('div', { className: 'duic-control', key: 'control' }, [
-      h(AccentField, { key: 'light', t, labelKey: 'light', value: accent.light, busy, onCommit: (next) => commit('light', next) }),
-      h(AccentField, { key: 'dark', t, labelKey: 'dark', value: accent.dark, busy, onCommit: (next) => commit('dark', next) }),
-    ])
-
-  return h('div', { className: 'duic-row' }, [
-    h('div', { className: 'duic-rowText', key: 'text' }, [
-      h('div', { className: 'duic-title', key: 'title' }, t('title')),
-      h('div', { className: 'duic-desc', key: 'desc' }, t('description')),
-      ...notes,
-    ]),
-    control,
-  ])
-}
-
-/**
  * Install the sheet and register the copy pass.
  *
  * The sheet and the pass both belong to this component's runtime slots: the
  * suite owns the single MutationObserver, so this registers a pass instead of
- * observing the document a second time, and the sheet replaces itself in place
- * when the accent moves.
+ * observing the document a second time.
  *
- * @param options - normalized copy options; the accent is written back into this
- *   object rather than replaced, so the passes keep reading the latest value.
- * @returns a handle: `setAccent` repaints the sheet, `dispose` removes both.
+ * @param options - normalized copy options.
+ * @returns a handle whose `dispose` removes the sheet and the pass.
  */
 function start(options) {
   const paint = rt.style('copy', stylesheetFor(options))
   const unobserve = rt.observe(() => applyCopy(options))
   return {
-    setAccent(accent) {
-      if (accent.light === options.accent.light && accent.dark === options.accent.dark) return
-      options.accent = accent
-      rt.style('copy', stylesheetFor(options))
-    },
     dispose() {
       unobserve()
       paint()
@@ -1099,27 +758,24 @@ function start(options) {
 }
 
 /** Merge the component config over DEFAULTS, ignoring fields of the wrong shape. */
-function normalizeConfig(input, accent) {
+function normalizeConfig(input) {
   const value = isPlainObject(input) ? input : {}
   return {
     headline: isPlainObject(value.headline) ? value.headline : DEFAULTS.headline,
     placeholders: isPlainObject(value.placeholders) ? { ...DEFAULTS.placeholders, ...value.placeholders } : DEFAULTS.placeholders,
-    accent: accentFrom(accent),
     hidePreviewBadge: typeof value.hidePreviewBadge === 'boolean' ? value.hidePreviewBadge : DEFAULTS.hidePreviewBadge,
     css: typeof value.css === 'string' ? value.css : DEFAULTS.css,
   }
 }
 
 /**
- * Copy, accent and the settings row.
+ * Copy only.
  *
- * The copy passes start at once because they need no service. The accent follows
- * the config form when one exists - the form is the only surface that can write
- * the profile from the page - and starts from the host-injected config, which is
- * what a fresh page render carries.
+ * The copy passes start at once because they need no service; the host-injected
+ * config is what a fresh page render carries.
  */
 function install(ctx) {
-  const options = normalizeConfig(rt.config, rt.config.accent)
+  const options = normalizeConfig(rt.config)
   let running = null
 
   const mount = () => {
@@ -1132,34 +788,6 @@ function install(ctx) {
   }
   if (document.body !== null) rt.effect(mount, 'ui-copy/copy: overrides')
   else document.addEventListener('DOMContentLoaded', () => rt.effect(mount, 'ui-copy/copy: overrides'), { once: true })
-
-  ctx.inject(['configForms'], (scope) => {
-    const form = configFormOf(scope)
-    if (form === null) return
-    const sync = () => {
-      const accent = accentOf(form.getSnapshot())
-      options.accent = accent
-      if (running !== null) running.setAccent(accent)
-    }
-    scope.effect(() => form.subscribe(sync), 'ui-copy/copy: accent changes')
-    sync()
-  })
-
-  ctx.inject(['locale'], (scope) => {
-    scope.effect(() => scope.locale.register(SETTINGS_NS, ROW_TEXT), 'ui-copy/copy: dictionaries')
-  })
-
-  ctx.inject(['slots', 'locale', 'configForms'], (scope) => {
-    const form = configFormOf(scope)
-    if (form === null) return
-    scope.slots.inject('settings.general.item', () => scope.slots.register({
-      name: 'settings.general.item',
-      id: SETTINGS_NS,
-      order: 14,
-      locale: SETTINGS_NS,
-      inject: () => ({ form }),
-    }, AccentRow))
-  })
 }
 
 install(rt.ctx)

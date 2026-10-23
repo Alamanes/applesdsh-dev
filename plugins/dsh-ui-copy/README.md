@@ -40,7 +40,7 @@ dsh-ui-copy/
 
 | 组件 | 文件 | 职责 |
 | --- | --- | --- |
-| 文案改写（`copy`） | `10-copy.js` | 空态大标题轮换、输入框空置提示改写、预览版徽章隐藏、强调色设置行 |
+| 文案改写（`copy`） | `10-copy.js` | 空态大标题轮换、输入框空置提示改写、预览版徽章隐藏 |
 | 本地身份（`identity`） | `20-identity.js` | 侧栏左下角的名字与头像换成本机配置 |
 | 会话删除（`sessionDelete`） | `30-session-delete.js` | 会话行「…」菜单里的「删除会话」与确认弹窗 |
 | 峰谷提示（`peakValley`） | `40-peak-valley.js` | 侧栏底栏的峰谷时段与切换倒计时 |
@@ -74,20 +74,10 @@ dsh-ui-copy/
 - id: ui-copy
   name: dsh-ui-copy
   config:
-    theme:
-      light:
-        brand: '#7c4dff'
-        surface-2: '#f6f4ff'
-        radius-md: '14px'
-      dark:
-        brand: '#b79cff'
-        surface-2: '#221d33'
-    accent:
-      light: '#7c4dff'
-      dark: '#b79cff'
+    hidePreviewBadge: true
 ```
 
-`theme.light` / `theme.dark` 接受任意 `--dshui-*` 角色名（可写 `brand`，也可写 `--dshui-brand`），宿主半边把它们渲染成两段覆盖块接在令牌层之后。`accent` 是强调色对，同时写 `--dshui-*` 与宿主自己的 `--dsw-*` 令牌，所以自绘组件和原生按钮会一起变色；留空表示完全跟随官方配色。
+配色不在这里配：整套界面的主题预设由套件的 `dsh-ui-theme` 组件负责（设置页「主题」分区）。`dsh-ui-copy` 的 UI 强调色设置行已经移除，原来写在 `accent` 里的值请改用主题预设。
 
 ## 开关
 
@@ -107,7 +97,7 @@ dsh-ui-copy/
         在中央数据库里翻页中...
 ```
 
-设置页写入的字段（如 `accent` 与各组件自己的文本域）标了 `volatile`，可以由页面实时编辑；其余字段写在 profile 里，刷新页面后生效。
+设置页写入的字段（如各组件自己的文本域）标了 `volatile`，可以由页面实时编辑；其余字段写在 profile 里，刷新页面后生效。
 
 ## 构建
 
@@ -133,6 +123,6 @@ node scripts/verify.mjs     # 契约自检：函数名、禁用写法、令牌�
 
 ## 从 1.x 过来
 
-1.x 的 `dsh-ui-copy` 只有文案、ask、composer、menu、sidebar 五件事，摊成五行（`ui-copy`、`ui-copy-ask`、`ui-copy-composer`、`ui-copy-menu`、`ui-copy-sidebar`），设置里只有 `accent` 一行。2.0 把它们收进同一行，并接管了原先独立发布的十个界面插件。
+1.x 的 `dsh-ui-copy` 只有文案、ask、composer、menu、sidebar 五件事，摊成五行（`ui-copy`、`ui-copy-ask`、`ui-copy-composer`、`ui-copy-menu`、`ui-copy-sidebar`），设置里只有 `accent` 一行。2.0 把它们收进同一行，并接管了原先独立发布的十个界面插件。其后套件又拆成一个 bundle 加十六个组件包，`accent` 行已移除，配色改由 `dsh-ui-theme` 接管。
 
-升级时：profile 的 `dsh.profile.bundles` 只留 `dsh-ui-copy` 一项，`cordis.patch.yml` 里删掉 `ui-copy-ask` / `ui-copy-composer` / `ui-copy-menu` / `ui-copy-sidebar` 以及被收编插件的行，把原来的 `dsh-local-identity.name` / `.avatar` 挪进 `ui-copy.identity`，`dsh-status-phrases.phrases` 挪进 `ui-copy.statusPhrases.phrases`。`accent` 字段的位置与含义没变。
+升级时：profile 的 `dsh.profile.bundles` 只留 `dsh-ui-copy` 一项，`cordis.patch.yml` 里删掉 `ui-copy-ask` / `ui-copy-composer` / `ui-copy-menu` / `ui-copy-sidebar` 以及被收编插件的行，把原来的 `dsh-local-identity.name` / `.avatar` 挪进 `ui-copy.identity`，`dsh-status-phrases.phrases` 挪进 `ui-copy.statusPhrases.phrases`。`accent` 字段已随 UI 强调色功能一起移除，配色改由 `dsh-ui-theme` 的主题预设提供。
