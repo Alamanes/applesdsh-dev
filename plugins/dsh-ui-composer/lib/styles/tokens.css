@@ -158,6 +158,9 @@ body:not([data-ds-dark-theme]) {
   --dshui-wash-hover: rgb(0 0 0 / 4%);
   --dshui-wash-active: rgb(0 0 0 / 7%);
   --dshui-backdrop-blur: 12px;
+  /* The band under the composer card: one step lighter than the card and a
+     touch bluer, so it reads as the page's own blue instead of a warm grey. */
+  --dshui-surface-dock: #f3f8ff;
 }
 
 /* Dark: the same roles, measured against the shipped dark surfaces. */
@@ -171,4 +174,7 @@ body[data-ds-dark-theme] {
   --dshui-wash-hover: rgb(255 255 255 / 6%);
   --dshui-wash-active: rgb(255 255 255 / 10%);
   --dshui-backdrop-blur: 16px;
+  /* Dark keeps the same one-step-below-the-card role; the shipped dark surfaces
+     are already neutral, so no blue cast is added. */
+  --dshui-surface-dock: #1e1e1e;
 }

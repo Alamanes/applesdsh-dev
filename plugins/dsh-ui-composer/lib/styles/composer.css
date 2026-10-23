@@ -49,7 +49,7 @@
   --dsh-ui-copy-send-ink: var(--dshui-brand-ink);
   --dsh-ui-copy-send-idle: var(--dshui-surface-3);
   --dsh-ui-copy-send-idle-ink: var(--dshui-text-tertiary);
-  --dsh-ui-copy-dock-surface: var(--dshui-neutral-fill-sunken);
+  --dsh-ui-copy-dock-surface: var(--dshui-surface-dock);
 }
 
 /* --------------------------------------------------------------------------
@@ -161,7 +161,8 @@
    wide as the card less 34px a side, squared where the two meet, rounded below,
    and moved after the card in flow order so the pair reads as one shape. Only
    the hero seat renders that row, which is the only place the reference shows it
-   either.
+   either. The surface is the page's own blue one step lighter than the card,
+   never the warm neutral a grey sunken fill used to read as next to it.
    -------------------------------------------------------------------------- */
 
 [class*="_composerHero"] {
@@ -257,8 +258,9 @@
    · The send fill folded from the light blue / dark white pair into
      --dshui-brand-fill, and its ink from the matching light/dark pair into
      --dshui-brand-ink.
-   · The dock peninsula folded from its own shallow blue pair into
-     --dshui-neutral-fill-sunken: same "one step below the card" role.
+   · The dock peninsula reads --dshui-surface-dock: one step lighter than the
+     card and carrying the page's blue, because the grey sunken fill it used
+     before read as a warm strip beside the card.
    · 10px, 5px, 14px, 10px and 2px paddings folded onto the nearest space step
      (4/8/12/6 slots); the card's rounding stays 22px via
      --dshui-radius-xl, which happens to be exactly 22px.
