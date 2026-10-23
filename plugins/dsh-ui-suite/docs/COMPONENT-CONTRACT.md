@@ -35,7 +35,7 @@ function dshuiComponent_<key下划线化>(rt) {
 | `rt.ctx` | 浏览器 root context，等于原 `apply(ctx)` 的 `ctx` |
 | `rt.config` | 本组件的配置块（宿主注入），含 `enabled` 与自定义字段 |
 | `rt.option(name, fallback)` | 读 `rt.config[name]` |
-| `rt.suite` | 整套配置，`rt.suite.accent` 是强调色对 |
+| `rt.suite` | 整套配置（bundle 注入的原始对象）；本组件的块请用 `rt.config` |
 | `rt.require(name)` | 外部包；**加载不到返回 `null`，不抛错**。必须判空 |
 | `rt.effect(fn, label)` | 包一层 `ctx.effect`，失败被隔离 |
 | `rt.observe(fn)` | 注册一次 DOM 全量扫描；返回取消函数。所有组件共用一个 MutationObserver 和同一帧 |

@@ -55,7 +55,8 @@
     "dsh-ui-quota": "file:../dsh-ui-quota",
     "dsh-ui-effort-slider": "file:../dsh-ui-effort-slider",
     "dsh-ui-whale": "file:../dsh-ui-whale",
-    "dsh-ui-skill-explorer": "file:../dsh-ui-skill-explorer"
+    "dsh-ui-skill-explorer": "file:../dsh-ui-skill-explorer",
+    "dsh-ui-theme": "file:../dsh-ui-theme"
   },
   "license": "MIT"
 }

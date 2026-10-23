@@ -38,6 +38,7 @@ const JS_PACKAGES = {
   'dsh-ui-effort-slider': 'effort-slider',
   'dsh-ui-whale': 'whale',
   'dsh-ui-skill-explorer': 'skill-explorer',
+  'dsh-ui-theme': 'theme',
 }
 
 /** `dsh-ui-session-delete` -> `SESSION_DELETE`, the injected global's suffix. */

@@ -37,3 +37,5 @@
       name: dsh-ui-whale
     - id: dshui-skill-explorer
       name: dsh-ui-skill-explorer
+    - id: dshui-theme
+      name: dsh-ui-theme

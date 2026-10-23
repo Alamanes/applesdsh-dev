@@ -8,21 +8,21 @@
 | 目录 | 包名 | 说明 | 来源 |
 |---|---|---|---|
 | `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
-| `plugins/dsh-ui-suite` | `dsh-ui-suite` | 界面套件：一个 bundle 包，下挂十五个可独立停用的组件包，共享一套 `--dshui-*` 设计令牌 | 本仓库自产 |
+| `plugins/dsh-ui-suite` | `dsh-ui-suite` | 界面套件：一个 bundle 包，下挂十六个可独立停用的组件包，共享一套 `--dshui-*` 设计令牌 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 | `plugins/meow-memory` | `meow-memory` | 跨会话长期记忆：七层 SQLite 记忆库、首轮快照注入、逐消息关键词命中、空闲 dream 整理 | 上游 [Phant0Meow/dsh-meow-memory](https://github.com/Phant0Meow/dsh-meow-memory) 的 `0.31.0` 发行产物，外加一个补丁让 `projectDir` 支持绝对路径，记忆库不再随工作区散落（见 `plugins/meow-memory/PATCH.md`） |
 
 ## 界面套件
 
-`dsh-ui-suite` 是这些界面改造的唯一入口。它本身没有代码，只有 `dsh.bundle.patch` 的十五行
+`dsh-ui-suite` 是这些界面改造的唯一入口。它本身没有代码，只有 `dsh.bundle.patch` 的十六行
 `insert` 与一份组件依赖清单；插件页因此把它显示成一张带图标的「界面套件」卡片，下面
-十五行各是一个独立组件，可以单独停用。图标来自 `plugins/dsh-ui-suite/icon.png`（`package.json`
+十六行各是一个独立组件，可以单独停用。图标来自 `plugins/dsh-ui-suite/icon.png`（`package.json`
 的 `icon` 字段，宿主把它读成 data URL 显示在卡片与详情页）。
 
 | 组件包 | 行 id | 职责 |
 |---|---|---|
-| `dsh-ui-copy` | `dshui-copy` | 空态大标题与输入框提示轮换、预览版徽章、UI 强调色 |
+| `dsh-ui-copy` | `dshui-copy` | 空态大标题与输入框提示轮换、预览版徽章 |
 | `dsh-ui-ask` | `dshui-ask` | ask 弹窗的换皮 |
 | `dsh-ui-composer` | `dshui-composer` | 输入卡片换皮与发送钮 |
 | `dsh-ui-menu` | `dshui-menu` | 权限、模型、Dock、右键菜单的开合动画 |
@@ -37,6 +37,7 @@
 | `dsh-ui-effort-slider` | `dshui-effort-slider` | 推理强度滑块 |
 | `dsh-ui-whale` | `dshui-whale` | 粒子鲸鱼壁纸与半透明界面 |
 | `dsh-ui-skill-explorer` | `dshui-skill-explorer` | 技能中心面板 |
+| `dsh-ui-theme` | `dshui-theme` | 设置页「主题」分区：鲸海 / 樱 / 薄荷 / 暮紫 / 琥珀五套配色预设 |
 
 原来各自独立的 `dsh-codex-reasoning-effort-slider`、`dsh-commandcode-quota`、`dsh-local-identity`、
 `dsh-peak-valley-hint`、`dsh-plugin-harness-whale`、`dsh-restart`、`dsh-session-delete`、
@@ -71,7 +72,7 @@
 }
 ```
 
-`dsh-ui-suite` 的十五个组件以 `file:../<组件>` 指回本仓库同级目录，因此它需要以本地仓库的
+`dsh-ui-suite` 的十六个组件以 `file:../<组件>` 指回本仓库同级目录，因此它需要以本地仓库的
 绝对路径安装（`file:`）；用 `github:` 子目录说明符时 pnpm 只取该子目录，`file:../` 解析不到
 同级组件包。其余插件用 `#path:` 即可，`#path:` 是 pnpm 的 Git 子目录说明符（pnpm v9 起支持；
 本机运行时为 v11.7.0），整条说明符就是更新源。

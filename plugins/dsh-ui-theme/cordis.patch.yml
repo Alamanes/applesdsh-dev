@@ -1,0 +1,4 @@
+# dsh-ui-theme bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-theme
+      name: dsh-ui-theme
