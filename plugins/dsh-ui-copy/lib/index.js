@@ -9,7 +9,7 @@
  *   2. hand that configuration to the browser half, which cannot read it (a
  *      boot-graph row arrives as `{ id, url, rev }` and `apply(ctx, config)`
  *      always sees an empty config): one `<script>` in `<head>` carrying
- *      `window.__DSHUI_CONFIG__`;
+ *      `globalThis.DSHUI_CONFIG`;
  *   3. inject the stylesheets — `styles/tokens.css` first, then one sheet per
  *      enabled component — reading them from disk on every page render, so a
  *      visual tweak is a browser refresh, not a reinstall.
