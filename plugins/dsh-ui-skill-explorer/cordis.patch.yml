@@ -1,0 +1,4 @@
+# dsh-ui-skill-explorer bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-skill-explorer
+      name: dsh-ui-skill-explorer

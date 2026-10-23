@@ -1,0 +1,39 @@
+# dsh-ui-suite bundle patch.
+#
+# 一行组件一条 insert，每行的 name 是独立发布的组件包。插件页把这一层显示
+# 成一个「界面套件」包，下面是十五个可单独停用的组件。
+#
+# 单独安装某一个组件时，装那个包本身即可：它自带运行时、令牌层与宿主半边，
+# 不依赖本 bundle。
+
+- insert:
+    - id: dshui-copy
+      name: dsh-ui-copy
+    - id: dshui-ask
+      name: dsh-ui-ask
+    - id: dshui-composer
+      name: dsh-ui-composer
+    - id: dshui-menu
+      name: dsh-ui-menu
+    - id: dshui-sidebar
+      name: dsh-ui-sidebar
+    - id: dshui-identity
+      name: dsh-ui-identity
+    - id: dshui-session-delete
+      name: dsh-ui-session-delete
+    - id: dshui-peak-valley
+      name: dsh-ui-peak-valley
+    - id: dshui-status-phrases
+      name: dsh-ui-status-phrases
+    - id: dshui-foot-panels
+      name: dsh-ui-foot-panels
+    - id: dshui-restart
+      name: dsh-ui-restart
+    - id: dshui-quota
+      name: dsh-ui-quota
+    - id: dshui-effort-slider
+      name: dsh-ui-effort-slider
+    - id: dshui-whale
+      name: dsh-ui-whale
+    - id: dshui-skill-explorer
+      name: dsh-ui-skill-explorer

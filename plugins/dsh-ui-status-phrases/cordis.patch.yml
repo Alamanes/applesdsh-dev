@@ -1,0 +1,4 @@
+# dsh-ui-status-phrases bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-status-phrases
+      name: dsh-ui-status-phrases

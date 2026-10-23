@@ -1,0 +1,4 @@
+# dsh-ui-effort-slider bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-effort-slider
+      name: dsh-ui-effort-slider

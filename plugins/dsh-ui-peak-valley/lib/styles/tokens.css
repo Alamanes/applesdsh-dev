@@ -1,0 +1,174 @@
+/**
+ * dsh-ui-copy design tokens.
+ *
+ * The single source of visual truth for every component in this bundle. Each
+ * token answers to a role, not to a widget: components read `--dshui-surface-2`
+ * and never write a literal colour, radius, gap, size, duration or shadow.
+ *
+ * Layer 1 — defaults follow the shipped theme by mapping to `--dsw-*` tokens.
+ * A DSH theme change therefore repaints the entire suite with no edit here.
+ * Layer 2 — the host half appends a `[data-dshui-overrides]` block after this
+ * sheet carrying whatever the profile's `theme` config overrides; that block is
+ * the only place a skin is written, and it can override any token below, per
+ * light and dark theme. See `lib/index.js`.
+ *
+ * Scope roots:
+ *   body                             the token contract itself
+ *   body:not([data-ds-dark-theme])   light values that cannot come from the host
+ *   body[data-ds-dark-theme]         dark values that cannot come from the host
+ *
+ * The contract sits on `body`, not on `:root`, and that placement is load
+ * bearing: the shipped theme publishes its `--dsw-*` aliases on `body`, and a
+ * custom property resolves its `var()` references where it is declared. Declared
+ * on `:root`, every `--dshui-*` that maps to a `--dsw-*` would compute to the
+ * empty value before inheritance and stay empty on the page — which is exactly
+ * how the first build of this suite lost its brand colour and every surface role.
+ */
+
+body {
+  /* ---- surface ------------------------------------------------------- */
+  --dshui-surface-base: var(--dsw-alias-bg-base);
+  --dshui-surface-1: var(--dsw-alias-bg-layer-1);
+  --dshui-surface-2: var(--dsw-alias-bg-layer-2);
+  --dshui-surface-3: var(--dsw-alias-bg-layer-3);
+  --dshui-surface-raised: var(--dsw-alias-bg-layer-3);
+  --dshui-surface-sunken: var(--dsw-alias-bg-layer-1);
+  --dshui-surface-hover: var(--dsw-alias-interactive-bg-hover);
+  --dshui-surface-selected: var(--dsw-alias-interactive-selected);
+  --dshui-surface-pressed: var(--dsw-alias-interactive-pressed);
+  --dshui-surface-mask: var(--dsw-alias-bg-mask-drop);
+  --dshui-surface-sidebar: var(--dsw-specific-sidebar-fill);
+  --dshui-surface-menu: var(--dsw-specific-menu, var(--dsw-alias-bg-layer-3));
+  --dshui-surface-bubble: var(--dsw-specific-bubble, var(--dsw-alias-bg-layer-2));
+
+  /* ---- border -------------------------------------------------------- */
+  --dshui-border-1: var(--dsw-alias-border-l1);
+  --dshui-border-2: var(--dsw-alias-border-l2);
+  --dshui-border-3: var(--dsw-alias-border-l3);
+  --dshui-border-4: var(--dsw-alias-border-l4);
+  --dshui-border-focus: var(--dsw-focus-ring-color, var(--dsw-alias-brand-primary));
+  --dshui-border-width: 0.5px;
+  --dshui-border-width-strong: 1px;
+
+  /* ---- text ---------------------------------------------------------- */
+  --dshui-text-primary: var(--dsw-alias-label-primary);
+  --dshui-text-secondary: var(--dsw-alias-label-secondary);
+  --dshui-text-tertiary: var(--dsw-alias-label-tertiary);
+  --dshui-text-caption: var(--dsw-alias-label-caption);
+  --dshui-text-dimmed: var(--dsw-alias-label-dimmed);
+  --dshui-text-on-brand: var(--dsw-alias-label-primary-foreground, #fff);
+  --dshui-text-link: var(--dsw-alias-link);
+
+  /* ---- brand & state ------------------------------------------------- */
+  --dshui-brand: var(--dsw-alias-brand-primary);
+  --dshui-brand-hover: var(--dsw-alias-button-primary-hover, var(--dsw-alias-brand-primary));
+  --dshui-brand-fill: var(--dsw-alias-button-primary-fill, var(--dsw-alias-brand-primary));
+  --dshui-brand-ink: var(--dsw-alias-label-primary-foreground, #fff);
+  --dshui-link: var(--dsw-alias-link);
+  --dshui-business: var(--dsw-alias-state-business-primary);
+  --dshui-danger: var(--dsw-alias-state-error-primary);
+  --dshui-danger-hover: var(--dsw-alias-interactive-bg-hover-danger, var(--dsw-alias-state-error-primary));
+  --dshui-warn: var(--dsw-alias-state-warn-primary);
+  --dshui-success: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary));
+
+  /* ---- radius -------------------------------------------------------- */
+  --dshui-radius-xs: 4px;
+  --dshui-radius-sm: 8px;
+  --dshui-radius-md: 12px;
+  --dshui-radius-lg: 16px;
+  --dshui-radius-xl: 22px;
+  --dshui-radius-2xl: 24px;
+  --dshui-radius-pill: 999px;
+  --dshui-radius-circle: 50%;
+
+  /* ---- space --------------------------------------------------------- */
+  --dshui-space-0: 0px;
+  --dshui-space-1: 2px;
+  --dshui-space-2: 4px;
+  --dshui-space-3: 6px;
+  --dshui-space-4: 8px;
+  --dshui-space-5: 12px;
+  --dshui-space-6: 16px;
+  --dshui-space-7: 24px;
+  --dshui-space-8: 32px;
+  --dshui-space-9: 48px;
+
+  /* ---- type ---------------------------------------------------------- */
+  --dshui-font-family: var(--dsw-font-family, system-ui, -apple-system, "PingFang SC", sans-serif);
+  --dshui-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --dshui-text-size-xs: 11px;
+  --dshui-text-size-sm: 12px;
+  --dshui-text-size-md: 13px;
+  --dshui-text-size-base: 14px;
+  --dshui-text-size-lg: 15px;
+  --dshui-text-size-xl: 17px;
+  --dshui-text-size-2xl: 22px;
+  --dshui-line-tight: 1.3;
+  --dshui-line-normal: 1.5;
+  --dshui-line-loose: 1.7;
+  --dshui-weight-regular: 400;
+  --dshui-weight-medium: 500;
+  --dshui-weight-semibold: 600;
+  --dshui-tracking-normal: 0;
+  --dshui-tracking-tight: -0.01em;
+  --dshui-tracking-wide: 0.08em;
+
+  /* ---- motion -------------------------------------------------------- */
+  --dshui-duration-instant: 80ms;
+  --dshui-duration-fast: 120ms;
+  --dshui-duration-base: 180ms;
+  --dshui-duration-slow: 260ms;
+  --dshui-duration-slower: 420ms;
+  --dshui-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dshui-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --dshui-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --dshui-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- elevation ----------------------------------------------------- */
+  --dshui-shadow-1: 0 1px 2px rgb(0 0 0 / 6%);
+  --dshui-shadow-2: 0 4px 12px rgb(0 0 0 / 10%);
+  --dshui-shadow-3: 0 12px 32px rgb(0 0 0 / 16%);
+  --dshui-shadow-panel: var(--dsw-elevation-panel, 0 8px 24px rgb(0 0 0 / 12%));
+  --dshui-ring-width: var(--dsw-focus-ring-width, 1.5px);
+  --dshui-ring: 0 0 0 var(--dshui-ring-width) var(--dshui-border-focus);
+
+  /* ---- layering ------------------------------------------------------ */
+  --dshui-z-base: 0;
+  --dshui-z-raised: 10;
+  --dshui-z-sticky: 50;
+  --dshui-z-overlay: 100;
+  --dshui-z-menu: 1000;
+
+  /* ---- scaffolding --------------------------------------------------- */
+  --dshui-column-sidebar: 56px;
+  --dshui-control-height-sm: 28px;
+  --dshui-control-height-md: 32px;
+  --dshui-control-height-lg: 44px;
+}
+
+/* Light: the shipped theme leaves a few roles unset, so the suite supplies the
+ * neutral values its surfaces are measured against. */
+body:not([data-ds-dark-theme]) {
+  --dshui-neutral-fill: #ffffff;
+  --dshui-neutral-fill-sunken: #f7f7f8;
+  --dshui-neutral-fill-raised: #ffffff;
+  --dshui-neutral-stroke: rgb(0 0 0 / 10%);
+  --dshui-ink-solid: #0d0d0d;
+  --dshui-ink-on-solid: #ffffff;
+  --dshui-wash-hover: rgb(0 0 0 / 4%);
+  --dshui-wash-active: rgb(0 0 0 / 7%);
+  --dshui-backdrop-blur: 12px;
+}
+
+/* Dark: the same roles, measured against the shipped dark surfaces. */
+body[data-ds-dark-theme] {
+  --dshui-neutral-fill: #2a2a2a;
+  --dshui-neutral-fill-sunken: #1e1e1e;
+  --dshui-neutral-fill-raised: #262626;
+  --dshui-neutral-stroke: rgb(255 255 255 / 12%);
+  --dshui-ink-solid: #ececec;
+  --dshui-ink-on-solid: #0d0d0d;
+  --dshui-wash-hover: rgb(255 255 255 / 6%);
+  --dshui-wash-active: rgb(255 255 255 / 10%);
+  --dshui-backdrop-blur: 16px;
+}

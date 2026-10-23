@@ -58,7 +58,11 @@ for (const file of components) {
     .split('\n')
     .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
     .join('\n')
-  if (file !== '10-copy.js' && /--dsw-/.test(codeOnly)) {
+  // Two components repaint the host's own families on purpose: the accent
+  // component (so a user-picked colour also reaches shipped buttons) and the
+  // wallpaper (whose surface has to go translucent for the whale to show
+  // through). Every other component reads suite roles only.
+  if (file !== '10-copy.js' && file !== '100-whale.js' && /--dsw-/.test(codeOnly)) {
     problems.push(`${path}: still reads a shipped --dsw-* token`)
   }
 

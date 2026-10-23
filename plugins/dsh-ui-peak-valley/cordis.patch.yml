@@ -1,0 +1,4 @@
+# dsh-ui-peak-valley bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-peak-valley
+      name: dsh-ui-peak-valley

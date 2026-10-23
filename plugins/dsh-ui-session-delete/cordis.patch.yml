@@ -1,0 +1,4 @@
+# dsh-ui-session-delete bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-session-delete
+      name: dsh-ui-session-delete

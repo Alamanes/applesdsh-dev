@@ -1,0 +1,4 @@
+# dsh-ui-menu bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-menu
+      name: dsh-ui-menu

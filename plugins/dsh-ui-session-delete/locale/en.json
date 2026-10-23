@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Session delete",
+    "description": "Delete a session, its subagent lineage and cached projections from the row menu."
+  }
+}

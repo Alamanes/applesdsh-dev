@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "提问弹窗外观",
+    "description": "把 ask_user 提问弹窗换成 OpenAI 的视觉语言。"
+  }
+}

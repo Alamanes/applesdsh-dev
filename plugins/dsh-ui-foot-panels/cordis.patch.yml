@@ -1,0 +1,4 @@
+# dsh-ui-foot-panels bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-foot-panels
+      name: dsh-ui-foot-panels

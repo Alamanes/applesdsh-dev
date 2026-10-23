@@ -1,0 +1,4 @@
+# dsh-ui-restart bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-restart
+      name: dsh-ui-restart

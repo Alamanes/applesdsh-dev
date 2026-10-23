@@ -1,0 +1,4 @@
+# dsh-ui-sidebar bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-sidebar
+      name: dsh-ui-sidebar

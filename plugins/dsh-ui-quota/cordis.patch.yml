@@ -1,0 +1,4 @@
+# dsh-ui-quota bundle patch: one row of the dsh-ui-suite bundle.
+- insert:
+    - id: dshui-quota
+      name: dsh-ui-quota

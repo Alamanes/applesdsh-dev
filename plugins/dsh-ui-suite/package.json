@@ -1,0 +1,59 @@
+{
+  "name": "dsh-ui-suite",
+  "version": "2.0.0",
+  "private": true,
+  "description": "DeepSeek Harness 界面套件：一个 bundle 包，十五个可独立停用的组件包，共享一套 --dshui-* 设计令牌。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ui-suite",
+    "bundle",
+    "design-tokens",
+    "theme"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./locale/*.json": {
+      "default": "./locale/*.json"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "dsh-ui-copy": "file:../dsh-ui-copy",
+    "dsh-ui-ask": "file:../dsh-ui-ask",
+    "dsh-ui-composer": "file:../dsh-ui-composer",
+    "dsh-ui-menu": "file:../dsh-ui-menu",
+    "dsh-ui-sidebar": "file:../dsh-ui-sidebar",
+    "dsh-ui-identity": "file:../dsh-ui-identity",
+    "dsh-ui-session-delete": "file:../dsh-ui-session-delete",
+    "dsh-ui-peak-valley": "file:../dsh-ui-peak-valley",
+    "dsh-ui-status-phrases": "file:../dsh-ui-status-phrases",
+    "dsh-ui-foot-panels": "file:../dsh-ui-foot-panels",
+    "dsh-ui-restart": "file:../dsh-ui-restart",
+    "dsh-ui-quota": "file:../dsh-ui-quota",
+    "dsh-ui-effort-slider": "file:../dsh-ui-effort-slider",
+    "dsh-ui-whale": "file:../dsh-ui-whale",
+    "dsh-ui-skill-explorer": "file:../dsh-ui-skill-explorer"
+  },
+  "license": "MIT"
+}

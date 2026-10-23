@@ -1,35 +1,4 @@
-# dsh-ui-copy bundle patch.
-#
-# 声明在 package.json 的 dsh.bundle.patch 中，使 `dsh plugin add` 或插件页
-# 安装时可直接把这一行插进所选 profile 的 cordis 配置。
-#
-# 2.0 起整套界面只剩一行：一个包、一个浏览器入口、一个 MutationObserver。
-# 组件不再各占一行，改由同一条 config 里的开关控制：
-#
-#   - id: ui-copy
-#     name: dsh-ui-copy
-#     config:
-#       copy:            { enabled: true, hidePreviewBadge: true }
-#       ask:             { enabled: true }
-#       composer:        { enabled: true }
-#       menu:            { enabled: true }
-#       sidebar:         { enabled: true }
-#       identity:        { enabled: true, name: '…', avatar: '…' }
-#       sessionDelete:   { enabled: true }
-#       footPanels:      { enabled: true }
-#       peakValley:      { enabled: true }
-#       statusPhrases:   { enabled: true, phrases: |-
-#                           …每行一句… }
-#       restart:         { enabled: true }
-#       quota:           { enabled: true }
-#       effortSlider:    { enabled: true }
-#       whale:           { enabled: true }
-#       skillExplorer:   { enabled: true }
-#       suite:           { enabled: true }
-#
-# 主题走同一行的 `theme` 与 `accent`：`theme.light` / `theme.dark` 覆盖任意
-# `--dshui-*` 角色（键写角色名，如 brand、surface-2），`accent` 是强调色对，
-# 留空即跟随官方配色。所有组件的视觉都从这层令牌取值，所以换肤只改这一处。
+# dsh-ui-copy bundle patch: one row of the dsh-ui-suite bundle.
 - insert:
-    - id: ui-copy
+    - id: dshui-copy
       name: dsh-ui-copy
