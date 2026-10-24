@@ -25,6 +25,7 @@
   "files": [
     "src",
     "lib",
+    "cordis.patch.yml",
     "README.md"
   ],
   "engines": {

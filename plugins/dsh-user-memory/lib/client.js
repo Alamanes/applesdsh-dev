@@ -31,34 +31,39 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-.dsum-panel { display: flex; flex-direction: column; gap: 18px; padding: 24px 28px 40px; max-width: 860px; margin: 0 auto; color: var(--dsh-text, #e8e8ea); font-size: 14px; line-height: 1.65; }
-.dsum-head { display: flex; align-items: baseline; gap: 12px; }
-.dsum-title { font-size: 20px; font-weight: 600; margin: 0; }
-.dsum-meta { color: var(--dsh-text-tertiary, #8b8b93); font-size: 12px; margin-left: auto; display: flex; gap: 10px; align-items: center; }
-.dsum-button { border: 1px solid var(--dsh-border, #3a3a40); background: transparent; color: inherit; border-radius: 8px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
-.dsum-button:hover { background: var(--dsh-fill-hover, rgba(255,255,255,0.06)); }
-.dsum-button:disabled { opacity: 0.45; cursor: default; }
-.dsum-card { border: 1px solid var(--dsh-border, #3a3a40); border-radius: 14px; padding: 18px 20px; background: var(--dsh-fill-subtle, rgba(255,255,255,0.02)); }
-.dsum-card h3 { margin: 16px 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--dsh-text-secondary, #b9b9c2); }
+.dsum-panel { display: flex; flex-direction: column; gap: var(--dshui-space-5); padding: var(--dshui-space-7) var(--dshui-space-6) var(--dshui-space-9); max-width: 820px; margin: 0 auto; color: var(--dshui-text-primary); font-family: var(--dshui-font-family); font-size: var(--dshui-text-size-base); line-height: var(--dshui-line-normal); }
+.dsum-head { display: flex; align-items: center; gap: var(--dshui-space-3); }
+.dsum-title { margin: 0; font-size: var(--dshui-text-size-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--dshui-text-primary); }
+.dsum-meta { display: flex; align-items: center; gap: var(--dshui-space-2); margin-left: auto; color: var(--dshui-text-tertiary); font-size: var(--dshui-text-size-sm); font-variant-numeric: tabular-nums; }
+.dsum-button { height: var(--dshui-control-height-sm); padding: 0 var(--dshui-space-3); border: 1px solid var(--dshui-border-3); border-radius: var(--dshui-radius-md); background: var(--dshui-surface-1); color: var(--dshui-text-primary); font-family: inherit; font-size: var(--dshui-text-size-sm); cursor: pointer; transition: background var(--dshui-duration-fast) var(--dshui-ease-standard), border-color var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-button:hover { background: var(--dshui-surface-hover); border-color: var(--dshui-border-4); }
+.dsum-button:disabled { opacity: 0.5; cursor: default; }
+.dsum-bar { height: 2px; border-radius: var(--dshui-radius-pill); background: var(--dshui-neutral-fill); overflow: hidden; }
+.dsum-bar span { display: block; height: 100%; border-radius: inherit; background: var(--dshui-brand); transition: width var(--dshui-duration-base) var(--dshui-ease-standard); }
+.dsum-empty { padding: var(--dshui-space-4) var(--dshui-space-1); color: var(--dshui-text-tertiary); font-size: var(--dshui-text-size-sm); }
+.dsum-card { padding: var(--dshui-space-5); border-radius: var(--dshui-radius-lg); background: var(--dshui-surface-1); }
+.dsum-card h3 { margin: var(--dshui-space-4) 0 var(--dshui-space-2); font-size: var(--dshui-text-size-sm); font-weight: 600; color: var(--dshui-text-secondary); letter-spacing: 0.01em; }
 .dsum-card h3:first-child { margin-top: 0; }
-.dsum-card p { margin: 0 0 10px; }
-.dsum-empty { color: var(--dsh-text-tertiary, #8b8b93); }
-.dsum-group { display: flex; flex-direction: column; gap: 8px; }
-.dsum-group-title { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dsh-text-tertiary, #8b8b93); margin-top: 8px; }
-.dsum-entry { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--dsh-border, #3a3a40); border-radius: 10px; padding: 10px 12px; }
-.dsum-entry-text { flex: 1; white-space: pre-wrap; }
-.dsum-entry-meta { display: block; margin-top: 4px; font-size: 11px; color: var(--dsh-text-tertiary, #8b8b93); }
-.dsum-remove { border: none; background: transparent; color: var(--dsh-text-tertiary, #8b8b93); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 6px; }
-.dsum-remove:hover { color: #ff7b72; background: rgba(255,123,114,0.12); }
-.dsum-compose { display: flex; gap: 10px; align-items: flex-end; }
-.dsum-input { flex: 1; resize: none; min-height: 42px; max-height: 160px; border: 1px solid var(--dsh-border, #3a3a40); border-radius: 10px; background: var(--dsh-fill, transparent); color: inherit; padding: 10px 12px; font: inherit; }
-.dsum-input:focus { outline: none; border-color: var(--dsh-accent, #6e9bff); }
-.dsum-send { border: none; border-radius: 10px; padding: 10px 18px; background: var(--dsh-accent, #6e9bff); color: #fff; font-size: 13px; cursor: pointer; }
+.dsum-card p { margin: 0 0 var(--dshui-space-3); color: var(--dshui-text-secondary); }
+.dsum-card p:last-child { margin-bottom: 0; }
+.dsum-group { display: flex; flex-direction: column; gap: var(--dshui-space-2); }
+.dsum-group-title { padding: 0 var(--dshui-space-1); color: var(--dshui-text-caption); font-size: var(--dshui-text-size-xs); letter-spacing: 0.06em; text-transform: uppercase; }
+.dsum-entry { display: flex; align-items: flex-start; gap: var(--dshui-space-3); padding: var(--dshui-space-3) var(--dshui-space-4); border: 1px solid var(--dshui-border-2); border-radius: var(--dshui-radius-md); background: var(--dshui-surface-1); transition: background var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-entry:hover { background: var(--dshui-surface-hover); }
+.dsum-entry-text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dsum-entry-meta { display: block; margin-top: var(--dshui-space-1); color: var(--dshui-text-caption); font-size: var(--dshui-text-size-xs); }
+.dsum-remove { flex: none; width: 22px; height: 22px; border: none; border-radius: var(--dshui-radius-sm); background: transparent; color: var(--dshui-text-dimmed); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity var(--dshui-duration-fast) var(--dshui-ease-standard), color var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-entry:hover .dsum-remove, .dsum-remove:focus-visible { opacity: 1; }
+.dsum-remove:hover { color: var(--dshui-danger); background: var(--dshui-neutral-fill); }
+.dsum-compose { display: flex; align-items: flex-end; gap: var(--dshui-space-3); }
+.dsum-input { flex: 1; min-height: 44px; max-height: 180px; padding: var(--dshui-space-3) var(--dshui-space-4); border: 1px solid var(--dshui-border-3); border-radius: var(--dshui-radius-md); background: var(--dshui-surface-base); color: var(--dshui-text-primary); font: inherit; line-height: var(--dshui-line-normal); resize: none; transition: border-color var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-input::placeholder { color: var(--dshui-text-dimmed); }
+.dsum-input:focus { outline: none; border-color: var(--dshui-border-focus); }
+.dsum-send { flex: none; height: var(--dshui-control-height-lg); padding: 0 var(--dshui-space-5); border: none; border-radius: var(--dshui-radius-md); background: var(--dshui-brand-fill); color: var(--dshui-text-on-brand); font-family: inherit; font-size: var(--dshui-text-size-base); cursor: pointer; transition: background var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-send:hover { background: var(--dshui-brand-hover); }
 .dsum-send:disabled { opacity: 0.45; cursor: default; }
-.dsum-reply { border-left: 2px solid var(--dsh-accent, #6e9bff); padding: 4px 0 4px 12px; color: var(--dsh-text-secondary, #b9b9c2); }
-.dsum-error { color: #ff7b72; font-size: 12px; }
-.dsum-bar { height: 2px; border-radius: 2px; background: var(--dsh-border, #3a3a40); overflow: hidden; }
-.dsum-bar span { display: block; height: 100%; background: var(--dsh-accent, #6e9bff); }
+.dsum-reply { padding: var(--dshui-space-2) 0 var(--dshui-space-2) var(--dshui-space-4); border-left: 2px solid var(--dshui-brand); color: var(--dshui-text-secondary); }
+.dsum-error { color: var(--dshui-danger); font-size: var(--dshui-text-size-sm); white-space: pre-wrap; }
 `
 
     function injectStyle() {
@@ -166,7 +171,7 @@ window.__ModuleLoader__.load({
         state.error !== null ? h('div', { className: 'dsum-error' }, state.error) : null,
         state.loading ? h('div', { className: 'dsum-empty' }, '读取中…') : null,
         state.entries.length === 0 && !state.loading
-          ? h('div', { className: 'dsum-card dsum-empty' }, '还没有记住任何东西。聊几句，回合结束后会自动整理。')
+          ? h('div', { className: 'dsum-empty' }, '还没有记住任何东西。聊几句，回合结束后会自动整理。')
           : null,
         state.summary !== null
           ? h('div', { className: 'dsum-card' }, sections(state.summary.text).map((section, index) =>
