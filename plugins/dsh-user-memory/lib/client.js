@@ -1,6 +1,6 @@
 /**
- * dsh-user-memory browser half — a settings-style panel: the summary the model
- * writes, every entry, and one box that asks a question or changes memory.
+ * dsh-user-memory browser half — the memory panel: the summary the model writes,
+ * every entry, and one box that asks a question or changes memory.
  *
  * The bundle is hand-written classic script: the host serves it to
  * window.__ModuleLoader__, which calls the factory with a module resolver. It
@@ -30,41 +30,68 @@ window.__ModuleLoader__.load({
       })
     }
 
-    const CSS = `
-.dsum-panel { display: flex; flex-direction: column; gap: var(--dshui-space-5); padding: var(--dshui-space-7) var(--dshui-space-6) var(--dshui-space-9); max-width: 820px; margin: 0 auto; color: var(--dshui-text-primary); font-family: var(--dshui-font-family); font-size: var(--dshui-text-size-base); line-height: var(--dshui-line-normal); }
-.dsum-head { display: flex; align-items: center; gap: var(--dshui-space-3); }
-.dsum-title { margin: 0; font-size: var(--dshui-text-size-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--dshui-text-primary); }
-.dsum-meta { display: flex; align-items: center; gap: var(--dshui-space-2); margin-left: auto; color: var(--dshui-text-tertiary); font-size: var(--dshui-text-size-sm); font-variant-numeric: tabular-nums; }
-.dsum-button { height: var(--dshui-control-height-sm); padding: 0 var(--dshui-space-3); border: 1px solid var(--dshui-border-3); border-radius: var(--dshui-radius-md); background: var(--dshui-surface-1); color: var(--dshui-text-primary); font-family: inherit; font-size: var(--dshui-text-size-sm); cursor: pointer; transition: background var(--dshui-duration-fast) var(--dshui-ease-standard), border-color var(--dshui-duration-fast) var(--dshui-ease-standard); }
-.dsum-button:hover { background: var(--dshui-surface-hover); border-color: var(--dshui-border-4); }
-.dsum-button:disabled { opacity: 0.5; cursor: default; }
-.dsum-bar { height: 2px; border-radius: var(--dshui-radius-pill); background: var(--dshui-neutral-fill); overflow: hidden; }
-.dsum-bar span { display: block; height: 100%; border-radius: inherit; background: var(--dshui-brand); transition: width var(--dshui-duration-base) var(--dshui-ease-standard); }
-.dsum-empty { padding: var(--dshui-space-4) var(--dshui-space-1); color: var(--dshui-text-tertiary); font-size: var(--dshui-text-size-sm); }
-.dsum-card { padding: var(--dshui-space-5); border-radius: var(--dshui-radius-lg); background: var(--dshui-surface-1); }
-.dsum-card h3 { margin: var(--dshui-space-4) 0 var(--dshui-space-2); font-size: var(--dshui-text-size-sm); font-weight: 600; color: var(--dshui-text-secondary); letter-spacing: 0.01em; }
-.dsum-card h3:first-child { margin-top: 0; }
-.dsum-card p { margin: 0 0 var(--dshui-space-3); color: var(--dshui-text-secondary); }
-.dsum-card p:last-child { margin-bottom: 0; }
-.dsum-group { display: flex; flex-direction: column; gap: var(--dshui-space-2); }
-.dsum-group-title { padding: 0 var(--dshui-space-1); color: var(--dshui-text-caption); font-size: var(--dshui-text-size-xs); letter-spacing: 0.06em; text-transform: uppercase; }
-.dsum-entry { display: flex; align-items: flex-start; gap: var(--dshui-space-3); padding: var(--dshui-space-3) var(--dshui-space-4); border: 1px solid var(--dshui-border-2); border-radius: var(--dshui-radius-md); background: var(--dshui-surface-1); transition: background var(--dshui-duration-fast) var(--dshui-ease-standard); }
-.dsum-entry:hover { background: var(--dshui-surface-hover); }
-.dsum-entry-text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.dsum-entry-meta { display: block; margin-top: var(--dshui-space-1); color: var(--dshui-text-caption); font-size: var(--dshui-text-size-xs); }
-.dsum-remove { flex: none; width: 22px; height: 22px; border: none; border-radius: var(--dshui-radius-sm); background: transparent; color: var(--dshui-text-dimmed); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity var(--dshui-duration-fast) var(--dshui-ease-standard), color var(--dshui-duration-fast) var(--dshui-ease-standard); }
+    const CSS = `.dsum-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; background: var(--dshui-surface-1); color: var(--dshui-text-primary); font-family: var(--dshui-font-family); }
+.dsum-panel::-webkit-scrollbar { width: 10px; }
+.dsum-panel::-webkit-scrollbar-track { background: transparent; }
+.dsum-panel::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background-clip: content-box; background-color: var(--dshui-border-3); }
+.dsum-panel::-webkit-scrollbar-thumb:hover { background-color: var(--dshui-border-4); }
+.dsum-inner { flex: none; width: 100%; max-width: 720px; margin: 0 auto; padding: 40px 32px 120px; box-sizing: border-box; }
+.dsum-head { display: flex; align-items: baseline; gap: 10px; }
+.dsum-title { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--dshui-text-primary); }
+.dsum-sub { color: var(--dshui-text-tertiary); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.dsum-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.dsum-ghost { height: 26px; padding: 0 8px; border: none; border-radius: 6px; background: transparent; color: var(--dshui-text-tertiary); font-family: inherit; font-size: 12.5px; cursor: pointer; transition: color var(--dshui-duration-fast) var(--dshui-ease-standard), background var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-ghost:hover { color: var(--dshui-text-primary); background: var(--dshui-surface-hover); }
+.dsum-ghost:disabled { opacity: 0.4; cursor: default; background: transparent; }
+.dsum-divider { height: 1px; margin: 26px 0; background: var(--dshui-border-2); }
+.dsum-sec { margin: 24px 0 10px; font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--dshui-text-primary); }
+.dsum-divider + .dsum-sec { margin-top: 0; }
+.dsum-sep + .dsum-sec { margin-top: 20px; }
+.dsum-body + .dsum-sec { margin-top: 24px; }
+.dsum-body { margin: 0 0 16px; color: var(--dshui-text-secondary); font-size: 15px; line-height: 1.72; }
+.dsum-body:last-of-type { margin-bottom: 0; }
+.dsum-sep { height: 1px; margin: 36px 0 0; background: var(--dshui-border-2); }
+.dsum-topic { margin: 24px 0 10px; color: var(--dshui-text-tertiary); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.dsum-entry { position: relative; display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px; padding: 0 0 0 18px; }
+.dsum-entry:last-child { margin-bottom: 0; }
+.dsum-entry::before { content: ''; position: absolute; left: 4px; top: 10px; width: 4px; height: 4px; border-radius: 50%; background: var(--dshui-text-dimmed); }
+.dsum-entry-text { flex: 1; min-width: 0; color: var(--dshui-text-secondary); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.dsum-entry-meta { display: block; margin-top: 5px; color: var(--dshui-text-caption); font-size: 11.5px; line-height: 1.4; }
+.dsum-remove { flex: none; width: 20px; height: 20px; margin-left: 2px; border: none; border-radius: 6px; background: transparent; color: var(--dshui-text-dimmed); font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity var(--dshui-duration-fast) var(--dshui-ease-standard), color var(--dshui-duration-fast) var(--dshui-ease-standard); }
 .dsum-entry:hover .dsum-remove, .dsum-remove:focus-visible { opacity: 1; }
-.dsum-remove:hover { color: var(--dshui-danger); background: var(--dshui-neutral-fill); }
-.dsum-compose { display: flex; align-items: flex-end; gap: var(--dshui-space-3); }
-.dsum-input { flex: 1; min-height: 44px; max-height: 180px; padding: var(--dshui-space-3) var(--dshui-space-4); border: 1px solid var(--dshui-border-3); border-radius: var(--dshui-radius-md); background: var(--dshui-surface-base); color: var(--dshui-text-primary); font: inherit; line-height: var(--dshui-line-normal); resize: none; transition: border-color var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-remove:hover { color: var(--dshui-danger); background: var(--dshui-surface-hover); }
+.dsum-empty { padding: 32px 0; color: var(--dshui-text-tertiary); font-size: 14px; line-height: 1.7; }
+.dsum-reply { margin: 28px 0 0; padding: 14px 16px; border-radius: 10px; background: var(--dshui-surface-1); color: var(--dshui-text-secondary); font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.dsum-error { margin: 16px 0 0; color: var(--dshui-danger); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; }
+.dsum-compose { position: sticky; bottom: 0; z-index: 2; flex: none; background: color-mix(in srgb, var(--dshui-surface-1) 72%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.1); backdrop-filter: blur(18px) saturate(1.1); }
+.dsum-compose-inner { width: 100%; max-width: 720px; margin: 0 auto; padding: 8px 32px 24px; box-sizing: border-box; }
+.dsum-compose::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: transparent; pointer-events: none; }
+.dsum-box { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 5px 5px 5px 18px; border: 1px solid var(--dshui-border-2); border-radius: 22px; background: var(--dshui-surface-1); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04); transition: border-color var(--dshui-duration-fast) var(--dshui-ease-standard), box-shadow var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-box:focus-within { border-color: var(--dshui-border-3); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.06); }
+.dsum-input { flex: 1; min-width: 0; height: 32px; max-height: 132px; padding: 0; border: none; background: transparent; color: var(--dshui-text-primary); font: inherit; font-size: 14px; line-height: 32px; resize: none; outline: none; overflow-y: auto; }
 .dsum-input::placeholder { color: var(--dshui-text-dimmed); }
-.dsum-input:focus { outline: none; border-color: var(--dshui-border-focus); }
-.dsum-send { flex: none; height: var(--dshui-control-height-lg); padding: 0 var(--dshui-space-5); border: none; border-radius: var(--dshui-radius-md); background: var(--dshui-brand-fill); color: var(--dshui-text-on-brand); font-family: inherit; font-size: var(--dshui-text-size-base); cursor: pointer; transition: background var(--dshui-duration-fast) var(--dshui-ease-standard); }
-.dsum-send:hover { background: var(--dshui-brand-hover); }
-.dsum-send:disabled { opacity: 0.45; cursor: default; }
-.dsum-reply { padding: var(--dshui-space-2) 0 var(--dshui-space-2) var(--dshui-space-4); border-left: 2px solid var(--dshui-brand); color: var(--dshui-text-secondary); }
-.dsum-error { color: var(--dshui-danger); font-size: var(--dshui-text-size-sm); white-space: pre-wrap; }
-`
+.dsum-send { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; border-radius: 50%; background-color: var(--dshui-surface-2); background-image: linear-gradient(var(--dshui-surface-2), var(--dshui-surface-2)); color: var(--dshui-text-secondary); cursor: pointer; transition: background var(--dshui-duration-fast) var(--dshui-ease-standard), color var(--dshui-duration-fast) var(--dshui-ease-standard); }
+.dsum-send[data-ready='true'] { background: var(--dshui-brand-fill); color: var(--dshui-text-on-brand); }
+.dsum-send[data-ready='true']:hover { background: var(--dshui-brand-hover); }
+.dsum-send:disabled { cursor: default; opacity: 0.75; }
+.dsum-panel { position: relative; transition: box-shadow var(--dshui-duration-base) var(--dshui-ease-standard); }
+.dsum-panel.is-thinking { box-shadow: inset 0 0 160px 8px color-mix(in srgb, var(--dshui-brand) 13%, transparent); }
+.dsum-inner { transition: filter var(--dshui-duration-base) var(--dshui-ease-standard), opacity var(--dshui-duration-base) var(--dshui-ease-standard); }
+.dsum-panel.is-thinking .dsum-inner { filter: blur(5px); opacity: 0.4; pointer-events: none; }
+.dsum-skel { display: flex; flex-direction: column; gap: 11px; margin-top: 26px; }
+.dsum-skel-row { height: 13px; border-radius: 7px; background: color-mix(in srgb, var(--dshui-text-primary) 8%, transparent); animation: dsum-shimmer 1.6s ease-in-out infinite; }
+.dsum-skel-title { width: 26%; height: 16px; margin-top: 14px; }
+.dsum-skel-title:first-child { margin-top: 0; }
+@keyframes dsum-shimmer { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.dsum-reveal { animation: dsum-fade 0.4s var(--dshui-ease-standard) both; }
+@keyframes dsum-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.dsum-compose-inner { position: relative; }
+.dsum-reply-pop { position: absolute; left: 32px; right: 32px; bottom: calc(100% - 2px); max-height: 42vh; overflow-y: auto; box-sizing: border-box; padding: 13px 15px; border: 1px solid var(--dshui-border-2); border-radius: 16px; background: var(--dshui-surface-1); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.1); animation: dsum-fade 0.22s var(--dshui-ease-standard) both; }
+.dsum-reply-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--dshui-text-tertiary); font-size: 12px; }
+.dsum-reply-close { margin-left: auto; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--dshui-text-dimmed); font-size: 13px; line-height: 1; cursor: pointer; }
+.dsum-reply-close:hover { background: var(--dshui-surface-hover); color: var(--dshui-text-primary); }
+.dsum-reply-text { color: var(--dshui-text-secondary); font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.dsum-changes { margin: 8px 0 0; padding: 8px 0 0; border-top: 1px solid var(--dshui-border-2); list-style: none; color: var(--dshui-text-tertiary); font-size: 12.5px; line-height: 1.6; }`
 
     function injectStyle() {
       if (document.getElementById('dsum-style') !== null) return
@@ -98,13 +125,31 @@ window.__ModuleLoader__.load({
       return [...groups.entries()]
     }
 
+    function Arrow() {
+      return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true' },
+        h('path', { d: 'M8 12.4V3.6' }),
+        h('path', { d: 'M3.9 7.7 8 3.6l4.1 4.1' }),
+      )
+    }
+
     function Panel() {
       const [state, setState] = useState({ loading: true, entries: [], summary: null, sizes: null, limits: null, fresh: false, summarizing: false, error: null })
       const [draft, setDraft] = useState('')
       const [busy, setBusy] = useState(false)
       const [reply, setReply] = useState(null)
+      const [changes, setChanges] = useState([])
       const [note, setNote] = useState(null)
       const mounted = useRef(true)
+      const inputRef = useRef(null)
+
+      const fit = useCallback(() => {
+        const el = inputRef.current
+        if (el === null) return
+        el.style.height = 'auto'
+        const next = Math.min(Math.max(el.scrollHeight, 32), 132)
+        el.style.height = next + 'px'
+        el.style.lineHeight = next <= 32 ? '32px' : '1.6'
+      }, [])
 
       const load = useCallback(() => {
         return call('/view').then((value) => {
@@ -123,7 +168,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         if (state.summarizing !== true) return undefined
-        const timer = setInterval(() => { void load() }, 1500)
+        const timer = setInterval(() => { void load() }, 700)
         return () => clearInterval(timer)
       }, [state.summarizing, load])
 
@@ -140,15 +185,17 @@ window.__ModuleLoader__.load({
         setBusy(true)
         setNote(null)
         setReply(null)
+        setChanges([])
         void call('/ask', { method: 'POST', body: JSON.stringify({ text }) }).then((value) => {
           setDraft('')
+          const applied = Array.isArray(value.changes) ? value.changes : []
           setReply(value.reply ?? '')
+          setChanges(applied.map((change) => (change.ok ? '✓ ' : '✗ ') + (change.text || change.error || '')))
           setState({ ...value.view, loading: false })
-          if (Array.isArray(value.changes) && value.changes.length > 0) {
-            setNote(value.changes.map((change) => (change.ok ? '✓ ' : '✗ ') + (change.text || change.error || '')).join('\n'))
-          }
         }).catch((error) => setNote(String(error?.message ?? error))).finally(() => setBusy(false))
       }
+
+      useEffect(() => { fit() }, [draft, fit])
 
       const regenerate = () => {
         void call('/view?regenerate=1').then((value) => setState({ ...value, loading: false })).catch((error) => setNote(String(error?.message ?? error)))
@@ -156,56 +203,90 @@ window.__ModuleLoader__.load({
 
       const mainSize = state.sizes?.main ?? 0
       const mainLimit = state.limits?.main ?? 4000
-      const ratio = mainLimit > 0 ? Math.min(1, mainSize / mainLimit) : 0
+      const count = state.entries.length
+      const status = state.loading ? '读取中…' : state.summarizing ? '正在更新…' : count + ' 条 · MEMORY.md ' + mainSize + ' / ' + mainLimit
 
-      return h('div', { className: 'dsum-panel', 'data-dsh-user-memory-view': '' },
-        h('div', { className: 'dsum-head' },
-          h('h2', { className: 'dsum-title' }, '记忆'),
-          h('div', { className: 'dsum-meta' },
-            h('span', null, 'MEMORY.md ' + mainSize + ' / ' + mainLimit),
-            h('button', { className: 'dsum-button', onClick: regenerate, disabled: state.summarizing }, state.summarizing ? '整理中…' : '重写摘要'),
-            h('button', { className: 'dsum-button', onClick: () => void load() }, '刷新'),
+      return h('div', { className: 'dsum-panel' + (busy ? ' is-thinking' : ''), 'data-dsh-user-memory-view': '' },
+        h('div', { className: 'dsum-inner' },
+          h('div', { className: 'dsum-head' },
+            h('h2', { className: 'dsum-title' }, '记忆摘要'),
+            h('span', { className: 'dsum-sub' }, 'Sylvia · ' + status),
+            h('div', { className: 'dsum-actions' },
+              h('button', { className: 'dsum-ghost', onClick: regenerate, disabled: state.summarizing }, state.summarizing ? '整理中…' : '重写摘要'),
+              h('button', { className: 'dsum-ghost', onClick: () => void load() }, '刷新'),
+            ),
           ),
+          h('div', { className: 'dsum-divider' }),
+          state.error !== null ? h('div', { className: 'dsum-error' }, state.error) : null,
+          state.summarizing
+            ? h('div', { className: 'dsum-skel' },
+                h('div', { className: 'dsum-skel-row dsum-skel-title' }),
+                h('div', { className: 'dsum-skel-row', style: { width: '96%' } }),
+                h('div', { className: 'dsum-skel-row', style: { width: '89%' } }),
+                h('div', { className: 'dsum-skel-row', style: { width: '58%' } }),
+                h('div', { className: 'dsum-skel-row dsum-skel-title' }),
+                h('div', { className: 'dsum-skel-row', style: { width: '94%' } }),
+                h('div', { className: 'dsum-skel-row', style: { width: '71%' } }),
+              )
+            : state.summary !== null
+              ? h('div', { className: 'dsum-reveal', key: state.summary.text },
+                  sections(state.summary.text).map((section, index) =>
+                    h(React.Fragment, { key: 's' + index },
+                      section.heading !== '' ? h('div', { className: 'dsum-sec' }, section.heading) : null,
+                      h('p', { className: 'dsum-body' }, section.body.join(' ')),
+                    )))
+              : null,
+          count === 0 && !state.loading
+            ? h('div', { className: 'dsum-empty' }, '还没有记住任何东西。聊几句，回合结束后会自动整理。')
+            : null,
+          count === 0 ? null : h('div', { className: 'dsum-sep' }),
+          count === 0 ? null : h('div', { className: 'dsum-sec' }, '全部条目'),
+          grouped(state.entries).map(([topic, list]) =>
+            h('div', { className: 'dsum-group', key: topic || 'main' },
+              topic === '' ? null : h('div', { className: 'dsum-topic' }, topic),
+              h('div', { className: 'dsum-entries' }, ...list.map((entry, index) =>
+                h('div', { className: 'dsum-entry', key: index },
+                  h('div', { className: 'dsum-entry-text' }, entry.text,
+                    h('span', { className: 'dsum-entry-meta', title: entry.source ?? '' }, entry.added ?? '')),
+                  h('button', { className: 'dsum-remove', title: '删除这条', onClick: () => remove(entry) }, '×'),
+                ))),
+            )),
+          note !== null ? h('div', { className: 'dsum-error' }, note) : null,
         ),
-        h('div', { className: 'dsum-bar' }, h('span', { style: { width: Math.round(ratio * 100) + '%' } })),
-        state.error !== null ? h('div', { className: 'dsum-error' }, state.error) : null,
-        state.loading ? h('div', { className: 'dsum-empty' }, '读取中…') : null,
-        state.entries.length === 0 && !state.loading
-          ? h('div', { className: 'dsum-empty' }, '还没有记住任何东西。聊几句，回合结束后会自动整理。')
-          : null,
-        state.summary !== null
-          ? h('div', { className: 'dsum-card' }, sections(state.summary.text).map((section, index) =>
-              h(React.Fragment, { key: index },
-                section.heading !== '' ? h('h3', null, section.heading) : null,
-                h('p', null, section.body.join(' ')),
-              )))
-          : null,
-        grouped(state.entries).map(([topic, list]) =>
-          h('div', { className: 'dsum-group', key: topic || 'main' },
-            h('div', { className: 'dsum-group-title' }, topic === '' ? 'MEMORY.md' : topic),
-            ...list.map((entry, index) =>
-              h('div', { className: 'dsum-entry', key: index },
-                h('div', { className: 'dsum-entry-text' }, entry.text,
-                  h('span', { className: 'dsum-entry-meta' }, [entry.added, entry.source].filter(Boolean).join(' · '))),
-                h('button', { className: 'dsum-remove', title: '删除这条', onClick: () => remove(entry) }, '×'),
-              )),
-          )),
-        reply !== null && reply !== '' ? h('div', { className: 'dsum-reply' }, reply) : null,
-        note !== null ? h('div', { className: 'dsum-error', style: { whiteSpace: 'pre-wrap' } }, note) : null,
         h('div', { className: 'dsum-compose' },
-          h('textarea', {
-            className: 'dsum-input',
-            placeholder: '问一句，或者让它改记忆：「记住我喜欢素的风格」「删掉关于 vim 的那条」',
-            value: draft,
-            onChange: (event) => setDraft(event.target.value),
-            onKeyDown: (event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault()
-                send()
-              }
-            },
-          }),
-          h('button', { className: 'dsum-send', onClick: send, disabled: busy || draft.trim() === '' }, busy ? '…' : '发送'),
+          h('div', { className: 'dsum-compose-inner' },
+            reply !== null && reply !== ''
+              ? h('div', { className: 'dsum-reply-pop' },
+                  h('div', { className: 'dsum-reply-head' }, 'Sylvia',
+                    h('button', {
+                      className: 'dsum-reply-close',
+                      title: '关掉',
+                      onClick: () => { setReply(null); setChanges([]) },
+                    }, '×')),
+                  h('div', { className: 'dsum-reply-text' }, reply),
+                  changes.length > 0
+                    ? h('ul', { className: 'dsum-changes' }, ...changes.map((line, index) => h('li', { key: index }, line)))
+                    : null,
+                )
+              : null,
+            h('div', { className: 'dsum-box' },
+            h('textarea', {
+              className: 'dsum-input',
+              rows: 1,
+              ref: inputRef,
+              placeholder: '询问或更新',
+              value: draft,
+              onChange: (event) => { setDraft(event.target.value); fit() },
+              onKeyDown: (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  send()
+                }
+              },
+            }),
+            h('button', { className: 'dsum-send', 'data-ready': String(draft.trim() !== '' && !busy), onClick: send, disabled: busy, title: '发送' }, busy ? '…' : h(Arrow)),
+            ),
+          ),
         ),
       )
     }
@@ -219,7 +300,7 @@ window.__ModuleLoader__.load({
     }
 
     function Page() {
-      return h('div', { 'data-dsh-plugin': 'user-memory' }, h(Panel))
+      return h('div', { 'data-dsh-plugin': 'user-memory', style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' } }, h(Panel))
     }
 
     function apply(ctx) {
