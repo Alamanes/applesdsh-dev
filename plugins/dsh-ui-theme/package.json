@@ -2,7 +2,7 @@
   "name": "dsh-ui-theme",
   "version": "2.0.0",
   "private": true,
-  "description": "全套件的主题预设与设置页「主题」分区：鲸海、樱、薄荷、暮紫与琥珀，一次换掉整个界面的配色。（dsh-ui-suite 组件）",
+  "description": "全套件的主题预设与设置页「主题」分区：鲸海、樱、薄荷、暮紫、琥珀与跨性别旗帜，一次换掉整个界面的配色。（dsh-ui-suite 组件）",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -11,6 +11,8 @@
     "theme",
     "palette",
     "preset",
+    "trans",
+    "pride",
     "settings"
   ],
   "type": "module",

@@ -1,0 +1,4 @@
+# dsh-agent-room 独立插件（不并入 dsh-ui-suite 套件）
+- insert:
+    - id: dsh-agent-room
+      name: dsh-agent-room

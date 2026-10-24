@@ -1,0 +1,49 @@
+{
+  "name": "dsh-ui-chat-fold",
+  "version": "2.0.0",
+  "private": true,
+  "description": "思考行与过程组的自动开合、卷帘门折叠过渡，以及轨迹视图收起输入区（dsh-ui-suite 组件）。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ui-suite",
+    "chat",
+    "fold",
+    "process",
+    "reasoning",
+    "disclosure",
+    "fold-glide",
+    "trajectory"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,49 @@
+{
+  "name": "dsh-agent-room",
+  "version": "0.1.0",
+  "private": true,
+  "description": "右侧边栏里的多角色群聊：几个 agent 住同一间房，你一句它们轮流接话。",
+  "icon": "./icon.png",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "agent",
+    "group-chat",
+    "room",
+    "multi-agent",
+    "sidebar"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "icon.png",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    }
+  },
+  "license": "MIT"
+}

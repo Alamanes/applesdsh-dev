@@ -1,0 +1,1001 @@
+/**
+ * dsh-ui-chat-fold — 浏览器半边。
+ *
+ * 对话流里的三件事，全部只认 dsh 自己发出的语义属性：
+ *
+ *   自动开合  思考行在模型思考时展开、思考一停收回；过程组在过程跑着时展开、这一段结束收回。
+ *             两处都归读者：读者在某个阶段里碰过那一行/那个组，这一阶段内不再动它。
+ *   卷帘门    读者点开合控件时把下方内容真的推开——高度逐帧长出来/收回去，收起方向靠拦截点击
+ *             让真身留在展开态，压到终点再放行。自动开合派发的点击不在此列（内容本来该自然生长）。
+ *   跟随补位  工具行与思考行第一次出现时把它们所在的滚动器补到底。靠一条 1 ms 的探针动画拿
+ *             animationstart 通知，不用观察者、不用定时器。
+ *
+ * 外加一条纯 CSS：轨迹视图里把没有用处的输入区收掉。
+ *
+ * @module dsh-ui-chat-fold/client
+ */
+function dshuiComponent_chat_fold(rt) {
+
+/* ---- DOM 契约：全是 dsh 自己的语义属性，不认带构建期 hash 的类名 ---- */
+
+/** 聊天列。 */
+var CHAT_FLOW_SELECTOR = '[data-chat-flow]'
+/** 每一行思考行；阶段看 data-state。 */
+var THINK_ROW_SELECTOR = '[data-variant="think"]'
+/** 每一次工具调用的包装层（根调用与 run_code 派发的子调用都带）。 */
+var CALL_ROW_SELECTOR = '[data-chat-call-id]'
+/** 模型还在思考、过程还在跑时的阶段值。 */
+var RUNNING_STATE = 'running'
+/** TextShimmer 正在扫光的元素：它还在，就说明这一段内容还在动。 */
+var SHIMMER_SELECTOR = '[data-shimmer]'
+/** 聊天列的滚动容器。 */
+var CONVERSATION_SCROLL_SELECTOR = '[data-conversation-scroll]'
+/** 跟随开着时 dsh 挂在聊天框架上的标记。 */
+var FOLLOWING_TAIL_SELECTOR = '[data-chat-following-tail]'
+/** 读者离底部多近才算贴着底部（dsh 自己的阈值 + 1）。 */
+var FOLLOW_THRESHOLD_PX = 25
+/** 输入区座位：落在它里面的指针与按键是在打字，不是在接管滚动。 */
+var COMPOSER_SELECTOR = '[data-composer-seat]'
+/** 会滚动视口的按键，与 dsh 自己认的那组一致。 */
+var SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '])
+/** 过程组根。 */
+var PROCESS_GROUP_SELECTOR = '[data-step-process]'
+/** 过程组体；收起时带 hidden。 */
+var PROCESS_BODY_SELECTOR = '[data-step-process-body]'
+/** 过程组根上的展开档位：「详细」「完全展开」两档不收纳组体。 */
+var PROCESS_EXPANDED_MODE_ATTRIBUTE = 'data-group-expanded-mode'
+/** dsh 的折叠动效正在驱动的行。 */
+var MOTION_ROW_SELECTOR = '[data-chat-motion="collapse"], [data-chat-motion="reveal"]'
+/** DisclosureRow 被点的那一行；展开体是它的兄弟。 */
+var DISCLOSURE_ROW_SELECTOR = '[data-disclosure-row]'
+/** DisclosureRow 的外层头（0.2.1-alpha.2 起），展开体是它的兄弟。 */
+var DISCLOSURE_HEADER_SELECTOR = '[data-disclosure-header]'
+
+/* ---- 本组件自己的标记，统一 data-dshui-chat-* 前缀 ---- */
+
+/** 这一处在工作：探针规则只在它下面命中。 */
+var FOLLOW_ATTRIBUTE = 'data-dshui-chat-follow'
+/** 探针动画的名字；监听那一侧按它过滤 animationstart。 */
+var APPEAR_PROBE_NAME = 'dshui-chat-appear'
+/** 卷帘门正在走的那个真身。 */
+var ROLLING_ATTRIBUTE = 'data-dshui-chat-rolling'
+/** 组头此刻带着实时细节。 */
+var LIVE_DETAIL_ATTRIBUTE = 'data-dshui-chat-live-detail'
+/** 组体此刻是展开的。 */
+var OPEN_ATTRIBUTE = 'data-dshui-chat-open'
+/** 组头标题里只含标签的那半截。 */
+var LABEL_ATTRIBUTE = 'data-dshui-chat-label'
+/** 那半截标签的渐变半宽。 */
+var LABEL_SPREAD_PROPERTY = '--dshui-chat-label-spread'
+
+/* ---- 程序化开合记账 ---- */
+
+/**
+ * 本组件自己派发的折叠切换深度。
+ *
+ * 自动开合派发的是真正的 click，走的是同一条捕获路径，各处「读者碰过就让他赢」的守卫分不出它
+ * 和读者那一下的区别。两处自动开合共用这一个计数：谁都不该把对方的程序化点击记成读者的意图。
+ */
+var programmaticDepth = 0
+
+function beginProgrammaticToggle() {
+  programmaticDepth += 1
+}
+
+function endProgrammaticToggle() {
+  programmaticDepth = Math.max(0, programmaticDepth - 1)
+}
+
+function isProgrammaticToggle() {
+  return programmaticDepth > 0
+}
+
+/**
+ * 一次事件是不是读者接管滚动的意图。
+ * 落在输入区里、或是与滚动无关的按键时为假。
+ */
+function isReaderScrollIntent(event) {
+  if (event.target instanceof Element && event.target.closest(COMPOSER_SELECTOR) !== null) return false
+  if (event.type !== 'keydown') return true
+  return event instanceof KeyboardEvent && SCROLL_KEYS.has(event.key)
+}
+
+/* ---- 把滚动位置交还给 dsh 的跟随 ---- */
+
+/** 折叠收尾之后盯几眼。dsh 关掉跟随常常比折叠晚一步——它要等采样结算。 */
+var FOLLOW_LOOK_ROUNDS = 5
+/** 两眼之间隔多久；五眼正好盖过它那个五百毫秒的采样窗口。 */
+var FOLLOW_LOOK_INTERVAL_MS = 100
+/** 看满几眼用掉的时间，给调用方算自己那份监听的生命周期。 */
+var FOLLOW_LOOK_TOTAL_MS = FOLLOW_LOOK_ROUNDS * FOLLOW_LOOK_INTERVAL_MS
+
+/** 会话的滚动容器。 */
+function conversationScroller() {
+  return document.querySelector(CONVERSATION_SCROLL_SELECTOR)
+}
+
+/**
+ * 确保会话重新跟上底部，并在必要时把 dsh 的跟随一起点亮。
+ *
+ * 先钉底（有位移时 dsh 的 onScroll 会把跟随重新点亮），再看几眼属性；属性没回来才点它那个
+ * 「回到底部」按钮——内容还没长出滚动条时地线与位置都是 0，钉底是空操作，只有按钮有效。
+ */
+function ensureFollowTail(boundary) {
+  var stillWanted = (boundary && boundary.stillWanted) || function () { return true }
+  var onSettled = boundary && boundary.onSettled
+  var scroller = conversationScroller()
+  if (scroller === null) {
+    if (onSettled) onSettled()
+    return
+  }
+  if (scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop > 0.5) {
+    scroller.scrollTop = scroller.scrollHeight
+  }
+  var rounds = 0
+  var look = function () {
+    if (!stillWanted() || rounds >= FOLLOW_LOOK_ROUNDS) {
+      if (onSettled) onSettled()
+      return
+    }
+    rounds += 1
+    if (document.querySelector(FOLLOWING_TAIL_SELECTOR) === null) {
+      var column = document.querySelector(CHAT_FLOW_SELECTOR)
+      var root = column && column.parentElement ? column.parentElement.parentElement : null
+      var button = root && root.nextElementSibling ? root.nextElementSibling.querySelector('button') : null
+      if (button !== null) {
+        button.click()
+        if (onSettled) onSettled()
+        return
+      }
+    }
+    window.setTimeout(look, FOLLOW_LOOK_INTERVAL_MS)
+  }
+  window.setTimeout(look, FOLLOW_LOOK_INTERVAL_MS)
+}
+
+/* ---- 思考行自动开合 ---- */
+
+/**
+ * 给整页安装思考行展开。
+ *
+ * dsh 发出来的思考行一律是收起的（ReasoningRow 用一个朴素的 useState(false) 固定住），没有任何
+ * 设置项暴露这件事，这一行自己的展开控件就是唯一能扳的杆。控件是哪种取决于 dsh 的配置
+ * （expandOnRowClick 时整行就是按钮），「第一个像按钮的后代」同时覆盖两种。
+ */
+function installReasoningFold() {
+  var touchedIn = new WeakMap()
+  var attemptedIn = new WeakMap()
+  var scanQueued = false
+
+  var syncRows = function (rows) {
+    for (var i = 0; i < rows.length; i += 1) {
+      var row = rows[i]
+      if (!row.isConnected) continue
+      var phase = row.getAttribute('data-state') || ''
+      if (phase === '') continue
+      if (touchedIn.get(row) === phase) continue
+      if (row.hasAttribute('data-expanded') === (phase === RUNNING_STATE)) continue
+      if (attemptedIn.get(row) === phase) continue
+      attemptedIn.set(row, phase)
+      var control = row.querySelector('[role="button"], button')
+      if (!(control instanceof HTMLElement)) continue
+      beginProgrammaticToggle()
+      try {
+        control.click()
+      } finally {
+        endProgrammaticToggle()
+      }
+    }
+  }
+
+  var syncEveryRow = function () {
+    syncRows(document.querySelectorAll(THINK_ROW_SELECTOR))
+  }
+
+  var rememberReaderTouched = function (event) {
+    if (isProgrammaticToggle()) return
+    var target = event.target
+    if (!(target instanceof Element)) return
+    var row = target.closest(THINK_ROW_SELECTOR)
+    if (row === null) return
+    touchedIn.set(row, row.getAttribute('data-state') || '')
+  }
+
+  var touchedRows = new Set()
+
+  var observer = new MutationObserver(function (records) {
+    var known = touchedRows.size
+    for (var i = 0; i < records.length; i += 1) {
+      var record = records[i]
+      var target = record.target
+      if (target instanceof Element) {
+        var found = target.closest(THINK_ROW_SELECTOR)
+        if (found !== null) touchedRows.add(found)
+      }
+      for (var j = 0; j < record.addedNodes.length; j += 1) {
+        var node = record.addedNodes[j]
+        if (!(node instanceof HTMLElement)) continue
+        if (node.matches(THINK_ROW_SELECTOR)) touchedRows.add(node)
+        var nested = node.querySelectorAll(THINK_ROW_SELECTOR)
+        for (var k = 0; k < nested.length; k += 1) touchedRows.add(nested[k])
+      }
+    }
+    if (touchedRows.size === known) return
+    if (scanQueued) return
+    scanQueued = true
+    requestAnimationFrame(function () {
+      scanQueued = false
+      var rows = Array.from(touchedRows)
+      touchedRows.clear()
+      syncRows(rows)
+    })
+  })
+  observer.observe(document.body || document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['data-state', 'data-expanded'],
+  })
+  document.addEventListener('click', rememberReaderTouched, true)
+  document.addEventListener('keydown', rememberReaderTouched, true)
+  syncEveryRow()
+
+  return function () {
+    observer.disconnect()
+    document.removeEventListener('click', rememberReaderTouched, true)
+    document.removeEventListener('keydown', rememberReaderTouched, true)
+  }
+}
+
+/* ---- 过程组自动开合 ---- */
+
+/** 组头那个开合控件。 */
+var HEADER_SELECTOR = 'button[data-process-activity]'
+/** dsh 把组头标签与实时细节接起来用的分隔符（中英文都是它）。 */
+var DETAIL_SEPARATOR = ' · '
+/** dsh 的 TextShimmer 给每个字符留的渐变半宽。 */
+var SHIMMER_PIXELS_PER_CHARACTER = 8
+/** 这一段过程已经结束，最终正文该出来了。 */
+var CLOSED = 'closed'
+
+/**
+ * 给整页安装过程组的自动展开与收起。
+ *
+ * 阶段看组头里有没有 shimmer（dsh 只在过程段还没结束时挂它）；开合看组体的 hidden
+ * （收起时是 hidden="until-found"）。「详细」与「完全展开」两档不收纳组体，判据是组根上的
+ * data-group-expanded-mode——这两档里组头仍在 DOM，只是被裹进一个带 hidden 的壳。
+ */
+function installProcessFold(deferCollapse) {
+  var touchedIn = new WeakMap()
+  var attemptedIn = new WeakMap()
+  var scanQueued = false
+
+  var syncGroups = function (groups) {
+    for (var i = 0; i < groups.length; i += 1) {
+      var group = groups[i]
+      if (!group.isConnected) continue
+      if (group.closest(MOTION_ROW_SELECTOR) !== null) continue
+      if (group.hasAttribute(PROCESS_EXPANDED_MODE_ATTRIBUTE)) continue
+      var header = group.querySelector(HEADER_SELECTOR)
+      var body = group.querySelector(PROCESS_BODY_SELECTOR)
+      if (!(header instanceof HTMLElement) || body === null) continue
+      var phase = header.querySelector(SHIMMER_SELECTOR) === null ? CLOSED : RUNNING_STATE
+      if (phase === CLOSED && deferCollapse()) continue
+      var headerText = header.textContent || ''
+      var separatorAt = headerText.indexOf(DETAIL_SEPARATOR)
+      var detailed = separatorAt >= 0
+      group.toggleAttribute(LIVE_DETAIL_ATTRIBUTE, detailed)
+      group.toggleAttribute(OPEN_ATTRIBUTE, !body.hasAttribute('hidden'))
+      if (detailed) {
+        var label = headerText.slice(0, separatorAt)
+        if (header.getAttribute(LABEL_ATTRIBUTE) !== label) header.setAttribute(LABEL_ATTRIBUTE, label)
+        if (header.getAttribute('aria-label') !== label) header.setAttribute('aria-label', label)
+        var spread = String(label.length * SHIMMER_PIXELS_PER_CHARACTER) + 'px'
+        if (header.style.getPropertyValue(LABEL_SPREAD_PROPERTY) !== spread) {
+          header.style.setProperty(LABEL_SPREAD_PROPERTY, spread)
+        }
+      } else {
+        header.removeAttribute('aria-label')
+      }
+      if (touchedIn.get(group) === phase) continue
+      if (body.hasAttribute('hidden') === (phase === CLOSED)) continue
+      if (attemptedIn.get(group) === phase) continue
+      attemptedIn.set(group, phase)
+      var previousFocus = document.activeElement
+      var scroller = header.closest(CONVERSATION_SCROLL_SELECTOR)
+      var scrollTop = scroller === null ? null : scroller.scrollTop
+      var wasAtBottom = scroller !== null &&
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= FOLLOW_THRESHOLD_PX
+      beginProgrammaticToggle()
+      try {
+        header.click()
+      } finally {
+        endProgrammaticToggle()
+      }
+      if (scroller !== null && scrollTop !== null && scroller.scrollTop !== scrollTop) {
+        scroller.scrollTop = wasAtBottom ? scroller.scrollHeight : scrollTop
+      }
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+        previousFocus.focus({ preventScroll: true })
+      }
+      if (document.activeElement === header) header.blur()
+    }
+  }
+
+  var syncEveryGroup = function () {
+    syncGroups(document.querySelectorAll(PROCESS_GROUP_SELECTOR))
+  }
+
+  var rememberReaderTouched = function (event) {
+    if (isProgrammaticToggle()) return
+    var target = event.target
+    if (!(target instanceof Element)) return
+    var group = target.closest(PROCESS_GROUP_SELECTOR)
+    if (group === null) return
+    var header = group.querySelector(HEADER_SELECTOR)
+    touchedIn.set(group, header !== null && header.querySelector(SHIMMER_SELECTOR) !== null ? RUNNING_STATE : CLOSED)
+  }
+
+  var touchedGroups = new Set()
+
+  var observer = new MutationObserver(function (records) {
+    var known = touchedGroups.size
+    for (var i = 0; i < records.length; i += 1) {
+      var record = records[i]
+      var target = record.target
+      var element = target instanceof Element ? target : target.parentElement
+      var group = element ? element.closest(PROCESS_GROUP_SELECTOR) : null
+      if (group !== null) touchedGroups.add(group)
+      for (var j = 0; j < record.addedNodes.length; j += 1) {
+        var node = record.addedNodes[j]
+        if (!(node instanceof HTMLElement)) continue
+        if (node.matches(PROCESS_GROUP_SELECTOR)) touchedGroups.add(node)
+        var nested = node.querySelectorAll(PROCESS_GROUP_SELECTOR)
+        for (var k = 0; k < nested.length; k += 1) touchedGroups.add(nested[k])
+      }
+    }
+    if (touchedGroups.size === known) return
+    if (scanQueued) return
+    scanQueued = true
+    requestAnimationFrame(function () {
+      scanQueued = false
+      var groups = Array.from(touchedGroups)
+      touchedGroups.clear()
+      syncGroups(groups)
+    })
+  })
+  observer.observe(document.body || document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['data-shimmer', 'hidden', PROCESS_EXPANDED_MODE_ATTRIBUTE, 'data-chat-motion'],
+    characterData: true,
+  })
+  document.addEventListener('click', rememberReaderTouched, true)
+  document.addEventListener('keydown', rememberReaderTouched, true)
+  syncEveryGroup()
+
+  return function () {
+    observer.disconnect()
+    document.removeEventListener('click', rememberReaderTouched, true)
+    document.removeEventListener('keydown', rememberReaderTouched, true)
+  }
+}
+
+/* ---- 卷帘门 ---- */
+
+/** 卷帘门的时长，取侧栏 AnimatedRows 的同档值。 */
+var ROLL_MS = 200
+/** 可见段占整个卷帘门时长的多少；剩下那一小段留给视口外的那一截高度。 */
+var VISIBLE_SHARE = 0.9
+/** 超过这个年纪的意图不再可信。 */
+var INTENT_TTL_MS = 500
+/** 其余可开合的控件（过程组头等）。 */
+var TOGGLE_SELECTOR = '[aria-expanded]'
+/** 弹出层控件（菜单、对话框、列表）：它们开的不是折叠体。 */
+var POPUP_SELECTOR = '[aria-haspopup]'
+/** 整块跳过的控件：轮次头与轮次触发通知开合的是整轮内容。 */
+var SKIPPED_CONTROL_SELECTOR = '[data-turn-process], [data-turn-trigger]'
+/** 撤掉收起动画之前最多等 React 几帧。 */
+var SHUT_CONFIRM_FRAMES = 3
+/** 这一轮折叠的意图监听活多久。 */
+var FOLD_WATCH_TTL_MS = INTENT_TTL_MS + ROLL_MS + FOLLOW_LOOK_TOTAL_MS
+/** 卷帘门跑完之后再多算一会儿「位置归动画管」。 */
+var FOLD_BUSY_GRACE_MS = 50
+/** 两帧隔得超过这么久，就认为中间主线程被占住过。 */
+var FRAME_GAP_LIMIT_MS = 25
+/** 还没量到这块屏幕的帧间隔时，按 60 Hz 的一帧算。 */
+var NOMINAL_FRAME_MS = 16.7
+
+/** 卷帘门排到哪一刻为止；这一段时间里位置归动画管。 */
+var foldBusyUntil = 0
+
+/** 卷帘门正在跑：位置在这一段里归动画管，跟随补位要让路。 */
+function isFoldGlideBusy() {
+  return performance.now() < foldBusyUntil
+}
+
+function markFoldBusy() {
+  foldBusyUntil = performance.now() + ROLL_MS + FOLD_BUSY_GRACE_MS
+}
+
+/**
+ * 装上折叠位移。只有读者点击引起的变化会补动画。
+ *
+ * dsh 的 DisclosureRow 收起时把展开体整个卸掉，CSS 拿不到可过渡的旧值——高度动画在聊天区做不到。
+ * 所以这处在 DOM 之外接管：收起方向在捕获阶段拦住点击，让真身留在展开态，压它的高度，压到底再
+ * 把点击原样交还；展开方向等 React 插入之后在观察回调里把高度压回起点再拉起来。
+ */
+function installFoldGlide() {
+  if (typeof document === 'undefined' || document.body === null) return function () {}
+
+  var intent = null
+  var shutting = false
+  var replaying = false
+
+  var reduceMotion = function () {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }
+
+  /**
+   * 元素此刻露在读者眼里的那一段，它的终点距元素顶边有多远。
+   * 过程组体自己有窗口、视口是最外面那层，行程按这一段算，门才只走读者看得见的地方。
+   */
+  var visibleReachOf = function (element) {
+    var rect = element.getBoundingClientRect()
+    var bottom = Math.min(rect.bottom, window.innerHeight)
+    for (var ancestor = element.parentElement; ancestor !== null; ancestor = ancestor.parentElement) {
+      var style = window.getComputedStyle(ancestor)
+      if (style.overflowX === 'visible' && style.overflowY === 'visible') continue
+      bottom = Math.min(bottom, ancestor.getBoundingClientRect().bottom)
+    }
+    return Math.max(0, Math.min(rect.height, bottom - rect.top))
+  }
+
+  /**
+   * 控件的展开体。控件发 aria-controls 时以它为准，否则按卸载式那一族的形状取「控件所在的折叠根
+   * 里最后那个孩子」。返回 null 说明这个控件当前是收起的。
+   */
+  var expandedBodyOf = function (control) {
+    var controls = control.getAttribute('aria-controls')
+    if (controls !== null) {
+      var target = document.getElementById(controls)
+      return target instanceof HTMLElement ? target : null
+    }
+    var row = control.closest(DISCLOSURE_HEADER_SELECTOR) || control
+    var last = row.parentElement ? row.parentElement.lastElementChild : null
+    return last instanceof HTMLElement && last !== row ? last : null
+  }
+
+  /**
+   * 控件控制的过程组体。只有组头拿 aria-controls 指着组体，组里的成员行不发这个属性——
+   * 「控件住在过程组里」不等于「控件是组头」。
+   */
+  var processBodyOf = function (control) {
+    var controls = control.getAttribute('aria-controls')
+    if (controls === null) return null
+    var target = document.getElementById(controls)
+    return target instanceof HTMLElement && target.matches(PROCESS_BODY_SELECTOR) ? target : null
+  }
+
+  /** 读者此刻是不是贴着会话底部。 */
+  var controlAtBottom = function (control) {
+    var scroller = control.closest(CONVERSATION_SCROLL_SELECTOR)
+    if (scroller === null) return false
+    return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= FOLLOW_THRESHOLD_PX
+  }
+
+  /** 挂一份「读者有没有自己接管滚动」的监听，只活到这一轮折叠收尾为止。 */
+  var watchFold = function (atBottom) {
+    var moved = false
+    var note = function (event) {
+      if (isReaderScrollIntent(event)) moved = true
+    }
+    var types = ['wheel', 'touchstart', 'pointerdown', 'keydown']
+    for (var i = 0; i < types.length; i += 1) document.addEventListener(types[i], note, true)
+    var stop = function () {
+      for (var j = 0; j < types.length; j += 1) document.removeEventListener(types[j], note, true)
+    }
+    window.setTimeout(stop, FOLD_WATCH_TTL_MS)
+    return { atBottom: atBottom, moved: function () { return moved }, stop: stop }
+  }
+
+  /** 把拦下来的那次点击原样交给 React。重放期间不再拦，也不再起收起动画。 */
+  var replay = function (control) {
+    shutting = false
+    replaying = true
+    try {
+      control.click()
+    } finally {
+      replaying = false
+    }
+  }
+
+  /** 折叠收尾：折叠开始那一刻贴着底部的读者，收尾时把滚动位置交还给跟随。 */
+  var handBackFollow = function (watch) {
+    if (!watch.atBottom) {
+      watch.stop()
+      return
+    }
+    ensureFollowTail({
+      stillWanted: function () { return !watch.moved() },
+      onSettled: function () { watch.stop() },
+    })
+  }
+
+  /** 折叠收尾的入口：动画走完再看一眼跟随。 */
+  var settleAfterFold = function (watch, roll) {
+    if (!roll) {
+      window.setTimeout(function () { handBackFollow(watch) }, ROLL_MS)
+      return
+    }
+    var settle = function () { handBackFollow(watch) }
+    roll.finished.then(settle, settle)
+  }
+
+  /**
+   * 主线程被占住的那几帧不算进卷帘门的时间：卡住之后 WAAPI 会按墙上时间直接跳到「本该到的地方」，
+   * 这里每帧看一眼帧间隔，隔得太久就把动画的当前时间拨回上一眼再往前一格。
+   */
+  var holdThroughStalls = function (roll) {
+    var lastFrameAt = 0
+    var lastTime = 0
+    var frameInterval = NOMINAL_FRAME_MS
+    var timeOf = function () {
+      var time = roll.currentTime
+      return typeof time === 'number' ? time : 0
+    }
+    var look = function (now) {
+      if (roll.playState !== 'running') return
+      var gap = lastFrameAt === 0 ? 0 : now - lastFrameAt
+      if (gap > FRAME_GAP_LIMIT_MS) {
+        var resumeAt = lastTime + frameInterval
+        var skipped = timeOf() - resumeAt
+        if (skipped > 0) {
+          roll.currentTime = resumeAt
+          foldBusyUntil += skipped
+        }
+      } else if (gap > 0) {
+        frameInterval = gap
+      }
+      lastFrameAt = now
+      lastTime = timeOf()
+      requestAnimationFrame(look)
+    }
+    requestAnimationFrame(look)
+  }
+
+  /** 等 React 把这次折叠落到 DOM 上，再撤掉动画与内联样式。 */
+  var confirmCollapsed = function (settled, done, attempt) {
+    var tries = attempt || 0
+    if (settled() || tries >= SHUT_CONFIRM_FRAMES) {
+      done()
+      return
+    }
+    requestAnimationFrame(function () {
+      confirmCollapsed(settled, done, tries + 1)
+    })
+  }
+
+  /** 高度动画开工前的记账：关上裁剪、把 height 按 border-box 解释、挂上「门正在走」的标记。 */
+  var beginHeightClip = function (target) {
+    var previousOverflow = target.style.overflow
+    var previousBoxSizing = target.style.boxSizing
+    target.style.overflow = 'hidden'
+    target.style.boxSizing = 'border-box'
+    target.setAttribute(ROLLING_ATTRIBUTE, '')
+    return function () {
+      target.style.overflow = previousOverflow
+      target.style.boxSizing = previousBoxSizing
+      target.removeAttribute(ROLLING_ATTRIBUTE)
+    }
+  }
+
+  /** 卷帘门拉开：高度从起点逐帧长到全高，可见段占 VISIBLE_SHARE 的时长。 */
+  var rollOpen = function (target, from) {
+    markFoldBusy()
+    var height = target.getBoundingClientRect().height
+    if (height <= from) return null
+    var travel = Math.max(from, visibleReachOf(target))
+    var restore = beginHeightClip(target)
+    var growing = target.animate(
+      travel >= height
+        ? [{ height: String(from) + 'px' }, { height: String(height) + 'px' }]
+        : [
+            { height: String(from) + 'px', offset: 0, easing: 'ease-out' },
+            { height: String(travel) + 'px', offset: VISIBLE_SHARE, easing: 'linear' },
+            { height: String(height) + 'px', offset: 1 },
+          ],
+      { duration: ROLL_MS, easing: 'ease-out' },
+    )
+    holdThroughStalls(growing)
+    growing.onfinish = function () {
+      growing.cancel()
+      restore()
+    }
+    return growing
+  }
+
+  /** 卷帘门收回：动真身，不克隆。压到终点再放行点击，React 这才收拢。 */
+  var rollShut = function (fold) {
+    markFoldBusy()
+    var height = fold.target.getBoundingClientRect().height
+    var release = window.setTimeout(function () {
+      shutting = false
+    }, ROLL_MS + 200)
+    if (height <= fold.floor) {
+      window.clearTimeout(release)
+      replay(fold.control)
+      settleAfterFold(fold.watch)
+      return
+    }
+    var travel = Math.max(fold.floor, visibleReachOf(fold.target))
+    var restore = beginHeightClip(fold.target)
+    var shrinking = fold.target.animate(
+      travel >= height
+        ? [{ height: String(height) + 'px' }, { height: String(fold.floor) + 'px' }]
+        : [
+            { height: String(height) + 'px', offset: 0, easing: 'linear' },
+            { height: String(travel) + 'px', offset: 1 - VISIBLE_SHARE, easing: 'ease-out' },
+            { height: String(fold.floor) + 'px', offset: 1 },
+          ],
+      { duration: ROLL_MS, easing: 'ease-out', fill: 'forwards' },
+    )
+    holdThroughStalls(shrinking)
+    shrinking.onfinish = function () {
+      window.clearTimeout(release)
+      replay(fold.control)
+      confirmCollapsed(fold.collapsed, function () {
+        shrinking.cancel()
+        restore()
+      })
+      settleAfterFold(fold.watch)
+    }
+  }
+
+  /** 展开方向的等待落地：React 插好展开体之后，把高度压回起点再拉起来。 */
+  var flush = function () {
+    var current = intent
+    intent = null
+    if (current === null) return
+    var watch = current.watch
+    if (Date.now() - current.takenAt > INTENT_TTL_MS || reduceMotion()) {
+      watch.stop()
+      return
+    }
+    if (current.groupRoot !== null && current.groupBody !== null) {
+      if (current.groupBody.hasAttribute('hidden')) {
+        watch.stop()
+        return
+      }
+      settleAfterFold(watch, rollOpen(current.groupRoot, current.collapsedHeight))
+      return
+    }
+    var body = expandedBodyOf(current.control)
+    if (body === null) {
+      watch.stop()
+      return
+    }
+    settleAfterFold(watch, rollOpen(body, 0))
+  }
+
+  var onClick = function (event) {
+    if (replaying) return
+    var target = event.target
+    if (!(target instanceof Element)) return
+    // 本组件自己的自动开合派发的是真正的 click：思考行要和读者的点击一样起动画，过程组不在此列
+    // （它一次扫描可能切换好几个组，而收起动画是全局互斥的，同时来的第二次点击会被吞掉）。
+    if (isProgrammaticToggle() && target.closest(THINK_ROW_SELECTOR) === null) return
+    if (target.closest(CHAT_FLOW_SELECTOR) === null) return
+    if (target.closest(POPUP_SELECTOR) !== null) return
+    if (shutting) {
+      event.stopPropagation()
+      event.preventDefault()
+      return
+    }
+    if (intent !== null) intent.watch.stop()
+    intent = null
+    var control = target.closest(DISCLOSURE_ROW_SELECTOR) || target.closest(TOGGLE_SELECTOR)
+    if (control === null) return
+    if (control.closest(MOTION_ROW_SELECTOR) !== null) return
+    if (control.closest(SKIPPED_CONTROL_SELECTOR) !== null) return
+    var groupBody = processBodyOf(control)
+    var groupRoot = groupBody && groupBody.parentElement
+      ? groupBody.parentElement.closest(PROCESS_GROUP_SELECTOR)
+      : null
+    var body = groupBody || expandedBodyOf(control)
+    // 展开方向：等 React 把展开体插进来。起点高度要在这一边量——此刻组根正是收起态。
+    if (body === null || body.hasAttribute('hidden')) {
+      intent = {
+        control: control,
+        groupBody: groupBody,
+        groupRoot: groupRoot,
+        collapsedHeight: groupRoot ? groupRoot.getBoundingClientRect().height : 0,
+        watch: watchFold(controlAtBottom(control)),
+        takenAt: Date.now(),
+      }
+      return
+    }
+    if (reduceMotion()) return
+    event.stopPropagation()
+    event.preventDefault()
+    shutting = true
+    var watch = watchFold(controlAtBottom(control))
+    var collapsed = groupBody !== null
+      ? function () { return groupBody.hasAttribute('hidden') }
+      : function () { return !body.isConnected }
+    rollShut({
+      target: groupRoot || body,
+      floor: groupRoot === null
+        ? 0
+        : Math.max(0, groupRoot.getBoundingClientRect().height - body.getBoundingClientRect().height),
+      collapsed: collapsed,
+      control: control,
+      watch: watch,
+    })
+  }
+
+  var observer = new MutationObserver(flush)
+  document.addEventListener('click', onClick, true)
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] })
+
+  return function () {
+    document.removeEventListener('click', onClick, true)
+    observer.disconnect()
+    if (intent !== null) intent.watch.stop()
+  }
+}
+
+/* ---- 工具行与思考行第一次出现时补一次跟随 ---- */
+
+/** 离底不超过这么多像素就算已经贴到底。 */
+var BOTTOM_SLACK_PX = 2
+/** 读者滚得动位置的那几种动作：来了就算接管。 */
+var MARK_EVENTS = ['wheel', 'keydown']
+/** 按下去本身不动位置的几种动作：只记下这一刻的位置。 */
+var PRESS_EVENTS = ['pointerdown', 'touchstart']
+
+/**
+ * 装上这一处：探针属性挂上，两个事件通道接上。
+ *
+ * 给这两族行挂一条 1 ms 的探针动画，animationstart 就是元素第一次被渲染时的一次性通知——
+ * 没有观察者、没有定时器、没有轮询，流式期间一个回调都不进。
+ */
+function installCallAppearFollow() {
+  var root = typeof document === 'undefined' ? null : document.documentElement
+  if (root === null) return function () {}
+  var takenOver = new WeakSet()
+  var pressedAt = new WeakMap()
+  var pending = new Set()
+  var frame = 0
+
+  var scrollerOf = function (row) {
+    return row.closest(PROCESS_BODY_SELECTOR) || row.closest(CONVERSATION_SCROLL_SELECTOR)
+  }
+
+  var follow = function (scroller) {
+    if (!scroller.isConnected) return
+    var pressed = pressedAt.get(scroller)
+    if (pressed !== undefined) {
+      pressedAt.delete(scroller)
+      if (Math.abs(scroller.scrollTop - pressed) > 0.5) takenOver.add(scroller)
+    }
+    var behind = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop
+    if (behind <= BOTTOM_SLACK_PX) {
+      takenOver.delete(scroller)
+      return
+    }
+    if (takenOver.has(scroller)) return
+    if (isFoldGlideBusy()) return
+    scroller.scrollTop = scroller.scrollHeight
+  }
+
+  var flushPending = function () {
+    frame = 0
+    pending.forEach(follow)
+    pending.clear()
+  }
+
+  var onAppear = function (event) {
+    if (!(event instanceof AnimationEvent) || event.animationName !== APPEAR_PROBE_NAME) return
+    var row = event.target
+    if (!(row instanceof Element)) return
+    var scroller = scrollerOf(row)
+    if (scroller === null) return
+    pending.add(scroller)
+    if (frame !== 0) return
+    frame = window.requestAnimationFrame(flushPending)
+  }
+
+  var onIntentMark = function (event) {
+    if (!isReaderScrollIntent(event)) return
+    var scroller = event.target instanceof Element ? scrollerOf(event.target) : null
+    if (scroller === null) return
+    takenOver.add(scroller)
+    pressedAt.delete(scroller)
+  }
+
+  var onIntentPress = function (event) {
+    if (!isReaderScrollIntent(event)) return
+    var scroller = event.target instanceof Element ? scrollerOf(event.target) : null
+    if (scroller === null) return
+    pressedAt.set(scroller, scroller.scrollTop)
+  }
+
+  root.setAttribute(FOLLOW_ATTRIBUTE, '')
+  document.addEventListener('animationstart', onAppear, true)
+  for (var i = 0; i < MARK_EVENTS.length; i += 1) {
+    document.addEventListener(MARK_EVENTS[i], onIntentMark, { capture: true, passive: true })
+  }
+  for (var j = 0; j < PRESS_EVENTS.length; j += 1) {
+    document.addEventListener(PRESS_EVENTS[j], onIntentPress, { capture: true, passive: true })
+  }
+
+  return function () {
+    if (frame !== 0) window.cancelAnimationFrame(frame)
+    frame = 0
+    pending.clear()
+    document.removeEventListener('animationstart', onAppear, true)
+    for (var k = 0; k < MARK_EVENTS.length; k += 1) document.removeEventListener(MARK_EVENTS[k], onIntentMark, true)
+    for (var l = 0; l < PRESS_EVENTS.length; l += 1) document.removeEventListener(PRESS_EVENTS[l], onIntentPress, true)
+    root.removeAttribute(FOLLOW_ATTRIBUTE)
+  }
+}
+
+/* ---- 样式 ---- */
+
+/** 展开体的入场：2px 上浮 + 淡入；卷帘门走的时候子元素按自然高度排好。 */
+var FOLD_MOTION_CSS = '\n' +
+  '/* 展开体的入场。选择器锚在 DisclosureRow 自己发的语义属性上，不认带 hash 的类名。 */\n' +
+  '@starting-style {\n' +
+  '  [data-chat-flow] :is([data-disclosure-header], [data-disclosure-row]) ~ *:not([data-disclosure-header] *, [data-turn-process-member] *, [data-turn-trigger] *) {\n' +
+  '    opacity: 0;\n' +
+  '    translate: 0 -2px;\n' +
+  '  }\n' +
+  '}\n' +
+  '\n' +
+  '[data-chat-flow] :is([data-disclosure-header], [data-disclosure-row]) ~ *:not([data-disclosure-header] *, [data-turn-process-member] *, [data-turn-trigger] *) {\n' +
+  '  transition: opacity 120ms ease-out, translate 120ms ease-out;\n' +
+  '}\n' +
+  '\n' +
+  '@media (prefers-reduced-motion: reduce) {\n' +
+  '  [data-chat-flow] :is([data-disclosure-header], [data-disclosure-row]) ~ *:not([data-disclosure-header] *, [data-turn-process-member] *, [data-turn-trigger] *) {\n' +
+  '    transition: none;\n' +
+  '  }\n' +
+  '}\n' +
+  '\n' +
+  '/* 卷帘门走的时候，门里的每一张卡片按自然高度排好，不被 flex 挤扁。 */\n' +
+  '[' + ROLLING_ATTRIBUTE + '] > * {\n' +
+  '  flex: none !important;\n' +
+  '}\n'
+
+/** 探针：工具调用行与思考行第一次被渲染时各响一次 animationstart。 */
+var FOLLOW_PROBE_CSS = '\n' +
+  '@keyframes ' + APPEAR_PROBE_NAME + ' {\n' +
+  '  from { opacity: 1; }\n' +
+  '  to { opacity: 1; }\n' +
+  '}\n' +
+  '\n' +
+  '[' + FOLLOW_ATTRIBUTE + '] [data-chat-flow] [data-chat-call-id],\n' +
+  '[' + FOLLOW_ATTRIBUTE + '] [data-chat-flow] [data-variant="think"] {\n' +
+  '  animation: ' + APPEAR_PROBE_NAME + ' 1ms linear;\n' +
+  '}\n'
+
+/** 轨迹页收掉输入区：dsh 把座位当浮层压在记录表上，这里让记录表铺到底。 */
+var TRAJECTORY_CSS = '\n' +
+  '[data-conversation-scroll]:has([data-conversation-composer-overlay]) > [data-composer-seat] {\n' +
+  '  display: none;\n' +
+  '}\n'
+
+/** 过程组组头与组体的两条规则：组体只许纵向滚；带实时细节的组头在组体展开时让位给标签。 */
+var GROUP_CSS = '\n' +
+  '/* 组体只该在纵向滚。dsh 只声明了 overflow-y，按规范 visible 会计算成 auto，于是它同时成了\n' +
+  '   横向滚动容器，内容只要横向多出一两个像素就长出横向滚动条。「详细」与「完全展开」两档走的是\n' +
+  '   简写 overflow: visible，本来就没有这个问题，所以这一条只认收纳档。 */\n' +
+  '[data-step-process]:not([data-group-expanded-mode]) [data-step-process-body] {\n' +
+  '  overflow-x: hidden;\n' +
+  '}\n' +
+  '\n' +
+  '/* 带实时细节的档位把细节接在组头标签后面，而那一段正是组内思考行正在出的字——组体开着的时候\n' +
+  '   两处一起出字。detail 与标签在同一个文本节点里，CSS 切不开，所以让原文本整块让位，改显示\n' +
+  '   process-fold 写在属性上的那半截标签。组体一收起，原文本立刻回来。 */\n' +
+  '[data-step-process][data-dshui-chat-live-detail][data-dshui-chat-open] button[data-process-activity] > [data-shimmer] {\n' +
+  '  display: none;\n' +
+  '}\n' +
+  '\n' +
+  '[data-step-process][data-dshui-chat-live-detail][data-dshui-chat-open] button[data-process-activity]::after {\n' +
+  '  content: attr(data-dshui-chat-label);\n' +
+  '  /* 组头是 flex 容器，原文本作为 flex 项带着这三个约束，替上来的文本要占同一格。 */\n' +
+  '  min-width: 0;\n' +
+  '  overflow: hidden;\n' +
+  '  text-overflow: ellipsis;\n' +
+  '  white-space: nowrap;\n' +
+  '}\n' +
+  '\n' +
+  '@keyframes dshui-chat-label-shimmer {\n' +
+  '  66.6667%, 100% { background-position: 0% center; }\n' +
+  '}\n' +
+  '\n' +
+  '/* 撑得起这道渐变的浏览器，才把文字交给背景去画。括号里必须是一个「属性: 值」声明——写成裸的\n' +
+  '   函数调用会被规范归入「未知的函数形式」而恒为假，整块规则静默跳过。 */\n' +
+  '@supports (color: color-mix(in oklab, currentColor 50%, transparent)) and ((-webkit-background-clip: text) or (background-clip: text)) {\n' +
+  '  [data-step-process][data-dshui-chat-live-detail][data-dshui-chat-open] button[data-process-activity]::after {\n' +
+  '    background-image: linear-gradient(\n' +
+  '      90deg,\n' +
+  '      currentColor calc(50% - var(--dshui-chat-label-spread, 0px)),\n' +
+  '      color-mix(in oklab, currentColor 50%, transparent),\n' +
+  '      currentColor calc(50% + var(--dshui-chat-label-spread, 0px))\n' +
+  '    );\n' +
+  '    background-position: 100% center;\n' +
+  '    background-repeat: no-repeat;\n' +
+  '    background-size: 250% 100%;\n' +
+  '    background-clip: text;\n' +
+  '    -webkit-background-clip: text;\n' +
+  '    -webkit-text-fill-color: transparent;\n' +
+  '    animation: dshui-chat-label-shimmer 1.5s cubic-bezier(0.33, 0, 0.67, 1) infinite;\n' +
+  '  }\n' +
+  '\n' +
+  '  @media (prefers-reduced-motion: reduce) {\n' +
+  '    [data-step-process][data-dshui-chat-live-detail][data-dshui-chat-open] button[data-process-activity]::after {\n' +
+  '      background-image: none;\n' +
+  '      -webkit-text-fill-color: currentColor;\n' +
+  '      animation: none;\n' +
+  '    }\n' +
+  '  }\n' +
+  '}\n'
+
+var CHAT_CSS = GROUP_CSS + FOLD_MOTION_CSS + FOLLOW_PROBE_CSS + TRAJECTORY_CSS
+
+/* ---- 装配 ---- */
+
+/**
+ * 读者把 dsh 的「收起时机」选成「下次发送时收起」时，这一段结束后的那一次收起归官方。
+ * 套件没有自己的配置表单，这里只去读 dsh 自己那一份；读不到就按默认档走。
+ */
+var deferCollapse = function () { return false }
+try {
+  rt.ctx.inject(['configForms'], function (scope) {
+    try {
+      var form = scope.configForms.get('ui-chat')
+      deferCollapse = function () {
+        try {
+          var snapshot = form.getSnapshot()
+          var value = snapshot && snapshot.value
+          return Boolean(value && value.collapseTiming === 'next-input')
+        } catch (error) {
+          return false
+        }
+      }
+    } catch (error) {
+      /* 没有这一份表单：保持默认档 */
+    }
+  })
+} catch (error) {
+  /* 没有 configForms 服务：保持默认档 */
+}
+
+rt.effect(function () {
+  var disposers = []
+  disposers.push(installReasoningFold())
+  disposers.push(installProcessFold(deferCollapse))
+  disposers.push(installFoldGlide())
+  disposers.push(installCallAppearFollow())
+  return function () {
+    for (var i = 0; i < disposers.length; i += 1) {
+      try {
+        disposers[i]()
+      } catch (error) {
+        rt.error(error)
+      }
+    }
+  }
+}, 'chat-fold: chat area')
+
+var removeSheet = rt.style('chat-fold', CHAT_CSS)
+rt.effect(function () {
+  return function () {
+    removeSheet()
+  }
+}, 'chat-fold: stylesheet')
+
+}

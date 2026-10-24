@@ -2,7 +2,7 @@
   "name": "dsh-ui-status-phrases",
   "version": "2.0.0",
   "private": true,
-  "description": "把回合状态行换成逐字打出的彩虹渐变短语。（dsh-ui-suite 组件）",
+  "description": "把回合状态行换成逐字打出的强调色渐变短语。（dsh-ui-suite 组件）",
   "keywords": [
     "dsh",
     "dsh-plugin",

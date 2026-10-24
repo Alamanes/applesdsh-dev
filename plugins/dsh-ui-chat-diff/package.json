@@ -1,0 +1,49 @@
+{
+  "name": "dsh-ui-chat-diff",
+  "version": "2.0.0",
+  "private": true,
+  "description": "run_code 里 write / edit 子调用的 diff 行与流式改动行数（dsh-ui-suite 组件）。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ui-suite",
+    "chat",
+    "diff",
+    "file-mutation",
+    "write",
+    "edit",
+    "run_code",
+    "tool-card"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "license": "MIT"
+}

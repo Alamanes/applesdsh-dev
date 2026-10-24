@@ -3,7 +3,7 @@
  *
  * Replaces the turn status line the harness shows while a turn runs
  * (en "Deep diving for 12s", zh "深度求索中，用时12秒") with a rotating phrase,
- * typed out one character at a time under a rainbow gradient.
+ * typed out one character at a time under a flowing accent gradient.
  *
  * Where the line lives on dsh 0.2.0:
  *
@@ -51,8 +51,11 @@ function dshuiComponent_status_phrases(rt) {
   const TYPE_SPEED_MS = 30
   /** Phrases to exclude when the shuffle bag refills, so two bags never collide. */
   const RECENT_LIMIT = 3
-  /** Rainbow palette and flow speed (upstream defaults; shared by both themes). */
-  const GRADIENT_COLORS = ['#ff5f6d', '#ffc371', '#ffdd55', '#7dff7d', '#5fd4ff', '#a78bfa', '#ff8adb']
+  /**
+   * Flow speed of the sweep (s). The colours are not here: the sheet derives
+   * them from `--dshui-brand`, so the gradient follows the theme's accent colour
+   * in both themes instead of a fixed rainbow palette.
+   */
   const GRADIENT_SPEED_S = 4
   /** Config caps: a huge paste must not stall rotation or the settings write. */
   const MAX_PHRASES = 500
@@ -65,7 +68,7 @@ function dshuiComponent_status_phrases(rt) {
   const LINE_CLASS = 'dsp-line'
   const TEXT_CLASS = 'dsp-text'
   const CLOCK_CLASS = 'dsp-clock'
-  const RAINBOW_CLASS = 'dsp-rainbow'
+  const ACCENT_CLASS = 'dsp-accent'
 
   /**
    * The host's turn-opening text and its "running + duration" text. Both are
@@ -245,7 +248,7 @@ function dshuiComponent_status_phrases(rt) {
   /**
    * `.dsp-line` follows dsh ≤0.1.6's `.turnStatus` (26px high / nowrap /
    * inline-flex / its own shimmer gradient); only the layout part is kept here,
-   * because the flowing gradient belongs to the rainbow class on the text span.
+   * because the flowing gradient belongs to the accent class on the text span.
    * The clock follows `.turnStatusClock` (13px, 8px gap, caption colour,
    * tabular-nums). The host's content font size and its delta are read through
    * its own `--dsh-content-*` variables, so the user's font scaling still
@@ -255,9 +258,14 @@ function dshuiComponent_status_phrases(rt) {
 .${LINE_CLASS}{display:inline-flex;align-items:center;flex:none;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;height:calc(26px + var(--dsh-content-font-delta,0px));font-family:var(--dshui-font-family);font-size:var(--dsh-content-font-size,var(--dshui-text-size-base));font-weight:var(--dshui-weight-medium);line-height:calc(22px + var(--dsh-content-font-delta,0px))}
 .${LINE_CLASS} > .${CLOCK_CLASS}{flex:none;margin-left:var(--dshui-space-4);font-weight:var(--dshui-weight-regular);font-size:var(--dsh-content-font-size-secondary,var(--dshui-text-size-md));font-variant-numeric:tabular-nums;color:var(--dshui-text-caption,currentColor);-webkit-text-fill-color:var(--dshui-text-caption,currentColor)}
 .${TEXT_CLASS}{display:inline-block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap}
-.${TEXT_CLASS}.${RAINBOW_CLASS}{background-image:linear-gradient(90deg,${GRADIENT_COLORS.join(', ')}, ${GRADIENT_COLORS[0]});background-size:200% 100%;background-repeat:repeat-x;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dsp-flow ${GRADIENT_SPEED_S}s linear infinite}
+.${TEXT_CLASS}.${ACCENT_CLASS}{--dsp-accent-lift:var(--dshui-brand);--dsp-accent-shade:var(--dshui-brand);background-image:linear-gradient(90deg,var(--dshui-brand),var(--dsp-accent-lift),var(--dshui-brand),var(--dsp-accent-shade),var(--dshui-brand));background-size:200% 100%;background-repeat:repeat-x;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dsp-flow ${GRADIENT_SPEED_S}s linear infinite}
+/* The sweep is drawn from the theme's own accent colour: `--dshui-brand` is the
+   brand token, and the two stops lift/sink it toward the surrounding text
+   colour, so the light theme darkens the accent and the dark theme lifts it.
+   Without `color-mix` the fallback above keeps a flat accent gradient. */
+@supports (color: color-mix(in oklab, currentColor 50%, transparent)){.${TEXT_CLASS}.${ACCENT_CLASS}{--dsp-accent-lift:color-mix(in oklab, var(--dshui-brand) 68%, var(--dshui-text-primary));--dsp-accent-shade:color-mix(in oklab, var(--dshui-brand) 86%, var(--dshui-text-primary))}}
 @keyframes dsp-flow{to{background-position:200% 0}}
-@media (prefers-reduced-motion:reduce){.${TEXT_CLASS}.${RAINBOW_CLASS}{animation:none;background-position:0 0}}
+@media (prefers-reduced-motion:reduce){.${TEXT_CLASS}.${ACCENT_CLASS}{animation:none;background-position:0 0}}
 .dsp-row{display:flex;align-items:flex-start;gap:var(--dshui-space-4);padding:var(--dshui-space-6) 0;border-bottom:var(--dshui-border-width) solid var(--dshui-border-2)}
 .dsp-rowText{display:flex;flex-direction:column;flex:1;gap:var(--dshui-space-2);min-width:0;padding-right:var(--dshui-space-7)}
 .dsp-title{color:var(--dshui-text-primary);font-size:var(--dshui-text-size-base);font-weight:var(--dshui-weight-regular);line-height:22px}
@@ -317,7 +325,7 @@ function dshuiComponent_status_phrases(rt) {
     const line = document.createElement('div')
     line.className = LINE_CLASS
     const text = document.createElement('span')
-    text.className = TEXT_CLASS + ' ' + RAINBOW_CLASS
+    text.className = TEXT_CLASS + ' ' + ACCENT_CLASS
     text.appendChild(document.createTextNode(''))
     line.appendChild(text)
     const clock = document.createElement('span')
@@ -612,7 +620,7 @@ function dshuiComponent_status_phrases(rt) {
   /** One locale dictionary (the row's own chrome). */
   const zh = {
     title: '状态行短语',
-    description: '每行一句,轮到哪句就替换掉宿主那句「深度求索中」。轮换间隔 10 秒,打字机逐字输出,文字跑彩虹流光。以 # 开头的行与空行忽略;整框留空则使用内置短语。',
+    description: '每行一句,轮到哪句就替换掉宿主那句「深度求索中」。轮换间隔 10 秒,打字机逐字输出,文字跑主题强调色的流光。以 # 开头的行与空行忽略;整框留空则使用内置短语。',
     placeholder: '正在深度求索…\n正在整理思路…',
     active: '当前生效',
     sentences: '句',
@@ -621,7 +629,7 @@ function dshuiComponent_status_phrases(rt) {
   }
   const en = {
     title: 'Status line phrases',
-    description: "One phrase per line; the active phrase replaces the host's “Deep diving…”. Rotation every 10s, typed out character by character under a rainbow sweep. Blank lines and lines starting with # are ignored; an empty box means the built-in list.",
+    description: "One phrase per line; the active phrase replaces the host's “Deep diving…”. Rotation every 10s, typed out character by character under an accent-colour sweep. Blank lines and lines starting with # are ignored; an empty box means the built-in list.",
     placeholder: '正在深度求索…\n正在整理思路…',
     active: 'Active',
     sentences: 'phrases',

@@ -1,0 +1,4 @@
+# dsh-user-memory: one row of its own bundle.
+- insert:
+    - id: dsh-user-memory
+      name: dsh-user-memory

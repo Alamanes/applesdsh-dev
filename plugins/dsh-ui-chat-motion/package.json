@@ -1,0 +1,50 @@
+{
+  "name": "dsh-ui-chat-motion",
+  "version": "2.0.0",
+  "private": true,
+  "description": "聊天区的动效与读数：插入符位移、缓存命中率转轮、上下文占用饼（dsh-ui-suite 组件）。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ui-suite",
+    "chat",
+    "caret",
+    "motion",
+    "cache-hit",
+    "context-meter",
+    "digit-reel",
+    "composer"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "license": "MIT"
+}

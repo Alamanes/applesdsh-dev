@@ -39,6 +39,9 @@ const JS_PACKAGES = {
   'dsh-ui-whale': 'whale',
   'dsh-ui-skill-explorer': 'skill-explorer',
   'dsh-ui-theme': 'theme',
+  'dsh-ui-chat-fold': 'chat-fold',
+  'dsh-ui-chat-motion': 'chat-motion',
+  'dsh-ui-chat-diff': 'chat-diff',
 }
 
 /** `dsh-ui-session-delete` -> `SESSION_DELETE`, the injected global's suffix. */
@@ -50,9 +53,22 @@ function factoryOf(key) {
   return 'dshuiComponent_' + key.replace(/-/g, '_')
 }
 
+/**
+ * 展开组件源码里的 include 标记：一条内容为 @include parts/xxx.js 的块注释。
+ *
+ * 大组件按界面拆成 src/parts/ 下的一文件一块；产物必须是单文件 classic script，
+ * 所以这里在构建时把分片贴进来，而不是运行期 import。
+ */
+function expandIncludes(pkg, source) {
+  return source.replace(/\/\* @include ([^*]+) \*\//g, (_, relative) => {
+    const path = join(PLUGINS, pkg, 'src', relative.trim())
+    return readFileSync(path, 'utf8').trimEnd()
+  })
+}
+
 function bundle(pkg, key) {
   const runtime = readFileSync(RUNTIME, 'utf8').trimEnd()
-  const component = readFileSync(join(PLUGINS, pkg, 'src', 'component.js'), 'utf8').trimEnd()
+  const component = expandIncludes(pkg, readFileSync(join(PLUGINS, pkg, 'src', 'component.js'), 'utf8')).trimEnd()
   const factory = factoryOf(key)
   const env = envOf(key)
 

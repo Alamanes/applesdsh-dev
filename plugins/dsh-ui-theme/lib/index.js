@@ -32,7 +32,7 @@ export const Config = Schema.object({
   theme: Schema.string()
     .default('default')
     .volatile()
-    .description('主题预设：default / whale / sakura / mint / dusk / amber'),
+    .description('主题预设：default / whale / sakura / mint / dusk / amber / pride'),
 })
 
 export function apply(ctx, config) {
