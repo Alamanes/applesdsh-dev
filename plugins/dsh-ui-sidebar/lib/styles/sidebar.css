@@ -1,14 +1,20 @@
 /* ==========================================================================
-   dsh-ui-copy — the sidebar quiet component
+   dsh-ui-sidebar — the sidebar quiet component
    --------------------------------------------------------------------------
-   Quiets the sidebar's New Session button. The shipped control is a bordered,
-   filled, centre-aligned call to action, so it outweighs every row beneath it;
-   this sheet repaints it as a quiet row — no border, no fill of its own, the
-   panel rows' hover wash, icon leading a left-aligned label.
+   Two jobs on the sidebar column:
+
+   1. Removes the "more" entry (记忆 / 更多 panel rows) that the 0.2.2 client
+      added under the brand row. The suite keeps the rows it wants and this
+      sheet hides the rest, so the column reads brand, New Session, work areas.
+
+   2. Quiets the New Session button. The shipped control is a bordered, filled,
+      centre-aligned call to action, so it outweighs every row beneath it; this
+      sheet repaints it as a quiet row — no border, no fill of its own, the
+      panel rows' hover wash, icon leading a left-aligned label.
 
    The box is also tighter than a panel row on purpose. `dsh-sidebar-foot-panels`
    moves the global panel rows out of the column, so this button is now the only
-   thing between the brand row and the session list; the shipped 36px box and
+   thing between the brand row and the session list; the shipped 38px box and
    its 12px bottom margin read as slack in that position, and both are trimmed
    below.
 
@@ -23,12 +29,13 @@
      than this file.
 
    Scope
-     Two locals of @deepseek-ai/dsh-client-ui-sidebar name the target: `_root`
-     marks the sidebar column and `_newSession` the button. The column's
-     `_collapsed` local is excluded, because the rail state already draws the
-     button as a 36px icon and owes nothing to this sheet. Each local is matched
-     in both `$="_x"` and `*="_x "` form, since a module local may be followed
-     by another class.
+     Selectors match the component's CSS-module *local* names in the
+     `$="_local"` / `*="_local "` pair, never the hashed prefix. The prefix is
+     rehashed on every client release while the locals stay put, so this sheet
+     survives upgrades that rename nothing it targets. `_newSession` is unique
+     to @deepseek-ai/dsh-client-ui-sidebar, and the `_collapsed` ancestor
+     exclusion keeps the rail state alone: it already draws the button as a
+     36px icon and owes nothing to this sheet.
 
    Why !important
      This sheet is inlined before the component stylesheets, which are CSS
@@ -37,24 +44,35 @@
      direct property override carries one.
 
    Maintenance
-     `_3WPZCG_` is the CSS-module prefix of the sidebar package, taken from
-     0.2.1-rc.2. A release that rehashes it costs the quiet styling and nothing
-     else: no layout depends on these rules. Realigning is one prefix swap.
      The values below mirror the `_panelRow` / `_panelList` locals of the same
-     sheet, so the button matches the rows it sits above.
+     sheet, so the button matches the rows it sits above. When a release changes
+     that geometry, realign here; a hashed-prefix change costs nothing.
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Panel rows
+   The client renders 记忆 and 更多 as two `_panelRow` buttons inside a
+   `_moreAnchor` wrapper. The wrapper is display:none rather than the row, so
+   the anchor never takes a flex slot and the remaining row keeps the list's own
+   2px gap.
+   -------------------------------------------------------------------------- */
+
+[class$="_moreAnchor"],
+[class*="_moreAnchor "] {
+  display: none !important;
+}
 
 /* --------------------------------------------------------------------------
    Button geometry
    32px tall, 4px/8px padding, an 8px gap, no border, no fill of its own. The
    height is the shipped 22px line plus the padding; `min-height` follows it, or
-   the shipped 36px floor would hold the box open. `margin-bottom` replaces the
+   the shipped 38px box would hold the frame open. `margin-bottom` replaces the
    column's own 12px, which was three times the 4px a panel row leaves between
    rows.
    -------------------------------------------------------------------------- */
 
-:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
-  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) {
+[class$="_newSession"]:not([class*="_collapsed"] *),
+[class*="_newSession "]:not([class*="_collapsed"] *) {
   height: 32px !important;
   min-height: 32px !important;
   padding: var(--dshui-space-2) var(--dshui-space-4) !important;
@@ -73,15 +91,15 @@
 
 /* Hover is the one wash the panel rows use. It replaces the elevated and
    floating fills above at every theme and platform. */
-:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
-  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]):hover {
+[class$="_newSession"]:not([class*="_collapsed"] *):hover,
+[class*="_newSession "]:not([class*="_collapsed"] *):hover {
   background: var(--dshui-surface-hover) !important;
 }
 
 /* The panel rows carry a focus ring inset by 2px; the shipped button shipped
    without one, which is reason enough to add it. */
-:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
-  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]):focus-visible {
+[class$="_newSession"]:not([class*="_collapsed"] *):focus-visible,
+[class*="_newSession "]:not([class*="_collapsed"] *):focus-visible {
   outline: var(--dshui-ring-width) solid var(--dshui-border-focus);
   outline-offset: -2px;
 }
@@ -93,15 +111,15 @@
    shortcut hint keeps its own room.
    -------------------------------------------------------------------------- */
 
-:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
-  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) [class*="_newSessionContent"] {
+[class$="_newSession"]:not([class*="_collapsed"] *) [class*="_newSessionContent"],
+[class*="_newSession "]:not([class*="_collapsed"] *) [class*="_newSessionContent"] {
   width: auto !important;
   justify-content: flex-start !important;
   gap: var(--dshui-space-4) !important;
 }
 
-:is([class$="_3WPZCG_root"], [class*="_3WPZCG_root "]):not([class*="_3WPZCG_collapsed"])
-  :is([class$="_3WPZCG_newSession"], [class*="_3WPZCG_newSession "]) [class*="_newSessionContent"] > svg {
+[class$="_newSession"]:not([class*="_collapsed"] *) [class*="_newSessionContent"] > svg,
+[class*="_newSession "]:not([class*="_collapsed"] *) [class*="_newSessionContent"] > svg {
   width: 16px !important;
   height: 16px !important;
 }
