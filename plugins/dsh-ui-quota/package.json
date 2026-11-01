@@ -2,7 +2,12 @@
   "name": "dsh-ui-quota",
   "version": "2.0.0",
   "private": true,
-  "description": "模型选择器旁的三枚额度环与设置页的额度明细。独立插件，原 dsh-ui-suite 组件。",
+  "description": "设置页的用量视图：Command Code 额度卡片与每日 Token 热力图。独立插件，原 dsh-ui-suite 组件。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alamanes/applesdsh-dev.git",
+    "directory": "plugins/dsh-ui-quota"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
