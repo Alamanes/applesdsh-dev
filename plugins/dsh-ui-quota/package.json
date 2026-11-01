@@ -1,6 +1,6 @@
 {
   "name": "dsh-ui-quota",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "设置页的用量视图：Command Code 额度卡片与每日 Token 热力图。独立插件，原 dsh-ui-suite 组件。",
   "repository": {
