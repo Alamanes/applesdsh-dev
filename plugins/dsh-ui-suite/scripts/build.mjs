@@ -131,10 +131,18 @@ window.__ModuleLoader__.load({
 }
 
 function main() {
-  const mode = process.argv[2]
+  const argv = process.argv.slice(2)
+  const mode = argv[0] === '--check' || argv[0] === 'verify' ? argv[0] : undefined
+  // Optional package filter: `node scripts/build.mjs dsh-ui-status-phrases`
+  // rebuilds exactly that package and nothing else. A full run touches every
+  // bundle, which is how one component's stale source (a backtick inside a CSS
+  // template) took the whole app down. A targeted run is the safe default when
+  // only one package changed.
+  const only = (mode === undefined ? argv : argv.slice(1)).filter((entry) => !entry.startsWith('-'))
   let stale = 0
 
   for (const [pkg, key] of Object.entries(JS_PACKAGES)) {
+    if (only.length > 0 && !only.includes(pkg)) continue
     const target = join(PLUGINS, pkg, 'lib', 'client.js')
     const built = bundle(pkg, key)
     const current = existsSync(target) ? readFileSync(target, 'utf8') : ''
@@ -157,7 +165,8 @@ function main() {
       console.error(`\n${stale} package(s) need a rebuild: node scripts/build.mjs`)
       process.exit(1)
     }
-    console.log(`${Object.keys(JS_PACKAGES).length} bundles up to date`)
+    const checked = only.length > 0 ? only.length : Object.keys(JS_PACKAGES).length
+    console.log(`${checked} bundles up to date`)
   }
 }
 

@@ -610,6 +610,36 @@ function install(ctx) {
     ctx.logger.info('cc-quota: automatic catalog checks are off (COMMANDCODE_CATALOG_WATCH_MS=0)')
   }
 
+  // Daily token activity for the settings page's heat map. Its own route and its
+  // own cache: this reads the local session logs, so it costs the Command Code
+  // account nothing and must never wait behind the quota cache.
+  let activityCache
+  const activityServe = async (request) => {
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return new Response('body is not JSON', { status: 400 })
+    }
+    const message = body !== null && typeof body === 'object' ? body : undefined
+    const rpcId = typeof message?.rpcId === 'string' ? message.rpcId : 'invalid-request'
+    const now = Date.now()
+    if (activityCache === undefined || now - activityCache.at > ACTIVITY_CACHE_MS) {
+      const persistence = optionalService(ctx, 'sessionPersistence')
+      if (persistence === undefined) {
+        return envelope(rpcId, { ok: true, value: { days: [], unavailable: true, sessions: 0 } })
+      }
+      activityCache = { at: now, value: await collectDailyTokens(persistence) }
+    }
+    return envelope(rpcId, { ok: true, value: activityCache.value })
+  }
+  ctx.effect(() => ctx.connection.fetch.register({
+    path: ACTIVITY_ROUTE_PATH,
+    methods: ['POST'],
+    requestBody: 'buffered',
+    fetch: activityServe,
+  }), 'ui-copy/quota: activity route')
+
   ctx.logger.info(`cc-quota: serving quota reports on ${ROUTE_PATH} (alias ${LEGACY_ROUTE_PATH})`)
 }
 
@@ -760,7 +790,10 @@ function applyComponent(ctx, config) {
     console.warn('[ui-copy/quota] ctx.inject is unavailable; quota routes not registered')
     return
   }
-  ctx.inject(['connection'], start)
+  // `sessionPersistence` joins the wait only for the heat map: reading an
+  // uninjected service off the context throws in this host, so the collector
+  // needs the injection even though the quota route itself never touches it.
+  ctx.inject(['connection', 'sessionPersistence'], start)
 }
 
 /* ---- suite row plumbing ---------------------------------------------- */
@@ -787,6 +820,152 @@ function injectSuiteRow(ctx, config) {
     }
     if (tokens !== null) table.push({ kind: 'style', text: tokens })
   })
+}
+
+/* ---- daily token activity ---------------------------------------------- */
+
+/** Endpoint the settings page's heat map posts to. */
+const ACTIVITY_ENDPOINT = 'cc-quota/activity'
+
+/** Path the exact Fetch registry matches for the heat map. */
+const ACTIVITY_ROUTE_PATH = `${CHANNEL}/${ACTIVITY_ENDPOINT}`
+
+/**
+ * Serve a cached activity answer for this long. The scan walks every persisted
+ * session, so a page that remounts must not pay for it twice; a minute is short
+ * enough that today's cell keeps up with the work being done.
+ */
+const ACTIVITY_CACHE_MS = 60_000
+
+/** Days of history the heat map asks for: 53 weeks of cells. */
+const ACTIVITY_DAYS = 371
+
+/**
+ * A service that may or may not be composed, never a throw.
+ *
+ * The heat map is auxiliary: a profile without session persistence should lose
+ * the graph, not the whole section, and `ctx.get` is how the host spells
+ * "optional dependency".
+ */
+function optionalService(ctx, name) {
+  try {
+    return ctx.get?.(name)
+  } catch {
+    return undefined
+  }
+}
+
+/** Local calendar day key, matching what the browser builds from the same rows. */
+function dayKeyOf(value) {
+  const ms = typeof value === 'number' ? value : typeof value === 'string' ? Date.parse(value) : Number.NaN
+  if (!Number.isFinite(ms)) return undefined
+  const date = new Date(ms)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Every event of one persisted session, across both persistence seams.
+ *
+ * 0.1.3+ exposes `open`/`read`/`close`; rc.1 only has `inspect`. Both yield
+ * the same event list, so the fold below never learns which seam answered.
+ */
+async function readSessionEvents(persistence, id) {
+  if (typeof persistence.open === 'function') {
+    const handle = await persistence.open(id, 'read')
+    try {
+      const events = []
+      let offset = 0
+      const PAGE = 500
+      for (;;) {
+        const slice = await handle.read(offset, PAGE)
+        const page = slice !== null && typeof slice === 'object' && Array.isArray(slice.events) ? slice.events : []
+        if (page.length === 0) break
+        for (const event of page) events.push(event)
+        offset += page.length
+      }
+      return events
+    } finally {
+      await handle.close().catch(() => {})
+    }
+  }
+  if (typeof persistence.inspect === 'function') {
+    const inspection = await persistence.inspect(id)
+    return inspection !== null && typeof inspection === 'object' && Array.isArray(inspection.events) ? inspection.events : []
+  }
+  return []
+}
+
+/**
+ * Per-day token totals across every persisted session.
+ *
+ * Backfill-shaped on purpose: the heat map has to show history this process
+ * never watched happen, so the whole log is replayed. Each completed model call
+ * owns one (turn, step) key within its session and lands exactly once, so a
+ * replayed session never double counts. Token totals are provider-inclusive —
+ * uncached input, output, cache reads and cache writes — which is the same
+ * number the model provider reports for those calls.
+ *
+ * @param persistence - the host's session persistence service.
+ * @returns the sorted daily series plus how many sessions were read.
+ */
+async function collectDailyTokens(persistence) {
+  const days = new Map()
+  const folded = new Map()
+  let sessions = 0
+  let raw
+  try {
+    const useAlphaList = typeof persistence.open === 'function'
+    raw = useAlphaList ? await persistence.list(undefined) : await persistence.list()
+  } catch (error) {
+    return { days: [], sessions, error: error instanceof Error ? error.message : String(error) }
+  }
+  const headers = (Array.isArray(raw) ? raw : [])
+    .map((item) => (item !== null && typeof item === 'object' && item.header !== null && typeof item.header === 'object' && typeof item.header.id === 'string' ? item.header : item))
+    .filter((header) => header !== null && typeof header === 'object' && typeof header.id === 'string' && header.id !== '')
+
+  for (const header of headers) {
+    let events
+    try {
+      events = await readSessionEvents(persistence, header.id)
+    } catch {
+      continue
+    }
+    sessions += 1
+    for (const event of events) {
+      if (event === null || typeof event !== 'object' || event.type !== 'assistant/message') continue
+      const data = event.data
+      const usage = data !== null && typeof data === 'object' ? data.usage : undefined
+      if (usage === null || typeof usage !== 'object') continue
+      const tokens = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
+        + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0)
+      if (!(tokens > 0)) continue
+      const day = dayKeyOf(event.time)
+      if (day === undefined) continue
+      const turn = data.turn
+      const step = data.step
+      if (typeof turn === 'number' && typeof step === 'number') {
+        folded.set(`${header.id}:${turn}:${step}`, { day, tokens })
+      } else {
+        days.set(day, (days.get(day) ?? 0) + tokens)
+      }
+    }
+  }
+  for (const sample of folded.values()) {
+    days.set(sample.day, (days.get(sample.day) ?? 0) + sample.tokens)
+  }
+
+  const cutoff = new Date()
+  cutoff.setHours(0, 0, 0, 0)
+  cutoff.setDate(cutoff.getDate() - (ACTIVITY_DAYS - 1))
+  const from = dayKeyOf(cutoff.getTime())
+  const series = [...days.entries()]
+    .filter(([day]) => from === undefined || day >= from)
+    .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
+    .map(([day, tokens]) => ({ day, tokens }))
+  return { days: series, sessions }
 }
 
 /** Cordis entry: the suite row plumbing, then this package's own host body. */

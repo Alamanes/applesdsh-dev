@@ -2,7 +2,7 @@
   "name": "dsh-ui-quota",
   "version": "2.0.0",
   "private": true,
-  "description": "模型选择器旁的三枚额度环与设置页的额度明细。（dsh-ui-suite 组件）",
+  "description": "模型选择器旁的三枚额度环与设置页的额度明细。独立插件，原 dsh-ui-suite 组件。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -34,6 +34,9 @@
     "dsh": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true,

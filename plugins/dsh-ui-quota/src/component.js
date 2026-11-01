@@ -81,6 +81,8 @@ function dshuiComponent_quota(rt) {
    */
   const CHANNEL = '/api'
   const ENDPOINT = 'cc-quota/report'
+  /** Local session-log aggregate behind the usage page's heat map. */
+  const ACTIVITY_ENDPOINT = 'cc-quota/activity'
   /** Locale namespace this component owns. */
   const NS = 'cc-quota'
   /** Poll cadence: relaxed normally, tight once any window is near its cap. */
@@ -167,10 +169,23 @@ function dshuiComponent_quota(rt) {
       errNotFound: '当前套餐不含 API 权限',
       errGeneric: '读取失败',
 
+      // Usage page
+      usageTitle: '用量',
+      usageRefresh: '刷新',
+      usageMonthly: '月度额度',
+      usageRemaining: '剩余 {percent}%',
+      usageResetIn: '{time}后重置',
+      usageFigures: '{used} / {cap}',
+      usageCredits: 'Credits',
+      usageHeat: 'Token 用量',
+      usageHeatLess: '少',
+      usageHeatMore: '多',
+      usageHeatEmpty: '还没有会话记录',
+
       // Settings-panel section: the plan-level overview, the per-model table,
       // and every line that qualifies them. Nothing here may imply a number the
       // official site never published — see formatCount().
-      nav: '调用次数',
+      nav: '用量',
       title: '模型调用次数',
       intro: '当前套餐下，每个模型大概还能调用多少次。数字按官方的模型额度、单价和一次典型请求的用量换算，仅供参考。',
       loading: '正在读取官方次数表…',
@@ -230,8 +245,21 @@ function dshuiComponent_quota(rt) {
       errNotFound: 'this plan has no API access',
       errGeneric: 'could not read the account',
 
+      // Usage page
+      usageTitle: 'Usage',
+      usageRefresh: 'Refresh',
+      usageMonthly: 'Monthly credit',
+      usageRemaining: '{percent}% left',
+      usageResetIn: 'resets in {time}',
+      usageFigures: '{used} / {cap}',
+      usageCredits: 'Credits',
+      usageHeat: 'Token usage',
+      usageHeatLess: 'Less',
+      usageHeatMore: 'More',
+      usageHeatEmpty: 'No sessions yet',
+
       // Settings-panel section; see the zh block for the reasoning.
-      nav: 'Call counts',
+      nav: 'Usage',
       title: 'Model call counts',
       intro: 'Roughly how many calls each model allows on the current plan. Estimated from the official model allowance, token prices, and one typical request — a reference, not a limit.',
       loading: 'Reading the official call table…',
@@ -1156,6 +1184,22 @@ button:has(.ccq-navmark)>svg:first-child{display:none}
     )
   }
 
+  /** The settings nav mark for the usage page: three rising bars. */
+  function CcqUsageMark({ size = 16 }) {
+    return h('svg', {
+      width: size,
+      height: size,
+      viewBox: '0 0 16 16',
+      fill: 'none',
+      xmlns: 'http://www.w3.org/2000/svg',
+      'aria-hidden': 'true',
+    },
+      h('rect', { x: 2.4, y: 8.2, width: 2.7, height: 5.4, rx: 1, fill: 'currentColor', opacity: 0.42 }),
+      h('rect', { x: 6.65, y: 5, width: 2.7, height: 8.6, rx: 1, fill: 'currentColor', opacity: 0.7 }),
+      h('rect', { x: 10.9, y: 2.4, width: 2.7, height: 11.2, rx: 1, fill: 'currentColor' }),
+    )
+  }
+
   /**
    * The settings-panel section: what the current plan allows per model.
    *
@@ -1284,6 +1328,267 @@ button:has(.ccq-navmark)>svg:first-child{display:none}
     )
   }
 
+
+  const CREDITS_PER_DOLLAR = 100
+
+  const USAGE_CSS = `
+.ccq-u{display:flex;flex-direction:column;gap:var(--dshui-space-6)}
+.ccq-u-head{display:flex;align-items:center;justify-content:space-between;gap:var(--dshui-space-4)}
+.ccq-u-title{margin:0;font-size:var(--dshui-text-size-xl);font-weight:var(--dshui-weight-semibold);color:var(--dshui-text-primary);letter-spacing:var(--dshui-tracking-tight)}
+.ccq-u-refresh{height:var(--dshui-control-height-sm);padding:0 var(--dshui-space-4);border:var(--dshui-border-width-strong) solid var(--dshui-border-1);border-radius:var(--dshui-radius-pill);background:transparent;color:var(--dshui-text-secondary);font-size:var(--dshui-text-size-sm);cursor:pointer;transition:background var(--dshui-duration-fast) var(--dshui-ease-standard)}
+.ccq-u-refresh:hover:not(:disabled){background:var(--dshui-surface-hover);color:var(--dshui-text-primary)}
+.ccq-u-refresh:disabled{opacity:.45;cursor:default}
+.ccq-u-stack{display:flex;flex-direction:column;gap:var(--dshui-space-3)}
+.ccq-u-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--dshui-space-3)}
+.ccq-u-card{padding:var(--dshui-space-4) var(--dshui-space-5);border:var(--dshui-border-width-strong) solid var(--dshui-border-1);border-radius:var(--dshui-radius-lg);background:color-mix(in srgb,var(--dshui-surface-2) 58%,transparent)}
+.ccq-u-top{display:flex;align-items:baseline;justify-content:space-between;gap:var(--dshui-space-3)}
+.ccq-u-name{font-size:var(--dshui-text-size-sm);font-weight:var(--dshui-weight-medium);color:var(--dshui-text-primary)}
+.ccq-u-left{font-size:var(--dshui-text-size-sm);color:var(--dshui-text-secondary);font-variant-numeric:tabular-nums}
+.ccq-u-track{margin-top:var(--dshui-space-3);height:6px;border-radius:var(--dshui-radius-pill);background:color-mix(in srgb,var(--dshui-text-primary) 12%,transparent);overflow:hidden}
+.ccq-u-fill{display:block;height:100%;border-radius:inherit;background:var(--dshui-brand);transition:width var(--dshui-duration-slow) var(--dshui-ease-standard)}
+.ccq-u-fig{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:var(--dshui-space-2);margin-top:var(--dshui-space-2);font-size:var(--dshui-text-size-xs);color:var(--dshui-text-caption);font-variant-numeric:tabular-nums}
+.ccq-u-reset{margin-left:auto;color:var(--dshui-text-dimmed)}
+.ccq-u-unit{font-weight:var(--dshui-weight-semibold);color:var(--dshui-text-secondary);font-variant-numeric:tabular-nums}
+.ccq-u-heat-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--dshui-space-3)}
+.ccq-u-heat-title{margin:0;font-size:var(--dshui-text-size-md);font-weight:var(--dshui-weight-semibold);color:var(--dshui-text-primary)}
+.ccq-u-heat-sum{font-size:var(--dshui-text-size-xs);color:var(--dshui-text-caption);font-variant-numeric:tabular-nums}
+.ccq-u-heat-wrap{display:flex;gap:var(--dshui-space-2)}
+.ccq-u-weekdays{display:grid;grid-template-rows:repeat(7,12px);gap:3px;margin-top:16px;font-size:9px;line-height:12px;color:var(--dshui-text-dimmed);text-align:right;min-width:14px}
+.ccq-u-heat-body{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding-bottom:4px}
+.ccq-u-heat-body::-webkit-scrollbar{height:6px}
+.ccq-u-heat-body::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--dshui-text-primary) 18%,transparent);border-radius:3px}
+.ccq-u-months{display:flex;width:max-content;height:16px;font-size:10px;color:var(--dshui-text-dimmed)}
+.ccq-u-month{flex:none;overflow:hidden;white-space:nowrap}
+.ccq-u-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);gap:3px;width:max-content}
+.ccq-u-cell{width:12px;height:12px;border-radius:3px;background:color-mix(in srgb,var(--dshui-text-primary) 9%,transparent);transition:transform var(--dshui-duration-fast) var(--dshui-ease-standard)}
+.ccq-u-cell:hover{transform:scale(1.2)}
+.ccq-u-future{background:transparent}
+.ccq-u-l0{background:color-mix(in srgb,var(--dshui-text-primary) 9%,transparent)}
+.ccq-u-l1{background:color-mix(in srgb,var(--dshui-brand) 30%,transparent)}
+.ccq-u-l2{background:color-mix(in srgb,var(--dshui-brand) 55%,transparent)}
+.ccq-u-l3{background:color-mix(in srgb,var(--dshui-brand) 78%,transparent)}
+.ccq-u-l4{background:var(--dshui-brand)}
+.ccq-u-legend{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:var(--dshui-space-3);font-size:var(--dshui-text-size-xs);color:var(--dshui-text-caption)}
+.ccq-u-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.ccq-u-empty{padding:var(--dshui-space-6) 0;text-align:center;font-size:var(--dshui-text-size-sm);color:var(--dshui-text-dimmed)}
+.ccq-u-error{margin-top:var(--dshui-space-2);font-size:var(--dshui-text-size-sm);color:var(--dshui-danger)}
+`
+
+  function creditOf(dollars) {
+    return typeof dollars === 'number' && Number.isFinite(dollars) ? Math.round(dollars * CREDITS_PER_DOLLAR) : undefined
+  }
+
+  function creditText(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString('en-US') : '—'
+  }
+
+  function formatTokens(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
+    if (value >= 1e8) return (value / 1e8).toFixed(1) + ' 亿'
+    if (value >= 1e4) return (value / 1e4).toFixed(1) + ' 万'
+    return String(Math.round(value))
+  }
+
+  function coarseCountdown(timestamp) {
+    if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) return undefined
+    const minutes = Math.floor((timestamp - Date.now()) / 60_000)
+    if (minutes <= 0) return undefined
+    if (minutes < 60) return minutes + ' 分钟'
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return hours + ' 小时 ' + (minutes % 60) + ' 分'
+    return Math.floor(hours / 24) + ' 天 ' + (hours % 24) + ' 小时'
+  }
+
+  function localDayKey(date) {
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return date.getFullYear() + '-' + month + '-' + day
+  }
+
+  function heatLevel(tokens, max) {
+    if (!(tokens > 0)) return 0
+    if (!(max > 0)) return 1
+    const ratio = Math.sqrt(tokens / max)
+    if (ratio < 0.25) return 1
+    if (ratio < 0.5) return 2
+    if (ratio < 0.78) return 3
+    return 4
+  }
+
+  function heatColumns(days, weekCount) {
+    const byDay = new Map()
+    const list = Array.isArray(days) ? days : []
+    for (const entry of list) {
+      if (entry !== null && typeof entry === 'object' && typeof entry.day === 'string') {
+        byDay.set(entry.day, typeof entry.tokens === 'number' ? entry.tokens : 0)
+      }
+    }
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const offset = (today.getDay() + 6) % 7
+    const start = new Date(today)
+    start.setDate(start.getDate() - offset - (weekCount - 1) * 7)
+    const columns = []
+    for (let week = 0; week < weekCount; week += 1) {
+      const cells = []
+      for (let row = 0; row < 7; row += 1) {
+        const date = new Date(start)
+        date.setDate(start.getDate() + week * 7 + row)
+        const key = localDayKey(date)
+        cells.push({
+          key: key,
+          tokens: byDay.get(key) ?? 0,
+          future: date > today,
+          month: date.getMonth(),
+        })
+      }
+      columns.push(cells)
+    }
+    return columns
+  }
+
+  function monthRun(columns) {
+    const runs = []
+    for (const column of columns) {
+      const month = column[0].month
+      const last = runs[runs.length - 1]
+      if (last !== undefined && last.month === month) last.weeks += 1
+      else runs.push({ month: month, weeks: 1 })
+    }
+    return runs
+  }
+
+  const MONTHS = ['1 月', '2 月', '3 月', '4 月', '5 月', '6 月', '7 月', '8 月', '9 月', '10 月', '11 月', '12 月']
+  const WEEKDAYS = [null, '一', null, '三', null, '五', null]
+
+  function LimitCard({ label, row, t }) {
+    const used = creditOf(row.used)
+    const cap = creditOf(row.cap)
+    const usedPercent = percentOf(row.percent)
+    const leftPercent = usedPercent === undefined ? undefined : Math.max(0, Math.min(100, Math.round(100 - usedPercent)))
+    const reset = row.resetAt === undefined ? undefined : coarseCountdown(row.resetAt)
+    return h('div', { className: 'ccq-u-card' },
+      h('div', { className: 'ccq-u-top' },
+        h('span', { className: 'ccq-u-name' }, t(label)),
+        leftPercent === undefined ? null : h('span', { className: 'ccq-u-left' },
+          format(t('usageRemaining'), { percent: String(leftPercent) })),
+      ),
+      h('div', { className: 'ccq-u-track' },
+        h('span', { className: 'ccq-u-fill', style: { width: (usedPercent === undefined ? 0 : usedPercent) + '%' } })),
+      h('div', { className: 'ccq-u-fig' },
+        row.capSuspect === true
+          ? null
+          : h('span', null, creditText(used), ' / ', creditText(cap), ' ',
+            h('strong', { className: 'ccq-u-unit' }, t('usageCredits'))),
+        reset === undefined ? null : h('span', { className: 'ccq-u-reset' },
+          format(t('usageResetIn'), { time: reset })),
+      ),
+    )
+  }
+
+  function HeatMap({ value, t }) {
+    const days = value !== null && typeof value === 'object' && Array.isArray(value.days) ? value.days : []
+    const columns = heatColumns(days, 53)
+    const max = days.reduce((best, entry) => (typeof entry.tokens === 'number' && entry.tokens > best ? entry.tokens : best), 0)
+    const runs = monthRun(columns)
+    const body = React.useRef(null)
+    React.useEffect(() => {
+      const node = body.current
+      if (node !== null) node.scrollLeft = node.scrollWidth
+    }, [days.length])
+    return h('section', null,
+      h('div', { className: 'ccq-u-heat-head' },
+        h('h3', { className: 'ccq-u-heat-title' }, t('usageHeat')),
+      ),
+      days.length === 0
+        ? h('div', { className: 'ccq-u-empty' }, t('usageHeatEmpty'))
+        : h('div', null,
+          h('div', { className: 'ccq-u-heat-wrap' },
+            h('div', { className: 'ccq-u-weekdays', 'aria-hidden': 'true' },
+              WEEKDAYS.map((label, index) => h('span', { key: index }, label))),
+            h('div', { className: 'ccq-u-heat-body', ref: body },
+              h('div', { className: 'ccq-u-months', 'aria-hidden': 'true' },
+                runs.map((run, index) => h('span', {
+                  key: index,
+                  className: 'ccq-u-month',
+                  style: { width: (run.weeks * 15 - 3) + 'px' },
+                }, run.weeks >= 3 ? MONTHS[run.month] : ''))),
+              h('div', { className: 'ccq-u-grid' },
+                columns.flat().map((cell) => h('div', {
+                  key: cell.key,
+                  className: 'ccq-u-cell' + (cell.future ? ' ccq-u-future' : ' ccq-u-l' + heatLevel(cell.tokens, max)),
+                  title: cell.future ? undefined : cell.key + ' · ' + formatTokens(cell.tokens) + ' Token',
+                })))),
+          ),
+          h('div', { className: 'ccq-u-legend' },
+            t('usageHeatLess'),
+            [0, 1, 2, 3, 4].map((level) => h('i', { key: level, className: 'ccq-u-l' + level })),
+            t('usageHeatMore'),
+          ),
+        ),
+    )
+  }
+
+  function useActivity(fetchActivity) {
+    const [value, setValue] = React.useState(undefined)
+    const transport = React.useRef(fetchActivity)
+    transport.current = fetchActivity
+    React.useEffect(() => {
+      if (typeof transport.current !== 'function') return undefined
+      const controller = new AbortController()
+      Promise.resolve()
+        .then(() => transport.current(controller.signal))
+        .then((result) => {
+          if (controller.signal.aborted) return
+          if (result === null || typeof result !== 'object' || result.ok !== true) return
+          setValue(result.value)
+        })
+        .catch(() => {})
+      return () => controller.abort()
+    }, [])
+    return value
+  }
+
+  function UsageSection(props) {
+    const t = sectionT
+    const { state, refresh } = useQuota(props.fetchQuota)
+    const activity = useActivity(props.fetchActivity)
+
+    if (state.phase === 'absent') return null
+
+    const report = state.report
+    const rows = report === undefined ? [] : windowsOf(report)
+    const rowOf = (key) => rows.find((row) => row.key === key)
+    const monthly = rowOf('monthly')
+    const fiveHour = rowOf('fiveHour')
+    const weekly = rowOf('weekly')
+    const errorMessage = state.phase === 'error' ? (state.message ?? '') : undefined
+
+    return h('section', { className: 'ccq-u' },
+      h('div', { className: 'ccq-u-head' },
+        h('h2', { className: 'ccq-u-title' }, t('usageTitle')),
+        h('button', {
+          type: 'button',
+          className: 'ccq-u-refresh',
+          disabled: state.phase === 'loading',
+          onClick: refresh,
+        }, t('usageRefresh')),
+      ),
+      errorMessage === undefined ? null : h('div', { className: 'ccq-u-error' }, errorText(errorMessage, t)),
+      h('div', { className: 'ccq-u-stack' },
+        monthly === undefined ? null : h(LimitCard, { key: 'monthly', label: 'usageMonthly', row: monthly, t: t }),
+        rows.length === 0 && errorMessage === undefined
+          ? h('div', { className: 'ccq-u-empty' }, t('none'))
+          : null,
+      ),
+      fiveHour === undefined && weekly === undefined ? null : h('div', { className: 'ccq-u-pair' },
+        fiveHour === undefined ? null : h(LimitCard, { key: 'fiveHour', label: 'fiveHour', row: fiveHour, t: t }),
+        weekly === undefined ? null : h(LimitCard, { key: 'weekly', label: 'weekly', row: weekly, t: t }),
+      ),
+      h(HeatMap, { key: 'heat', value: activity, t: t }),
+    )
+  }
+
   /**
    * Install this component's sheet, its dictionaries, the settings section, and
    * the gauge itself.
@@ -1298,6 +1603,7 @@ button:has(.ccq-navmark)>svg:first-child{display:none}
    */
   function install(ctx) {
     rt.style('quota', CSS)
+    rt.style('quota-usage', USAGE_CSS)
 
     ctx.inject(['locale', 'slots', 'connection'], (scope) => {
       scope.effect(() => scope.locale.register(NS, DICT), 'ui-copy/quota: dictionaries')
@@ -1318,33 +1624,15 @@ button:has(.ccq-navmark)>svg:first-child{display:none}
         name: 'settings.section',
         id: 'commandcode-quota',
         order: 100,
-        label: () => h('span', { className: 'ccq-navmark' }, h(CcqCallsMark, { size: 16 }), t('nav')),
+        label: () => h('span', { className: 'ccq-navmark' }, h(CcqUsageMark, { size: 16 }), t('nav')),
         locale: NS,
         inject: () => ({
-          // `payload` is optional; the default `{ catalog: true }` lets the host
-          // decide whether the catalog has aged out and needs a re-check, and the
-          // answer carries the resulting view. Without it a section mount would
-          // return the cache forever: the gauge's own poll never re-validates.
-          fetchQuota: (signal, payload) => scope.connection.rpc.call(CHANNEL, ENDPOINT, payload ?? { catalog: true }, signal),
-          refreshQuota: (signal) => scope.connection.rpc.call(CHANNEL, ENDPOINT, { catalogRefresh: true }, signal),
-        }),
-      }, QuotaSettingsSection))
-
-      // The composer chip sits immediately left of the model picker: the
-      // conversation package renders `conversation.input.right` and
-      // `conversation.input.model` as siblings in one `standardControls` row, so a
-      // registration here lands beside the model control rather than replacing it
-      // (`conversation.input.model` is a single-occupant seat and registering into
-      // it would take the picker away).
-      scope.slots.inject('conversation.input.right', () => scope.slots.register({
-        name: 'conversation.input.right',
-        id: 'cc-quota-chip',
-        order: 0,
-        inject: () => ({
           fetchQuota: (signal) => scope.connection.rpc.call(CHANNEL, ENDPOINT, {}, signal),
-          t,
+          refreshQuota: (signal) => scope.connection.rpc.call(CHANNEL, ENDPOINT, {}, signal),
+          fetchActivity: (signal) => scope.connection.rpc.call(CHANNEL, ACTIVITY_ENDPOINT, {}, signal),
         }),
-      }, QuotaChip))
+      }, UsageSection))
+
     })
   }
 

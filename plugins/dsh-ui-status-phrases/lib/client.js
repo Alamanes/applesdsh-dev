@@ -612,7 +612,6 @@ function dshuiComponent_status_phrases(rt) {
 .${LINE_CLASS} > .${CLOCK_CLASS}{flex:none;margin-left:var(--dshui-space-4);font-weight:var(--dshui-weight-regular);font-size:var(--dsh-content-font-size-secondary,var(--dshui-text-size-md));font-variant-numeric:tabular-nums;color:var(--dshui-text-caption,currentColor);-webkit-text-fill-color:var(--dshui-text-caption,currentColor)}
 .${TEXT_CLASS}{display:inline-block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap}
 .${TEXT_CLASS}.${ACCENT_CLASS}{--dsp-accent-lift:var(--dshui-brand);--dsp-accent-shade:var(--dshui-brand);background-image:linear-gradient(90deg,var(--dshui-brand),var(--dsp-accent-lift),var(--dshui-brand),var(--dsp-accent-shade),var(--dshui-brand));background-size:200% 100%;background-repeat:repeat-x;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dsp-flow ${GRADIENT_SPEED_S}s linear infinite}
-
 @supports (color: color-mix(in oklab, currentColor 50%, transparent)){.${TEXT_CLASS}.${ACCENT_CLASS}{--dsp-accent-lift:color-mix(in oklab, var(--dshui-brand) 68%, var(--dshui-text-primary));--dsp-accent-shade:color-mix(in oklab, var(--dshui-brand) 86%, var(--dshui-text-primary))}}
 @keyframes dsp-flow{to{background-position:200% 0}}
 @media (prefers-reduced-motion:reduce){.${TEXT_CLASS}.${ACCENT_CLASS}{animation:none;background-position:0 0}}
