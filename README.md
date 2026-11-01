@@ -12,7 +12,6 @@
 | `plugins/dsh-ui-quota` | `dsh-ui-quota` | 设置页「用量」分区：Command Code 额度卡片与每日 Token 热力图 | 本仓库自产，原 `dsh-ui-suite` 组件 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
-| `plugins/meow-memory` | `meow-memory` | 跨会话长期记忆：七层 SQLite 记忆库、首轮快照注入、逐消息关键词命中、空闲 dream 整理 | 上游 [Phant0Meow/dsh-meow-memory](https://github.com/Phant0Meow/dsh-meow-memory) 的 `0.31.0` 发行产物，外加一个补丁让 `projectDir` 支持绝对路径，记忆库不再随工作区散落（见 `plugins/meow-memory/PATCH.md`） |
 
 ## 界面套件
 
@@ -58,8 +57,7 @@
     "dsh-ui-suite": "file:/absolute/path/to/applesdsh-dev/plugins/dsh-ui-suite",
     "dsh-ui-quota": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-quota",
     "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
-    "dsh-zh-prompt": "github:Alamanes/applesdsh-dev#path:plugins/dsh-zh-prompt",
-    "meow-memory": "github:Alamanes/applesdsh-dev#path:plugins/meow-memory"
+    "dsh-zh-prompt": "github:Alamanes/applesdsh-dev#path:plugins/dsh-zh-prompt"
   },
   "dsh": {
     "profile": {
@@ -69,7 +67,6 @@
         "dsh-web-search-tavily",
         "dsh-zh-prompt",
         "dsh-ops",
-        "meow-memory",
         "dsh-ui-suite",
         "dsh-ui-quota"
       ]
