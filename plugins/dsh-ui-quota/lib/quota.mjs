@@ -98,9 +98,8 @@ const KEY_ENV_PATTERN = /command_?code/i;
  */
 const KEY_ENV_EXCLUDED = new Set([
   TIMEOUT_ENV_NAME,
-  // catalog.mjs 的目录 TTL 开关：同样只是本插件的一个旋钮，不是密钥。
+  // 已移除的目录同步开关：本机环境里可能还留着，仍按本插件旋钮排除，不能当密钥发出去。
   'COMMANDCODE_CATALOG_TTL_MS',
-  // 后台核对间隔：同上，而且 0 是一个合法值。
   'COMMANDCODE_CATALOG_WATCH_MS',
 ]);
 

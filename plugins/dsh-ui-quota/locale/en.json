@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Quota",
-    "description": "Quota cards and a daily token heatmap in Settings → Usage."
+    "title": "Better User Menu",
+    "description": "The sidebar account menu folds in every panel entry; Settings → Usage shows quota cards and a daily token heatmap."
   }
 }

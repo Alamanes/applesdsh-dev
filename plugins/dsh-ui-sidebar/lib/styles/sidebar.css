@@ -73,20 +73,43 @@
 
 [class$="_newSession"]:not([class*="_collapsed"] *),
 [class*="_newSession "]:not([class*="_collapsed"] *) {
-  height: 32px !important;
-  min-height: 32px !important;
-  padding: var(--dshui-space-2) var(--dshui-space-4) !important;
-  margin-bottom: var(--dshui-space-4) !important;
-  gap: var(--dshui-space-4) !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 4px 8px !important;
+  margin-bottom: 6px !important;
+  gap: 8px !important;
   border: none !important;
-  border-radius: var(--dshui-radius-md);
+  border-radius: 8px;
   background: transparent !important;
   box-shadow: none !important;
   justify-content: flex-start !important;
   overflow: visible !important;
-  font-size: var(--dshui-text-size-base) !important;
+  font-size: 13px !important;
   font-weight: var(--dshui-weight-regular) !important;
-  line-height: 22px !important;
+  line-height: 18px !important;
+}
+
+/* The panel rows (记忆 and any other panellist entry) follow the same quiet row:
+   30px tall, 13px label, one 16px glyph, the menu's hover wash. */
+[class$="_panelRow"],
+[class*="_panelRow "] {
+  min-height: 30px !important;
+  margin: 0 2px !important;
+  padding: 4px 8px !important;
+  gap: 8px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 18px !important;
+}
+[class$="_panelRow"]:hover,
+[class*="_panelRow "]:hover {
+  background: color-mix(in srgb, var(--dshui-text-primary) 6%, transparent) !important;
+}
+[class$="_panelRow"] [class*="_panelGlyph"] svg,
+[class*="_panelRow "] [class*="_panelGlyph"] svg {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 /* Hover is the one wash the panel rows use. It replaces the elevated and

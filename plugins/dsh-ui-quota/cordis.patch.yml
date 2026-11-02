@@ -1,4 +1,4 @@
-# dsh-ui-quota bundle patch: one row of the dsh-ui-suite bundle.
+# dsh-ui-quota bundle patch: one row of the user-menu package.
 - insert:
     - id: dshui-quota
       name: dsh-ui-quota

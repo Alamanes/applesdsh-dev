@@ -21,12 +21,8 @@
       name: dsh-ui-identity
     - id: dshui-session-delete
       name: dsh-ui-session-delete
-    - id: dshui-peak-valley
-      name: dsh-ui-peak-valley
     - id: dshui-status-phrases
       name: dsh-ui-status-phrases
-    - id: dshui-foot-panels
-      name: dsh-ui-foot-panels
     - id: dshui-restart
       name: dsh-ui-restart
     - id: dshui-effort-slider

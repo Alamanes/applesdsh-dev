@@ -1,29 +1,30 @@
 /**
- * dsh-ui-copy host half — quota (Command Code plan quota).
+ * dsh-ui-quota host half — Command Code plan quota.
  *
- * Serves the Command Code account quota report to the suite's browser half over
- * one exact Fetch route on Connection's shared `/api` transport, and registers
- * the optional `/quota` slash command that prints the same report into a
+ * Serves the Command Code account quota report to the browser half over one
+ * exact Fetch route on Connection's shared `/api` transport, and registers the
+ * optional `/quota` slash command that prints the same report into a
  * conversation.
  *
  * The browser cannot call Command Code itself — the API key lives on the host
- * and the Provider API is not browser-CORS reachable — so the gauges ask the
- * host for a normalized report. Registering the route through Connection's exact
- * Fetch registry (rather than `connection.rpc.handle`) is deliberate: `handle`
- * mounts the channel with `owner.webServer`, whose resolution walks the
- * Connection plugin's own fiber chain — where `webServer` is never in scope — so
- * it throws `cannot get property "webServer" without inject` for every caller
- * outside that package, no matter what the caller injects (dsh 0.1.5-rc.1). An
- * exact route is served by the same `/api` transport as the rest of the GUI, so
- * it inherits the Host/Origin fence and the browser-session cookie: only a
- * same-origin browser holding this process's cookie reaches it.
+ * and the Provider API is not browser-CORS reachable — so the settings section
+ * asks the host for a normalized report. Registering the route through
+ * Connection's exact Fetch registry (rather than `connection.rpc.handle`) is
+ * deliberate: `handle` mounts the channel with `owner.webServer`, whose
+ * resolution walks the Connection plugin's own fiber chain — where `webServer`
+ * is never in scope — so it throws `cannot get property "webServer" without
+ * inject` for every caller outside that package, no matter what the caller
+ * injects (dsh 0.1.5-rc.1). An exact route is served by the same `/api`
+ * transport as the rest of the GUI, so it inherits the Host/Origin fence and
+ * the browser-session cookie: only a same-origin browser holding this process's
+ * cookie reaches it.
  *
  * Routes
  *   `/api/dsh-ui-copy/quota/cc-quota/report`  the suite's own path
  *   `/api/cc-quota/report`                    the pre-suite path, kept as an alias
  *
  * Both paths share one handler and one cache, so an older browser half that still
- * posts to the old path keeps working while the suite's components use the
+ * posts to the old path keeps working while this package's components use the
  * namespaced one. The suite namespace has to live in the *endpoint* rather than
  * in the channel: `connection.rpc.call` validates its channel against a single
  * path segment, so with channel `/api` the endpoint
@@ -31,26 +32,16 @@
  * endpoint is also the method inside the request envelope, and the handler
  * accepts the pre-suite method `cc-quota/report` on the alias route.
  *
- * The two data modules travel with the suite: `lib/catalog.mjs` computes the
- * per-model allowances and reads the bundled baseline beside itself, and
- * `lib/quota.mjs` is the read-only Command Code source that derives the three
- * credit windows. Both are copies of the standalone plugin's modules, unchanged.
+ * The token heat map travels over a second route of its own,
+ * `/api/cc-quota/activity`; `lib/quota.mjs` is the read-only Command Code source
+ * that derives the three credit windows.
  */
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import {
-  catalogView,
-  needsRevalidate,
-  readCatalogCache,
-  readCatalogSeed,
-  resolveCatalogTtlMs,
-  resolveCatalogWatchMs,
-  syncCatalog,
-} from './catalog.mjs'
-import { configuredModelIds, credentialFingerprint, fetchQuotaReport, quotaSnapshotPath } from './quota.mjs'
+import { credentialFingerprint, fetchQuotaReport, quotaSnapshotPath } from './quota.mjs'
 
 /** Config field in the suite's schema this host half answers to. */
 export const CONFIG_KEY = 'quota'
@@ -60,6 +51,125 @@ const LIB = fileURLToPath(new URL('./', import.meta.url))
 
 /** Shared browser transport; routes under it inherit its fence and session. */
 const CHANNEL = '/api'
+
+/* ---- Chinese public-holiday calendar ----------------------------------- */
+
+/**
+ * The peak/valley hint in the menu drawer reads its leave dates from here.
+ *
+ * There is no official API: the State Council publishes a notice every
+ * November, and the `holiday-cn` project republishes it as one JSON document per
+ * year. This half fetches the current Beijing year and the next one, unions the
+ * two and memoizes the result for a day. `ok: false` means nothing was fetched
+ * this time; the browser keeps a baked-in list for exactly that case.
+ */
+const HOLIDAY_SOURCE_BASE = 'https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master'
+const HOLIDAY_MIRROR_BASE = 'https://raw.githubusercontent.com/NateScarlet/holiday-cn/master'
+const HOLIDAY_ROUTE_PATH = '/dsh-ui-copy/peak-valley/holidays.json'
+const HOLIDAY_LEGACY_ROUTE_PATH = '/dsh-peak-valley/holidays.json'
+const HOLIDAY_BEIJING_OFFSET_MS = 8 * 3600 * 1000
+const HOLIDAY_CACHE_TTL_MS = 24 * 3600 * 1000
+const HOLIDAY_FETCH_TIMEOUT_MS = 8000
+
+/** Memoized union of the years fetched, plus why the last attempt failed. */
+let holidayCache = { at: 0, ok: false, holidays: [], error: '' }
+
+/** The refresh in flight, so concurrent route hits share one fetch. */
+let holidayInFlight = null
+
+/** Beijing calendar year of an instant. */
+function beijingYearOf(ms) {
+  return new Date(ms + HOLIDAY_BEIJING_OFFSET_MS).getUTCFullYear()
+}
+
+/** One year's days off, from whichever base answers first. */
+async function fetchHolidayYear(year) {
+  const errors = []
+  for (const base of [HOLIDAY_SOURCE_BASE, HOLIDAY_MIRROR_BASE]) {
+    try {
+      const response = await fetch(`${base}/${year}.json`, { signal: AbortSignal.timeout(HOLIDAY_FETCH_TIMEOUT_MS) })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const body = await response.json()
+      const days = Array.isArray(body?.days) ? body.days : []
+      return days
+        .filter((day) => day !== null && typeof day === 'object' && day.isOffDay === true && typeof day.date === 'string')
+        .map((day) => day.date)
+    } catch (error) {
+      errors.push(`${base}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  throw new Error(errors.join('; '))
+}
+
+/** Fetch both years and replace the memo. */
+async function refreshHolidays() {
+  const year = beijingYearOf(Date.now())
+  const holidays = new Set()
+  const errors = []
+  for (const target of [year, year + 1]) {
+    try {
+      for (const date of await fetchHolidayYear(target)) holidays.add(date)
+    } catch (error) {
+      errors.push(`${target}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  holidayCache = {
+    at: Date.now(),
+    ok: holidays.size > 0,
+    holidays: [...holidays].sort(),
+    error: errors.join('; '),
+  }
+  return holidayCache
+}
+
+/** The memo, refreshed when it has expired. */
+async function currentHolidays() {
+  if (holidayCache.ok && Date.now() - holidayCache.at < HOLIDAY_CACHE_TTL_MS) return holidayCache
+  if (holidayInFlight === null) {
+    holidayInFlight = refreshHolidays().finally(() => {
+      holidayInFlight = null
+    })
+  }
+  return holidayInFlight
+}
+
+/** The handler both calendar routes share. */
+async function holidaysHandler(request, response) {
+  let result = holidayCache
+  try {
+    result = await currentHolidays()
+  } catch (error) {
+    result = { ...holidayCache, ok: false, error: error instanceof Error ? error.message : String(error) }
+  }
+  response.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+  })
+  response.end(JSON.stringify({
+    ok: result.ok,
+    holidays: result.holidays,
+    source: HOLIDAY_SOURCE_BASE,
+    fetchedAt: result.at,
+    year: beijingYearOf(Date.now()),
+    error: result.error,
+  }))
+}
+
+/** Mount the calendar routes on the host web server. */
+function mountHolidayRoutes(ctx) {
+  ctx.inject(['webServer'], (scope) => {
+    scope.effect(() => {
+      const mounted = []
+      for (const routePath of [HOLIDAY_ROUTE_PATH, HOLIDAY_LEGACY_ROUTE_PATH]) {
+        const dispose = scope.webServer.register({ kind: 'exact', path: routePath, handler: holidaysHandler })
+        if (typeof dispose === 'function') mounted.push(dispose)
+      }
+      return () => {
+        for (const dispose of mounted) dispose()
+      }
+    }, 'ui-copy/quota: holiday routes')
+  })
+}
 
 /**
  * Endpoint name; the browser sends it as the envelope method.
@@ -78,15 +188,6 @@ const ROUTE_PATH = `${CHANNEL}/${ENDPOINT}`
 /** The namespaced spelling, registered when the registry accepts it. */
 const LEGACY_ENDPOINT = 'dsh-ui-copy/quota/cc-quota/report'
 const LEGACY_ROUTE_PATH = `${CHANNEL}/${LEGACY_ENDPOINT}`
-
-/**
- * The bundled catalog baseline, pinned from this file.
- *
- * `lib/catalog.seed.json` is `../catalog.seed.json` as seen from here. A URL is
- * used rather than a joined string so a symlinked or packed package resolves the
- * seed that ships beside `lib/catalog.mjs`.
- */
-const CATALOG_SEED_FILE = fileURLToPath(new URL('../catalog.seed.json', import.meta.url))
 
 /**
  * Serve a cached report for this long. The panel polls, and every miss costs
@@ -263,30 +364,6 @@ function formatReportText(report) {
   return lines.join('\n')
 }
 
-/**
- * The local catalog view for one plan, with the bundled baseline pinned here.
- *
- * Reproduces `resolveCatalogView` from `lib/catalog.mjs` — cache first, bundled
- * seed second, an honest "nothing yet" last — except that the seed is read from
- * {@link CATALOG_SEED_FILE}, so the baseline is located from this file instead of
- * from the catalog module's own directory. The projection itself is the same
- * exported `catalogView`.
- *
- * @param planId - the account's plan, or undefined when it is not known yet.
- * @param ttlMs - how long a check counts as fresh.
- * @returns the catalog view for this plan.
- */
-function readCatalogView(planId, ttlMs) {
-  const cached = readCatalogCache()
-  return catalogView({
-    catalog: cached ?? readCatalogSeed({ file: CATALOG_SEED_FILE }),
-    bundled: cached === undefined,
-    planId,
-    configuredModels: configuredModelIds(),
-    now: Date.now(),
-    ttlMs,
-  })
-}
 
 /**
  * Register the quota routes on the host Connection service.
@@ -330,7 +407,7 @@ function install(ctx) {
   /**
    * The read currently in progress, if any.
    *
-   * Two callers can want a report at the same moment — the gauge's poll and a
+   * Two callers can want a report at the same moment — the section's poll and a
    * `/quota` invocation, say. Without this, both would fetch, and the slower
    * response would land last and overwrite the cache with the older snapshot,
    * which is exactly the kind of quietly-wrong number a drifting account makes
@@ -341,123 +418,6 @@ function install(ctx) {
    */
   let inFlight
 
-  /**
-   * The catalog sync in progress, if any.
-   *
-   * The catalog is a second, slow-moving dataset: what each model in the plan can
-   * call. It never rides the quota read's critical path — the view is served from
-   * local data (cache, else the bundled seed) and the revalidation runs behind it.
-   *
-   * @type {Promise<unknown> | undefined}
-   */
-  let catalogInFlight
-
-  /**
-   * Start a catalog sync, or join the one already running.
-   *
-   * Two callers can want a sync at the same moment — the settings panel opening
-   * while the background watcher decides the catalog has aged out, say. Joining
-   * keeps one probe per page instead of two, and keeps the later answer from
-   * overwriting the earlier one.
-   *
-   * Failures are recorded inside the catalog itself (a page that cannot be
-   * fetched keeps its last good numbers and lands in `failures`), so a rejected
-   * promise here has nothing left to report.
-   *
-   * @param planId - the plan whose page should be re-read; undefined reads only the pricing page.
-   * @param ttlMs - how long this check counts as fresh.
-   * @returns the in-flight sync.
-   */
-  const startCatalogSync = (planId, ttlMs) => {
-    if (catalogInFlight === undefined) {
-      catalogInFlight = syncCatalog({ planId, ttlMs })
-        .catch(() => undefined)
-        .finally(() => { catalogInFlight = undefined })
-    }
-    return catalogInFlight
-  }
-
-  /**
-   * Ensure a catalog view is available, revalidating only when asked.
-   *
-   * A plain poll (the composer gauge) never spends a request on the catalog: the
-   * settings panel is the surface that asks for it, and it says so
-   * (`catalog: true`) — which is also the moment the "overdue for a check?"
-   * question is evaluated. `catalogRefresh: true`, the check-update button,
-   * forces one whatever the TTL says.
-   *
-   * "Changed only" is enforced upstream: the sync probes each page with a 0-byte
-   * HEAD and reuses the cache when the vendor's ETag is unchanged, so a check
-   * that finds nothing new costs no body download and no re-parse.
-   *
-   * @param planId - the account's plan, or undefined when it is not known yet.
-   * @param options.check - whether this caller wants the "is it time?" question asked.
-   * @param options.refresh - force a check and wait for it.
-   * @returns the catalog view for this plan.
-   */
-  const catalogFor = async (planId, { check = false, refresh = false } = {}) => {
-    const ttlMs = resolveCatalogTtlMs()
-    const cached = readCatalogCache()
-    const due = (check || refresh) && needsRevalidate({ catalog: cached, planId, ttlMs })
-    if (due || refresh) await startCatalogSync(planId, ttlMs)
-    return readCatalogView(planId, ttlMs)
-  }
-
-  /**
-   * Attach the catalog view to a report result.
-   *
-   * The browser half renders the plan's per-model allowances from it. A missing
-   * catalog never fails the report: the worst case is a view that says it has not
-   * synced yet.
-   *
-   * @param result - the RPC result for the quota report.
-   * @param options.check - ask whether the catalog is overdue for a check.
-   * @param options.refresh - wait for a real revalidation before answering.
-   * @returns the result with `value.catalog` added.
-   */
-  const withCatalog = async (result, { check = false, refresh = false } = {}) => {
-    if (result?.ok !== true) return result
-    const value = result.value
-    // A report whose plan block failed still has a plan id worth using: the
-    // previous read persisted it.
-    const planId = value?.plan?.planId ?? cache?.report?.plan?.planId ?? snapshot?.report?.plan?.planId
-    const catalog = await catalogFor(planId, { check, refresh })
-    return { ...result, value: { ...value, catalog } }
-  }
-
-  /**
-   * Ask the local "is the catalog overdue?" question on a timer.
-   *
-   * The settings panel used to be the only surface that ever asked it, so a user
-   * who never opens that section keeps whatever the vendor said the last time
-   * they did — and the vendor changes allowances whenever it likes. This watcher
-   * asks on their behalf.
-   *
-   * A tick is pure local arithmetic: read the cache file, compare `checkedAt`
-   * against the TTL. Only a "yes" reaches the network, and that costs a 0-byte
-   * `HEAD` per official page — the body is downloaded only when the vendor's ETag
-   * actually moved. The cadence of real checks stays the catalog TTL (a day by
-   * default), never this interval.
-   *
-   * @param intervalMs - how often to ask the local question.
-   * @returns a disposer that stops the watcher.
-   */
-  const watchCatalog = (intervalMs) => {
-    const tick = () => {
-      // The page to read belongs to the current plan; with no plan on record yet
-      // there is nothing better to do than wait for a report to name one.
-      const planId = cache?.report?.plan?.planId ?? snapshot?.report?.plan?.planId
-      if (planId === undefined) return
-      const ttlMs = resolveCatalogTtlMs()
-      if (!needsRevalidate({ catalog: readCatalogCache(), planId, ttlMs })) return
-      void startCatalogSync(planId, ttlMs)
-    }
-    tick()
-    const timer = setInterval(tick, intervalMs)
-    // A pending timer must not keep the host process alive on shutdown.
-    timer.unref?.()
-    return () => clearInterval(timer)
-  }
 
   /**
    * Read once from upstream, then cache and persist the result.
@@ -576,17 +536,8 @@ function install(ctx) {
       return failure(rpcId, 'bad-request', `method ${JSON.stringify(message.method)} does not match endpoint ${JSON.stringify(ENDPOINT)}`, { issues: [] })
     }
 
-    // The catalog is a second dataset with its own cadence. It rides along with
-    // every answer, but a check only happens when the settings panel asks for one
-    // (`catalog: true`), or when the button forces it (`catalogRefresh: true`) —
-    // the gauge's minute-by-minute poll never spends a request on it.
-    const payload = message.payload !== null && typeof message.payload === 'object' ? message.payload : undefined
     const result = await report({ allowStale: true })
-    const catalogOptions = {
-      check: payload?.catalog === true,
-      refresh: payload?.catalogRefresh === true,
-    }
-    return envelope(rpcId, await withCatalog(result, catalogOptions))
+    return envelope(rpcId, result)
   }
 
   // One handler, two paths: the suite's own route and the pre-suite alias.
@@ -598,17 +549,7 @@ function install(ctx) {
   ctx.effect(() => ctx.connection.fetch.register({ path: ROUTE_PATH, ...route }), 'ui-copy/quota: route')
   ctx.effect(() => ctx.connection.fetch.register({ path: LEGACY_ROUTE_PATH, ...route }), 'ui-copy/quota: legacy route')
 
-  registerQuotaCommand(ctx, report, withCatalog, catalogFor)
-
-  // Keep the per-model allowances current without waiting to be opened and read:
-  // see `watchCatalog`. Nobody has to ask for this, and the environment can turn
-  // it off when a machine wants the old "only when the panel asks" behaviour.
-  const watchMs = resolveCatalogWatchMs()
-  if (watchMs > 0) {
-    ctx.effect(() => watchCatalog(watchMs), 'ui-copy/quota: catalog watcher')
-  } else {
-    ctx.logger.info('cc-quota: automatic catalog checks are off (COMMANDCODE_CATALOG_WATCH_MS=0)')
-  }
+  registerQuotaCommand(ctx, report)
 
   // Daily token activity for the settings page's heat map. Its own route and its
   // own cache: this reads the local session logs, so it costs the Command Code
@@ -640,6 +581,22 @@ function install(ctx) {
     fetch: activityServe,
   }), 'ui-copy/quota: activity route')
 
+  // Temporary diagnostic route: the browser half posts the account menu's
+  // markup here so it can be inspected from disk.
+  ctx.effect(() => ctx.connection.fetch.register({
+    path: `${CHANNEL}/cc-quota/debug`,
+    methods: ['POST'],
+    requestBody: 'buffered',
+    fetch: async (request) => {
+      try {
+        writeFileSync('/tmp/dsh-menu-debug.html', await request.text())
+      } catch {
+        // diagnostics only
+      }
+      return new Response('ok')
+    },
+  }), 'ui-copy/quota: debug route')
+
   ctx.logger.info(`cc-quota: serving quota reports on ${ROUTE_PATH} (alias ${LEGACY_ROUTE_PATH})`)
 }
 
@@ -647,17 +604,15 @@ function install(ctx) {
  * Register the optional `/quota` slash command on the human-command registry.
  *
  * `commands` is deliberately *not* required: it is an optional service here (the
- * gauges work in profiles that compose no command runtime), and the repo
- * convention is `ctx.get(name)` for exactly that. The handler reuses the route's
- * cached `report()` so a slash invocation never costs more upstream requests than
- * the gauges would have spent anyway.
+ * settings section works in profiles that compose no command runtime), and the
+ * repo convention is `ctx.get(name)` for exactly that. The handler reuses the
+ * route's cached `report()` so a slash invocation never costs more upstream
+ * requests than the section would have spent anyway.
  *
  * @param ctx - host plugin context.
  * @param report - the cached report producer shared with the Fetch route.
- * @param withCatalog - attaches the catalog view to a report result.
- * @param catalogFor - local catalog view producer, for the `--models` argument.
  */
-function registerQuotaCommand(ctx, report, withCatalog, catalogFor) {
+function registerQuotaCommand(ctx, report) {
   const commands = ctx.get('commands')
   if (commands === undefined) {
     ctx.logger.info('cc-quota: no command runtime composed; /quota not registered')
@@ -665,11 +620,8 @@ function registerQuotaCommand(ctx, report, withCatalog, catalogFor) {
   }
   ctx.effect(() => commands.register({
     name: 'quota',
-    description: 'Show Command Code plan credit usage (--models for per-model allowances)',
-    handler: async ({ rawInput } = {}) => {
-      const input = String(rawInput ?? '')
-      const wantsModels = /(^|\s)--models(\s|$)/.test(input)
-      const wantsRefresh = /(^|\s)--refresh(\s|$)/.test(input)
+    description: 'Show Command Code plan credit usage',
+    handler: async () => {
       const result = await report()
       if (!result.ok) {
         return { kind: 'error', text: result.error.message }
@@ -677,87 +629,9 @@ function registerQuotaCommand(ctx, report, withCatalog, catalogFor) {
       if (result.value !== null && typeof result.value === 'object' && result.value.configured === false) {
         return { kind: 'error', text: 'No Command Code provider is configured on this host.' }
       }
-      if (!wantsModels) {
-        return { kind: 'success', text: formatReportText(result.value) }
-      }
-      // The catalog is local data; `--refresh` is the only form that spends a
-      // request, and it spends it on a 0-byte ETag probe when nothing changed.
-      const withCatalogView = await withCatalog(result, { refresh: wantsRefresh })
-      return { kind: 'success', text: formatCatalogText(withCatalogView.value.catalog) }
+      return { kind: 'success', text: formatReportText(result.value) }
     },
   }), 'ui-copy/quota: /quota command')
-}
-
-/**
- * Render the per-model allowance catalog as chat text.
- *
- * One model per line with labelled figures rather than columns: chat surfaces
- * wrap freely.
- *
- * @param catalog - the catalog view attached to the report.
- * @returns the text, or a sentence saying why there is nothing to show.
- */
-function formatCatalogText(catalog) {
-  if (catalog === null || typeof catalog !== 'object') {
-    return 'Model allowances are unavailable: this host has no catalog support.'
-  }
-  const lines = []
-  const plan = catalog.planName ?? catalog.planId ?? 'this plan'
-  lines.push(`Command Code · ${plan} · per-model request allowances`)
-  if (typeof catalog.docUrl === 'string') lines.push(`source ${catalog.docUrl}`)
-  if (catalog.inferredFrom !== undefined) {
-    lines.push(`note: the vendor publishes no page for this plan; figures are taken from ${catalog.inferredFrom}`)
-  }
-  const state = catalog.verified === true
-    ? `synced ${catalog.updatedAt ?? '—'}`
-    : 'not synced yet — showing the baseline shipped with the plugin'
-  lines.push(`${state}${catalog.stale === true ? ' (overdue for a check)' : ''}`)
-
-  const models = Array.isArray(catalog.models) ? catalog.models : []
-  if (models.length === 0) {
-    lines.push('No model allowances for this plan.')
-  } else {
-    if (catalog.basis !== null && catalog.basis !== undefined) {
-      lines.push(`basis: the vendor's own estimate, ${catalog.basis.inputTokens} in / ${catalog.basis.outputTokens} out / ${catalog.basis.cacheReadTokens} cached tokens per request`)
-    }
-    const estimated = models.filter((model) => model.estimated === true)
-    lines.push('')
-    for (const model of estimated) {
-      lines.push(`${model.configured === true ? '* ' : ''}${model.name} · 5h ${volume(model, 'fiveHour')} · week ${volume(model, 'week')} · month ${volume(model, 'monthly')}`)
-    }
-    const withoutNumbers = models.length - estimated.length
-    if (withoutNumbers > 0) {
-      lines.push(`(${withoutNumbers} more model(s) are available on this plan without a published allowance)`)
-    }
-  }
-  if (catalog.planLevel !== null && catalog.planLevel !== undefined) {
-    // Two different figures, two different methods: never mixed into one number.
-    lines.push(`plan-level estimate (a different basis, not comparable): ${catalog.planLevel.requestsText}`)
-  }
-  for (const failure of catalog.failures ?? []) {
-    lines.push(`unavailable: ${failure.code}${failure.message === undefined ? '' : ` (${failure.message})`}`)
-  }
-  return lines.join('\n')
-}
-
-/**
- * One figure from a catalog model row.
- *
- * Free models have no finite count — the vendor prints "Free" — and JSON cannot
- * carry `Infinity`, so a row read back from disk or over the RPC has `null` where
- * the live value was infinite. `free` is the field that says so; never render a
- * bare `—` for a model the vendor lists as free.
- */
-function volume(model, key) {
-  if (model?.free === true) return 'Free'
-  return count(model?.[key])
-}
-
-/** Same rendering rule as the card: the vendor's own three-significant-digit rounding. */
-function count(value) {
-  if (value === null || value === undefined) return '—'
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 'Free'
-  return Number(value.toPrecision(3)).toLocaleString('en-US')
 }
 
 /**
@@ -794,6 +668,7 @@ function applyComponent(ctx, config) {
   // uninjected service off the context throws in this host, so the collector
   // needs the injection even though the quota route itself never touches it.
   ctx.inject(['connection', 'sessionPersistence'], start)
+  mountHolidayRoutes(ctx)
 }
 
 /* ---- suite row plumbing ---------------------------------------------- */

@@ -2,7 +2,7 @@
   "name": "dsh-ui-suite",
   "version": "2.0.1",
   "private": true,
-  "description": "DeepSeek Harness 界面套件：一个 bundle 包，十八个可独立停用的组件包，共享一套 --dshui-* 设计令牌。",
+  "description": "DeepSeek Harness 界面套件：一个 bundle 包，十六个可独立停用的组件包，共享一套 --dshui-* 设计令牌。",
   "icon": "./icon.png",
   "keywords": [
     "dsh",
@@ -48,9 +48,7 @@
     "dsh-ui-sidebar": "file:../dsh-ui-sidebar",
     "dsh-ui-identity": "file:../dsh-ui-identity",
     "dsh-ui-session-delete": "file:../dsh-ui-session-delete",
-    "dsh-ui-peak-valley": "file:../dsh-ui-peak-valley",
     "dsh-ui-status-phrases": "file:../dsh-ui-status-phrases",
-    "dsh-ui-foot-panels": "file:../dsh-ui-foot-panels",
     "dsh-ui-restart": "file:../dsh-ui-restart",
     "dsh-ui-effort-slider": "file:../dsh-ui-effort-slider",
     "dsh-ui-whale": "file:../dsh-ui-whale",
