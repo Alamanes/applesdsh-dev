@@ -10,6 +10,7 @@
 | `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
 | `plugins/dsh-ui-suite` | `dsh-ui-suite` | 界面套件：一个 bundle 包，下挂十八个可独立停用的组件包，共享一套 `--dshui-*` 设计令牌 | 本仓库自产 |
 | `plugins/dsh-ui-quota` | `dsh-ui-quota` | 设置页「用量」分区：Command Code 额度卡片与每日 Token 热力图 | 本仓库自产，原 `dsh-ui-suite` 组件 |
+| `plugins/dsh-sidebar-memo` | `dsh-sidebar-memo` | 右侧边栏的备忘录：清单、目标与 AI 代笔的日记 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
 | `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 

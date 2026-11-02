@@ -1,0 +1,4 @@
+# dsh-sidebar-memo: one row of its own bundle.
+- insert:
+    - id: dsh-sidebar-memo
+      name: dsh-sidebar-memo

@@ -1,0 +1,510 @@
+/* dsh-sidebar-memo — the panel's styles.
+   Every colour comes from the token layer, so the suite's theme and the host's
+   light/dark switch both reach here; the accent is the theme's own brand colour,
+   never a palette of the panel's. Structure carries the hierarchy — hairlines,
+   one binding line, one rule-marked critique — because a memo column is a column
+   of entries, not a dashboard of tiles. */
+
+.dshm-root {
+  --dshm-ink: var(--dshui-text-primary, var(--dsw-alias-label-primary));
+  --dshm-ink-2: var(--dshui-text-secondary, var(--dsw-alias-label-secondary));
+  --dshm-ink-3: var(--dshui-text-tertiary, var(--dsw-alias-label-tertiary));
+  --dshm-ink-4: var(--dshui-text-dimmed, var(--dsw-alias-label-quaternary));
+  --dshm-line: var(--dshui-border-2, var(--dsw-alias-border-l2, rgba(127, 127, 127, .2)));
+  --dshm-line-strong: var(--dshui-border-3, var(--dsw-alias-border-l3, rgba(127, 127, 127, .34)));
+  /* The accent follows whatever theme the host runs: the suite token first, then
+     the DSH brand aliases, then the plain business colour, then a literal. */
+  --dshm-accent: var(--dshui-brand, var(--dsw-alias-brand-primary, var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill, #4d6bfe))));
+  --dshm-fill: var(--dshui-brand-fill, var(--dshm-accent));
+  --dshm-on-fill: var(--dshui-text-on-brand, #fff);
+  --dshm-hover: var(--dshui-surface-hover, var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, .09)));
+  --dshm-panel: var(--dshui-surface-1, var(--dsw-alias-bg-layer-1, transparent));
+  --dshm-sunken: var(--dshui-neutral-fill, var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, .08)));
+  --dshm-danger: var(--dshui-danger, var(--dsw-alias-state-error-primary, #e5484d));
+  --dshm-accent-soft: color-mix(in srgb, var(--dshm-accent) 9%, transparent);
+  --dshm-done: color-mix(in srgb, var(--dshm-accent) 55%, var(--dshm-ink-3));
+  --dshm-fast: var(--dshui-duration-fast, .15s);
+  --dshm-ease: var(--dshui-ease-standard, cubic-bezier(.32, .72, 0, 1));
+  --dshm-spring: var(--dshui-ease-spring, cubic-bezier(.32, .72, 0, 1));
+  --dshm-serif: "Songti SC", "Noto Serif CJK SC", "STSong", "SimSun", Georgia, serif;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--dshm-ink);
+  font-family: var(--dshui-font-family, -apple-system, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- head ---------- */
+.dshm-head { flex: none; display: flex; align-items: baseline; gap: 8px; padding: 15px 15px 9px; }
+.dshm-title { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+.dshm-count {
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: var(--dshm-ink-3); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+/* what the model just did, said where the count normally sits, then gone */
+.dshm-notice { color: var(--dshm-accent); animation: dshm-notice-in .28s var(--dshm-ease) both; }
+@keyframes dshm-notice-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.dshm-spacer { flex: 1; }
+.dshm-avatar {
+  flex: none; display: block; border-radius: 50%; object-fit: cover;
+  -webkit-user-select: none; user-select: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dshm-accent) 22%, transparent);
+}
+.dshm-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 5px;
+  background: transparent; color: var(--dshm-ink-3); font-size: 15px; line-height: 1;
+  cursor: pointer;
+  transition: color var(--dshm-fast) var(--dshm-ease), background var(--dshm-fast) var(--dshm-ease);
+}
+.dshm-iconbtn:hover { color: var(--dshm-ink); background: var(--dshm-hover); }
+
+/* ---------- index tabs ---------- */
+.dshm-tabs {
+  flex: none; display: flex; gap: 18px; padding: 0 15px;
+  border-bottom: 1px solid var(--dshm-line);
+}
+.dshm-tab {
+  position: relative; height: 31px; padding: 0 1px; border: none; background: transparent;
+  color: var(--dshm-ink-3); font-family: inherit; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: color var(--dshm-fast) var(--dshm-ease);
+}
+.dshm-tab:hover { color: var(--dshm-ink-2); }
+.dshm-tab[data-active='true'] { color: var(--dshm-ink); }
+.dshm-tab[data-active='true']::after {
+  content: ""; position: absolute; left: -2px; right: -2px; bottom: -1px; height: 2px;
+  background: var(--dshm-accent); border-radius: 1px;
+}
+.dshm-tab-count {
+  margin-left: 5px; font-size: 10px; color: var(--dshm-accent);
+  font-variant-numeric: tabular-nums;
+}
+.dshm-tab-dot {
+  position: absolute; top: 5px; right: -7px; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--dshm-accent); animation: dshm-pop .4s var(--dshm-spring) both;
+}
+
+/* ---------- model activity ---------- */
+.dshm-runbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px; pointer-events: none;
+  opacity: 0; z-index: 5; transition: opacity .25s ease;
+  background: linear-gradient(90deg, transparent, var(--dshm-accent), transparent);
+}
+.dshm-runbar[data-on='true'] { animation: dshm-breathe 1.9s ease-in-out infinite; }
+
+/* ---------- todo list ---------- */
+.dshm-todo { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dshm-list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 4px 11px 6px; scrollbar-gutter: stable;
+}
+.dshm-list::-webkit-scrollbar,
+.dshm-goalpage::-webkit-scrollbar,
+.dshm-paper::-webkit-scrollbar { width: 9px; }
+.dshm-list::-webkit-scrollbar-thumb,
+.dshm-goalpage::-webkit-scrollbar-thumb,
+.dshm-paper::-webkit-scrollbar-thumb {
+  border: 3px solid transparent; border-radius: 999px; background-clip: content-box;
+  background-color: var(--dshm-line-strong);
+}
+
+.dshm-item {
+  position: relative; padding: 10px 2px 10px 0;
+  border-bottom: 1px solid var(--dshm-line);
+  transition: opacity var(--dshm-fast) var(--dshm-ease);
+}
+.dshm-item:last-child { border-bottom: none; }
+.dshm-item[data-done='true'] { opacity: .62; }
+.dshm-item.is-arriving { animation: dshm-arrive .34s var(--dshm-ease) both; }
+.dshm-item.is-leaving { animation: dshm-leave .4s var(--dshm-ease) forwards; overflow: hidden; pointer-events: none; }
+
+.dshm-head-line { display: flex; align-items: flex-start; gap: 9px; }
+.dshm-check {
+  flex: none; position: relative; width: 16px; height: 16px; margin-top: 3px; padding: 0;
+  border: 1.5px solid var(--dshm-line-strong); border-radius: 50%;
+  background: transparent; color: transparent; cursor: pointer;
+  transition: border-color var(--dshm-fast) ease, background var(--dshm-fast) ease, transform .12s ease;
+}
+.dshm-check:hover { border-color: var(--dshm-accent); }
+.dshm-check:active { transform: scale(.88); }
+.dshm-check[data-done='true'] { border-color: var(--dshm-done); background: var(--dshm-done); color: var(--dshm-on-fill); }
+.dshm-check svg { display: block; width: 10px; height: 10px; margin: 1.5px auto 0; }
+.dshm-check[data-done='true'] svg path { stroke-dasharray: 16; animation: dshm-draw .3s var(--dshm-ease) forwards; }
+
+.dshm-item-main { flex: 1; min-width: 0; }
+.dshm-item-title {
+  font-size: 13.5px; line-height: 1.55; font-weight: 500; color: var(--dshm-ink);
+  overflow-wrap: anywhere;
+}
+.dshm-item[data-done='true'] .dshm-item-title {
+  color: var(--dshm-ink-3);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+.dshm-sub {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 9px;
+  margin-top: 4px; color: var(--dshm-ink-3); font-size: 10.5px; line-height: 1.5;
+}
+.dshm-sub-item { display: inline-flex; align-items: center; gap: 3px; }
+.dshm-note-btn {
+  padding: 2px 2px 2px 0; border: none; background: none; font: inherit; color: var(--dshm-ink-3);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+  transition: color var(--dshm-fast) ease;
+}
+.dshm-note-btn:hover { color: var(--dshm-ink); }
+.dshm-note-btn svg { transition: transform var(--dshm-fast) var(--dshm-ease); }
+.dshm-note-btn[data-open='true'] svg { transform: rotate(180deg); }
+.dshm-del {
+  flex: none; width: 20px; height: 20px; margin: 1px 0 0; padding: 0; border: none;
+  border-radius: 4px; background: transparent; color: var(--dshm-ink-4);
+  font-size: 13px; line-height: 1; cursor: pointer; opacity: 0;
+  transition: opacity var(--dshm-fast) ease, color .15s ease, background .15s ease;
+}
+.dshm-item:hover .dshm-del, .dshm-del:focus-visible { opacity: 1; }
+.dshm-del:hover { color: var(--dshm-danger); background: var(--dshm-hover); }
+
+/* ---------- note (the long part) ---------- */
+.dshm-note {
+  position: relative; margin: 7px 0 1px 25px; padding: 8px 10px 8px 11px;
+  max-height: min(46vh, 300px); overflow-y: auto; scrollbar-width: thin;
+  border-left: 2px solid color-mix(in srgb, var(--dshm-accent) 32%, transparent);
+  background: var(--dshm-accent-soft);
+  border-radius: 0 4px 4px 0;
+  animation: dshm-unfold .26s var(--dshm-ease) both;
+  overscroll-behavior: contain;
+}
+.dshm-note::-webkit-scrollbar { width: 8px; }
+.dshm-note::-webkit-scrollbar-thumb {
+  border: 2px solid transparent; border-radius: 999px; background-clip: content-box;
+  background-color: var(--dshm-line-strong);
+}
+.dshm-note-head {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 6px; color: var(--dshm-ink-3);
+}
+.dshm-note-title { font-size: 10.5px; letter-spacing: .04em; }
+.dshm-note-close {
+  padding: 0 2px; border: none; background: none;
+  font: inherit; font-size: 10.5px; color: var(--dshm-ink-3); cursor: pointer;
+  transition: color var(--dshm-fast) ease;
+}
+.dshm-note-close:hover { color: var(--dshm-ink); }
+.dshm-note-row { display: grid; grid-template-columns: minmax(2.4em, max-content) 1fr; gap: 2px 10px; }
+.dshm-note-key { color: var(--dshm-ink-3); font-size: 11.5px; line-height: 1.72; white-space: nowrap; }
+.dshm-note-val { color: var(--dshm-ink-2); font-size: 12.5px; line-height: 1.72; overflow-wrap: anywhere; }
+.dshm-note-text { grid-column: 1 / -1; color: var(--dshm-ink-2); font-size: 12.5px; line-height: 1.72; overflow-wrap: anywhere; }
+.dshm-note-gap { grid-column: 1 / -1; height: 5px; }
+.dshm-note-action { margin-left: auto; }
+
+/* ---------- inline editing ---------- */
+.dshm-edit-input {
+  box-sizing: border-box; width: 100%; margin: 0 0 1px; padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--dshm-accent) 45%, transparent);
+  border-radius: 6px; background: var(--dshm-panel); color: var(--dshm-ink);
+  font-family: inherit; font-size: 13.5px; font-weight: 500; line-height: 1.5;
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dshm-accent) 10%, transparent);
+}
+.dshm-note-edit {
+  display: block; box-sizing: border-box; width: 100%; min-height: 88px; max-height: 40vh;
+  padding: 6px 8px; border: 1px solid var(--dshm-line); border-radius: 5px;
+  background: var(--dshm-panel); color: var(--dshm-ink-2);
+  font-family: inherit; font-size: 12.5px; line-height: 1.72;
+  outline: none; resize: vertical;
+}
+.dshm-note-edit:focus { border-color: color-mix(in srgb, var(--dshm-accent) 45%, transparent); }
+.dshm-note-edit::placeholder { color: var(--dshm-ink-4); }
+
+.dshm-note-summary { min-width: 0; max-width: 100%; align-items: flex-start; }
+.dshm-note-summary-text { min-width: 0; text-align: left; overflow-wrap: anywhere; }
+.dshm-note-summary svg { flex: none; margin-top: 2px; }
+
+/* ---------- steps ---------- */
+.dshm-steps { list-style: none; margin: 8px 0 0 25px; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.dshm-step { display: flex; align-items: flex-start; gap: 8px; }
+.dshm-stepbox {
+  flex: none; width: 12px; height: 12px; margin-top: 3px; padding: 0;
+  border: 1.4px solid var(--dshm-line-strong); border-radius: 3px;
+  background: transparent; cursor: pointer;
+  transition: background var(--dshm-fast) ease, border-color var(--dshm-fast) ease;
+}
+.dshm-stepbox:hover { border-color: var(--dshm-accent); }
+.dshm-stepbox[data-done='true'] {
+  border-color: var(--dshm-done);
+  background: var(--dshm-done)
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.3 6.2 4.8 8.7l4.9-5.6'/%3E%3C/svg%3E")
+    center / 9px 9px no-repeat;
+}
+.dshm-steptext { font-size: 12.5px; line-height: 1.6; color: var(--dshm-ink-2); overflow-wrap: anywhere; }
+.dshm-step[data-done='true'] .dshm-steptext {
+  color: var(--dshm-ink-4);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.dshm-empty { padding: 26px 16px 22px; text-align: center; }
+.dshm-empty-title { color: var(--dshm-ink-4); font-size: 12px; font-weight: 400; margin: 0; letter-spacing: .08em; }
+
+.dshm-compose {
+  flex: none; display: flex; align-items: center; gap: 7px; margin: 6px 11px 12px;
+  padding: 4px 4px 4px 11px;
+  border: 1px solid var(--dshm-line); border-radius: 10px; background: var(--dshm-panel);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.dshm-compose:focus-within {
+  border-color: color-mix(in srgb, var(--dshm-accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dshm-accent) 11%, transparent);
+}
+.dshm-input {
+  flex: 1; min-width: 0; height: 26px; border: none; background: transparent;
+  color: var(--dshm-ink); font-family: inherit; font-size: 12.5px; outline: none;
+}
+.dshm-input::placeholder { color: var(--dshm-ink-4); }
+.dshm-add {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%;
+  background: var(--dshm-sunken); color: var(--dshm-ink-3); font-size: 15px; line-height: 1;
+  cursor: pointer; transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+.dshm-add svg { display: block; }
+.dshm-add:disabled { cursor: default; }
+.dshm-add.is-spinning svg { animation: dshm-spin 1s linear infinite; }
+.dshm-add[data-ready='true'] { background: var(--dshm-accent); color: var(--dshm-on-fill); }
+.dshm-add[data-ready='true']:hover { transform: scale(1.06); }
+
+/* ---------- goal page ---------- */
+.dshm-goalpage {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 4px 12px 20px; scrollbar-gutter: stable;
+}
+.dshm-goal {
+  position: relative; margin: 6px 0 4px; padding: 3px 0 3px 13px;
+  border-left: 2px solid var(--dshm-accent);
+}
+.dshm-goal[data-done='true'] { border-left-color: var(--dshm-done); opacity: .78; }
+.dshm-goal-title {
+  font-size: 15px; line-height: 1.55; font-weight: 600; letter-spacing: .01em;
+  color: var(--dshm-ink); overflow-wrap: anywhere;
+}
+.dshm-goal-meta {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px;
+  margin-top: 5px; color: var(--dshm-ink-3); font-size: 10.5px; line-height: 1.5;
+}
+.dshm-goal-days { font-variant-numeric: tabular-nums; color: var(--dshm-accent); }
+.dshm-goal-days.is-done { color: var(--dshm-done); }
+.dshm-goal-note { color: var(--dshm-ink-3); overflow-wrap: anywhere; }
+
+.dshm-goal-form { display: flex; flex-direction: column; gap: 9px; margin: 8px 0 2px; padding-left: 13px; border-left: 2px solid var(--dshm-line-strong); }
+.dshm-goal-input {
+  box-sizing: border-box; width: 100%; padding: 5px 8px;
+  border: 1px solid var(--dshm-line); border-radius: 6px;
+  background: var(--dshm-panel); color: var(--dshm-ink);
+  font-family: inherit; font-size: 12.5px; line-height: 1.6; outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+textarea.dshm-goal-input { resize: vertical; min-height: 52px; }
+.dshm-goal-input:focus {
+  border-color: color-mix(in srgb, var(--dshm-accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dshm-accent) 10%, transparent);
+}
+.dshm-goal-input::placeholder { color: var(--dshm-ink-4); }
+.dshm-goal-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.dshm-act {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 5px;
+  background: transparent; color: var(--dshm-ink-3); cursor: pointer;
+  transition: color var(--dshm-fast) ease, background var(--dshm-fast) ease;
+}
+.dshm-act:hover { color: var(--dshm-ink); background: var(--dshm-hover); }
+.dshm-act.is-danger:hover { color: var(--dshm-danger); }
+.dshm-act:disabled { opacity: .45; cursor: default; }
+.dshm-act svg { display: block; }
+.dshm-goals > .dshm-act { margin-top: 6px; }
+
+/* ---------- progress log ---------- */
+.dshm-log { margin-top: 12px; }
+.dshm-log-head {
+  display: flex; align-items: baseline; gap: 8px;
+  color: var(--dshm-ink-3); font-size: 10.5px; margin-bottom: 5px;
+}
+.dshm-log-list { list-style: none; margin: 0; padding: 0 0 0 2px; }
+.dshm-log-item {
+  position: relative; display: flex; gap: 8px; padding: 3px 0 3px 12px;
+  font-size: 12px; line-height: 1.65;
+}
+.dshm-log-item::before {
+  content: ""; position: absolute; left: 0; top: 9px; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--dshm-accent); opacity: .55;
+}
+.dshm-log-at {
+  flex: none; color: var(--dshm-ink-4); font-size: 10px; line-height: 1.9;
+  font-variant-numeric: tabular-nums;
+}
+.dshm-log-text { min-width: 0; color: var(--dshm-ink-2); overflow-wrap: anywhere; }
+.dshm-log-compose { display: flex; gap: 6px; margin-top: 6px; }
+.dshm-log-compose .dshm-goal-input { flex: 1; }
+
+/* ---------- the critique ---------- */
+blockquote.dshm-review {
+  margin: 14px 0 2px; padding: 9px 11px 10px 12px;
+  border-left: 2px solid var(--dshm-accent);
+  background: var(--dshm-accent-soft);
+  border-radius: 0 4px 4px 0;
+  animation: dshm-ink-in .5s var(--dshm-ease) both;
+}
+.dshm-review-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin-bottom: 4px;
+}
+.dshm-review-who { color: var(--dshm-accent); font-size: 10.5px; letter-spacing: .08em; }
+.dshm-review-meta { color: var(--dshm-ink-4); font-size: 10px; font-variant-numeric: tabular-nums; }
+.dshm-review-body {
+  margin: 0; font-family: var(--dshm-serif); font-size: 13px; line-height: 1.85;
+  color: var(--dshm-ink); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.dshm-review.is-busy {
+  display: flex; align-items: center; gap: 7px; margin-top: 12px;
+  padding: 7px 10px; border-left: 2px solid var(--dshm-line-strong);
+  color: var(--dshm-ink-3); font-size: 11px; line-height: 1.6;
+}
+.dshm-pulse {
+  flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dshm-accent);
+  animation: dshm-breathe 1.4s ease-in-out infinite;
+}
+
+/* ---------- history ---------- */
+.dshm-history { margin-top: 20px; }
+.dshm-history-item {
+  display: flex; align-items: baseline; gap: 10px; padding: 6px 0;
+  border-bottom: 1px solid var(--dshm-line);
+}
+.dshm-history-item:last-child { border-bottom: none; }
+.dshm-history-text { flex: 1; min-width: 0; color: var(--dshm-ink-3); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; text-decoration: line-through; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
+
+.dshm-section-head { display: flex; align-items: baseline; gap: 8px; margin: 0 0 8px; }
+.dshm-section-title { margin: 0; font-size: 11px; font-weight: 600; color: var(--dshm-ink-2); letter-spacing: .04em; }
+.dshm-section-note { color: var(--dshm-ink-4); font-size: 10px; }
+
+/* ---------- settings sheet ---------- */
+.dshm-sheet {
+  position: sticky; top: 0; z-index: 4; margin: 2px 0 14px; padding: 12px 12px 11px;
+  border: 1px solid var(--dshm-line); border-radius: 10px;
+  background: var(--dshm-panel);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--dshui-shadow-2, 0 6px 20px rgba(0, 0, 0, .08));
+  animation: dshm-unfold .24s var(--dshm-ease) both;
+}
+.dshm-sheet-head { display: flex; align-items: center; margin-bottom: 9px; }
+.dshm-sheet-title { flex: 1; font-size: 11.5px; font-weight: 600; color: var(--dshm-ink-2); letter-spacing: .03em; }
+.dshm-voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dshm-voice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 7px 9px; border: 1px solid var(--dshm-line); border-radius: 7px;
+  background: transparent; font-family: inherit; cursor: pointer; text-align: left;
+  transition: border-color var(--dshm-fast) ease, background var(--dshm-fast) ease;
+}
+.dshm-voice:hover { border-color: var(--dshm-line-strong); }
+.dshm-voice[data-on='true'] {
+  border-color: color-mix(in srgb, var(--dshm-accent) 60%, transparent);
+  background: var(--dshm-accent-soft);
+}
+.dshm-voice-label { color: var(--dshm-ink); font-size: 12px; font-weight: 500; }
+.dshm-voice-custom {
+  box-sizing: border-box; width: 100%; margin-top: 8px; padding: 6px 8px;
+  border: 1px solid var(--dshm-line); border-radius: 6px;
+  background: var(--dshm-sunken); color: var(--dshm-ink);
+  font-family: inherit; font-size: 11.5px; line-height: 1.7; outline: none; resize: vertical;
+}
+.dshm-voice-custom:focus { border-color: color-mix(in srgb, var(--dshm-accent) 50%, transparent); }
+.dshm-voice-custom::placeholder { color: var(--dshm-ink-4); }
+
+/* ---------- diary ---------- */
+.dshm-divider { height: 1px; margin: 22px 0 18px; background: var(--dshm-line); }
+.dshm-diary-block { display: flex; flex-direction: column; }
+.dshm-dateline { flex: none; display: flex; align-items: center; gap: 5px; padding: 0 1px 7px; }
+.dshm-datetext {
+  position: relative; flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dshm-datetext span { color: var(--dshm-ink-3); font-weight: 400; margin-left: 5px; }
+.dshm-datepick {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  appearance: none; -webkit-appearance: none;
+  border: none; background: transparent; opacity: 0; cursor: pointer;
+}
+.dshm-today {
+  flex: none; height: 21px; padding: 0 8px; border: 1px solid var(--dshm-line);
+  border-radius: 999px; background: transparent; color: var(--dshm-ink-3);
+  font-family: inherit; font-size: 10.5px; cursor: pointer;
+  transition: color var(--dshm-fast) ease, border-color var(--dshm-fast) ease;
+}
+.dshm-today:hover { color: var(--dshm-ink); border-color: var(--dshm-line-strong); }
+.dshm-dates { flex: none; display: flex; gap: 5px; overflow-x: auto; padding: 0 1px 9px; scrollbar-width: none; }
+.dshm-dates::-webkit-scrollbar { display: none; }
+.dshm-datechip {
+  flex: none; height: 21px; padding: 0 8px; border: none; border-radius: 999px;
+  background: var(--dshm-sunken); color: var(--dshm-ink-3);
+  font-family: inherit; font-size: 10.5px; font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: color var(--dshm-fast) ease, background var(--dshm-fast) ease;
+}
+.dshm-datechip:hover { color: var(--dshm-ink); }
+.dshm-datechip[data-active='true'] { background: var(--dshm-accent); color: var(--dshm-on-fill); }
+
+.dshm-paper {
+  position: relative; max-height: min(40vh, 340px); overflow-y: auto;
+  margin: 0 0 8px; padding: 12px 14px 14px;
+  border-left: 2px solid color-mix(in srgb, var(--dshm-accent) 30%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dshm-accent) 4%, transparent), transparent 60%),
+    var(--dshm-panel);
+  border-radius: 0 4px 4px 0;
+  transition: border-color .25s ease;
+}
+.dshm-paper.is-writing { border-left-color: var(--dshm-accent); }
+.dshm-paper-body {
+  font-family: var(--dshm-serif); font-size: 13px; line-height: 1.95;
+  color: var(--dshm-ink); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.dshm-paper-empty {
+  margin: 0; padding: 18px 2px; text-align: center;
+  color: var(--dshm-ink-4); font-family: var(--dshm-serif); font-size: 12px; line-height: 1.8;
+}
+.dshm-inkbar {
+  position: absolute; left: 0; top: 0; width: 2px; height: 38%;
+  background: var(--dshm-accent); opacity: .8;
+  animation: dshm-inkbar 1.6s var(--dshm-ease) infinite;
+}
+.dshm-fail {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px;
+  margin: 0 0 8px; padding: 6px 9px; border-left: 2px solid var(--dshm-danger);
+  background: color-mix(in srgb, var(--dshm-danger) 7%, transparent);
+  color: var(--dshm-ink-2); font-size: 10.5px; line-height: 1.6;
+}
+.dshm-diary-block .dshm-compose { margin: 6px 0 2px; }
+
+.dshm-foot { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 11px 12px; color: var(--dshm-ink-3); font-size: 10.5px; }
+.dshm-foot.is-flush { padding-bottom: 2px; }
+
+
+@keyframes dshm-arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes dshm-leave { to { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; transform: translateY(-3px); } }
+@keyframes dshm-draw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+@keyframes dshm-breathe { 0%, 100% { opacity: .22; } 50% { opacity: 1; } }
+@keyframes dshm-turn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dshm-unfold { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@keyframes dshm-pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
+@keyframes dshm-spin { to { transform: rotate(360deg); } }
+@keyframes dshm-ink-in { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: none; } }
+@keyframes dshm-inkbar { 0% { top: 0; opacity: 0; } 15% { opacity: .8; } 85% { opacity: .8; } 100% { top: 62%; opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dshm-item, .dshm-note, .dshm-sheet, .dshm-check svg path, .dshm-notice, .dshm-runbar,
+  blockquote.dshm-review, .dshm-inkbar, .dshm-pulse, .dshm-tab-dot {
+    animation: none !important;
+  }
+}
