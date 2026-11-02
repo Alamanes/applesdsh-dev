@@ -10,7 +10,6 @@
 | `plugins/dsh-ops` | `dsh-ops` | Rust 原生文件工具：`ops_inspect_local_file`、`ops_grep`、`ops_glob`、`ops_replace`，外加 `ops_bash` | 上游 [T-Auto/dsh-ops](https://github.com/T-Auto/dsh-ops) 的 `v0.3.1` 标签，另随包补入 `runtime/darwin-arm64` worker |
 | `plugins/dsh-ui-suite` | `dsh-ui-suite` | 界面套件：一个 bundle 包，下挂十六个可独立停用的组件包，共享一套 `--dshui-*` 设计令牌 | 本仓库自产 |
 | `plugins/dsh-ui-quota` | `dsh-ui-quota` | 更好的用户菜单：左下角账户菜单（用量抽屉、峰谷提示、面板入口收集）与设置页「用量」，必须搭配界面套件 | 本仓库自产，原 `dsh-ui-suite` 组件，2.1 起独立 |
-| `plugins/dsh-agent-room` | `dsh-agent-room` | 右侧边栏的多角色群聊：几个 agent 同住一间房，你一句它们轮流接话，发言落盘 | 本仓库自产 |
 | `plugins/dsh-sidebar-memo` | `dsh-sidebar-memo` | 右侧边栏的备忘录：清单、目标与 AI 代笔的日记 | 本仓库自产 |
 | `plugins/dsh-user-memory` | `dsh-user-memory` | 单 Agent 的长期记忆：Markdown 条目、逐会话冻结进提示词、回合结束自动整理，侧栏有记忆面板 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
