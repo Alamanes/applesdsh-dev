@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Quota gauges",
-    "description": "Three credit-window gauges beside the model picker and the settings breakdown."
+    "title": "Quota",
+    "description": "Quota cards and a daily token heatmap in Settings → Usage."
   }
 }

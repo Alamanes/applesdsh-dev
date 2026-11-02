@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Diff lines",
+    "description": "Diff rows and streamed line counts for write and edit sub-calls inside run_code."
+  }
+}

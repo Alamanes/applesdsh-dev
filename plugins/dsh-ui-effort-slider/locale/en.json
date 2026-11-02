@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Reasoning slider",
-    "description": "A Codex-style reasoning effort slider taking over the model trigger."
+    "description": "Replaces the reasoning-effort trigger in the model picker with a Codex-style slider."
   }
 }

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Full restart",
-    "description": "The full quit-and-relaunch button plus the restart_dsh tool."
+    "description": "The title-bar restart button and the restart_dsh tool, resuming interrupted sessions after relaunch."
   }
 }

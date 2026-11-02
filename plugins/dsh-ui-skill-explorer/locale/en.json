@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Skill center",
-    "description": "Browse, enable, create and delete skills, grouped by source."
+    "description": "A panel to browse skills by source, and to enable, create, and delete them."
   }
 }

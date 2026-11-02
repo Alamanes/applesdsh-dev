@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Peak/valley hint",
-    "description": "Peak/valley billing window and switch countdown in the sidebar foot."
+    "title": "Peak and valley",
+    "description": "Shows the current peak/valley window and countdown, with the yearly holiday calendar."
   }
 }

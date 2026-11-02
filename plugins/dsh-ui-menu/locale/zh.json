@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "菜单动效",
-    "description": "权限模式、模型、Dock 标签与右键菜单的开合动画。"
+    "description": "权限模式、模型、Dock 标签、右键菜单与子菜单的统一开合动画。"
   }
 }

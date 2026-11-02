@@ -25,11 +25,15 @@
     "./client": {
       "default": "./lib/client.js"
     },
+    "./locale/*.json": {
+      "default": "./locale/*.json"
+    },
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
     "src",
+    "locale",
     "README.md"
   ],
   "engines": {
