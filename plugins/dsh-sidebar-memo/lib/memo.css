@@ -326,6 +326,49 @@ textarea.dshm-goal-input { resize: vertical; min-height: 52px; }
 .dshm-act svg { display: block; }
 .dshm-goals > .dshm-act { margin-top: 6px; }
 
+/* ---------- plan page ---------- */
+.dshm-planpage {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 4px 12px 20px; scrollbar-gutter: stable;
+}
+.dshm-plan-body { display: flex; flex-direction: column; }
+.dshm-plan-goals { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 11px; }
+.dshm-plangoal {
+  max-width: 100%; padding: 3px 9px; border: 1px solid var(--dshm-line); border-radius: 999px;
+  background: transparent; color: var(--dshm-ink-3);
+  font-family: inherit; font-size: 11px; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  transition: color var(--dshm-fast) ease, border-color var(--dshm-fast) ease, background var(--dshm-fast) ease;
+}
+.dshm-plangoal:hover { color: var(--dshm-ink-2); border-color: var(--dshm-line-strong); }
+.dshm-plangoal[data-on='true'] {
+  color: var(--dshm-ink);
+  border-color: color-mix(in srgb, var(--dshm-accent) 55%, transparent);
+  background: var(--dshm-accent-soft);
+}
+.dshm-plan { display: flex; flex-direction: column; gap: 15px; margin-top: 2px; }
+.dshm-plan-day {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 1px 0 1px 12px; border-left: 1px solid var(--dshm-line);
+}
+.dshm-plan-day[data-today='true'] { border-left-color: var(--dshm-accent); }
+.dshm-plan-date {
+  display: flex; align-items: baseline; gap: 6px;
+  color: var(--dshm-ink-3); font-size: 10.5px; letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+}
+.dshm-plan-date span { color: var(--dshm-ink-4); letter-spacing: 0; }
+.dshm-plan-day[data-today='true'] .dshm-plan-date { color: var(--dshm-accent); }
+.dshm-plan-day[data-today='true'] .dshm-plan-date span { color: color-mix(in srgb, var(--dshm-accent) 65%, var(--dshm-ink-3)); }
+.dshm-plan-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.dshm-plan-item { display: flex; align-items: flex-start; gap: 8px; }
+.dshm-plan-item[data-done='true'] .dshm-steptext {
+  color: var(--dshm-ink-4);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+.dshm-plan-day[data-past='true'] .dshm-plan-item[data-done='false'] .dshm-steptext { color: var(--dshm-ink-3); }
+
 /* ---------- progress log ---------- */
 .dshm-log { margin-top: 12px; }
 .dshm-log-head {

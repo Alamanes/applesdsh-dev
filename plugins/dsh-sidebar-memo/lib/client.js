@@ -445,6 +445,69 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** The calendar behind one goal: dated lines the model wrote, ticked by her. */
+    function PlanPage({ goals, target, plan, jobs, onPick, onGenerate, onTick }) {
+      const busy = target !== null && jobs?.plan?.running === true && jobs.plan.id === target.id
+      const failed = target !== null && jobs?.plan?.running === false && jobs.plan.id === target.id && jobs.plan.error !== ''
+      const todayKey = iso(new Date())
+      return h('div', { className: 'dshm-planpage' },
+        goals.length === 0
+          ? h('div', { className: 'dshm-empty' }, h('p', { className: 'dshm-empty-title' }, '先立目标'))
+          : h('div', { className: 'dshm-plan-body' },
+              h('div', { className: 'dshm-plan-goals' }, ...goals.map((goal) =>
+                h('button', {
+                  key: goal.id,
+                  className: 'dshm-plangoal',
+                  'data-on': String(goal.id === target?.id),
+                  title: goal.text,
+                  onClick: () => onPick(goal.id),
+                }, goal.text))),
+              h('div', { className: 'dshm-section-head' },
+                h('h3', { className: 'dshm-section-title' }, '计划'),
+                h('div', { className: 'dshm-spacer' }),
+                h(IconAction, {
+                  title: busy ? '排着' : '生成',
+                  disabled: busy,
+                  onClick: () => onGenerate(target),
+                }, h(Icon, { name: 'refresh' }))),
+              failed
+                ? h('div', { className: 'dshm-fail' },
+                    h('span', null, '没排出来'),
+                    h(IconAction, { title: '重试', onClick: () => onGenerate(target) }, h(Icon, { name: 'refresh' })))
+                : null,
+              busy
+                ? h('div', { className: 'dshm-review is-busy' },
+                    h('span', { className: 'dshm-pulse' }),
+                    '排计划…')
+                : null,
+              plan === null || plan.days.length === 0
+                ? h('div', { className: 'dshm-empty' }, h('p', { className: 'dshm-empty-title' }, '空'))
+                : h('div', { className: 'dshm-plan' }, ...plan.days.map((day) =>
+                    h('div', {
+                      key: day.date,
+                      className: 'dshm-plan-day',
+                      'data-today': String(day.date === todayKey),
+                      'data-past': String(day.date < todayKey),
+                    },
+                      h('div', { className: 'dshm-plan-date' },
+                        label(day.date),
+                        h('span', null, WEEK[new Date(day.date + 'T12:00:00').getDay()] ?? '')),
+                      h('ul', { className: 'dshm-plan-items' }, ...day.items.map((item) =>
+                        h('li', {
+                          key: item.id,
+                          className: 'dshm-plan-item',
+                          'data-done': String(item.done),
+                        },
+                          h('button', {
+                            className: 'dshm-stepbox',
+                            'data-done': String(item.done),
+                            title: item.done ? '取消' : '完成',
+                            onClick: () => onTick(target, day.date, item),
+                          }),
+                          h('span', { className: 'dshm-steptext' }, item.text)))))))),
+          )
+    }
+
     /** The diary page: what the model wrote, and one box for what happened. */
     function DiaryBlock({ diary, raw, dates, date, jobs, onDate, onSend, draft, setDraft, onRetry }) {
       const writing = jobs?.diary?.running === true && jobs.diary.date === date
@@ -566,6 +629,7 @@ window.__ModuleLoader__.load({
       const [openNotes, setOpenNotes] = useState({})
       const [sheet, setSheet] = useState(false)
       const [goalForm, setGoalForm] = useState(false)
+      const [planFor, setPlanFor] = useState('')
       const [mark, setMark] = useState(null)
 
       const dateRef = useRef(date)
@@ -590,7 +654,8 @@ window.__ModuleLoader__.load({
         if (activity.seq !== lastSeq.current) {
           lastSeq.current = activity.seq
           const change = diffTodos(previous, next)
-          const isTodo = activity.tool === 'memo' && !String(activity.op).startsWith('goal')
+          const op = String(activity.op)
+          const isTodo = activity.tool === 'memo' && !op.startsWith('goal') && !op.startsWith('plan')
           if (isTodo && activity.op === 'add') {
             setFlash({ kind: 'add', ids: change.added.map((item) => item.id), at: Date.now() })
             if (change.added.length > 0) say('已记下：' + change.added[0].text)
@@ -619,6 +684,9 @@ window.__ModuleLoader__.load({
           }
           if (priorJobs.review?.running === true && jobs.review?.running === false) {
             if (jobs.review.error === '') say('复盘写好了')
+          }
+          if (priorJobs.plan?.running === true && jobs.plan?.running === false) {
+            if (jobs.plan.error === '') say('计划排好了')
           }
         }
         prevJobs.current = jobs
@@ -679,7 +747,7 @@ window.__ModuleLoader__.load({
 
       const patch = (next) => {
         apply({
-          ...(data ?? { todos: [], dates: [], diary: { date, text: '' }, raw: { text: '', fresh: false }, goals: [], mood: 'gentle', custom: '', jobs: {}, activity: { seq: lastSeq.current }, today: iso(new Date()) }),
+          ...(data ?? { todos: [], dates: [], diary: { date, text: '' }, raw: { text: '', fresh: false }, goals: [], plans: [], mood: 'gentle', custom: '', jobs: {}, activity: { seq: lastSeq.current }, today: iso(new Date()) }),
           ...next,
         })
       }
@@ -795,6 +863,29 @@ window.__ModuleLoader__.load({
           .catch((error) => say(String(error?.message ?? error)))
       }
 
+      const generatePlan = (goal) => {
+        call('/plan/generate', { method: 'POST', body: JSON.stringify({ goalId: goal.id, date: dateRef.current }) })
+          .then((value) => { patch(value); say('AI 在排计划') })
+          .catch((error) => say(String(error?.message ?? error)))
+      }
+
+      const tickPlan = (goal, day, item) => {
+        const done = item.done !== true
+        setData((current) => current === null ? current : {
+          ...current,
+          plans: (current.plans ?? []).map((plan) => plan.goalId !== goal.id ? plan : {
+            ...plan,
+            days: plan.days.map((entry) => entry.date !== day ? entry : {
+              ...entry,
+              items: entry.items.map((row) => (row.id === item.id ? { ...row, done } : row)),
+            }),
+          }),
+        })
+        call('/plan/done', { method: 'POST', body: JSON.stringify({ goalId: goal.id, day, id: item.id, done, date: dateRef.current }) })
+          .then((value) => patch(value))
+          .catch((error) => { say(String(error?.message ?? error)); void load() })
+      }
+
       const saveMood = (mood, custom) => {
         return call('/mood', { method: 'POST', body: JSON.stringify({ mood, custom, date: dateRef.current }) })
           .then((value) => { patch(value); say('口吻改好了') })
@@ -820,10 +911,13 @@ window.__ModuleLoader__.load({
       const openCount = todos.filter((item) => !item.done).length
       const doneCount = todos.length - openCount
       const goals = data?.goals ?? []
-      const current = goals.find((goal) => !goal.done) ?? null
+      const openGoals = goals.filter((goal) => !goal.done)
+      const current = openGoals[0] ?? null
       const history = goals.filter((goal) => goal.done)
       const arrivingIds = flash !== null && flash.kind === 'add' ? flash.ids ?? [] : []
       const jobs = data?.jobs ?? {}
+      const planTarget = openGoals.find((goal) => goal.id === planFor) ?? openGoals[0] ?? null
+      const planBook = (data?.plans ?? []).find((plan) => plan.goalId === planTarget?.id) ?? null
 
       return h('div', { className: 'dshm-root', 'data-dsh-plugin': 'sidebar-memo' },
         h('div', { className: 'dshm-runbar', 'data-on': String(thinking) }),
@@ -849,8 +943,10 @@ window.__ModuleLoader__.load({
           h('button', { className: 'dshm-tab', 'data-active': String(seg === 'todo'), onClick: () => { setSeg('todo'); setMark(null) } },
             '清单', mark === 'todo' ? h('span', { className: 'dshm-tab-dot' }) : null),
           h('button', { className: 'dshm-tab', 'data-active': String(seg === 'goal'), onClick: () => { setSeg('goal'); setMark(null) } },
-            '目标', current !== null && (current.logs ?? []).length > 0 ? h('span', { className: 'dshm-tab-count' }, current.logs.length + '') : null,
+            '目标', openGoals.length > 0 ? h('span', { className: 'dshm-tab-count' }, String(openGoals.length)) : null,
             mark === 'goal' ? h('span', { className: 'dshm-tab-dot' }) : null),
+          h('button', { className: 'dshm-tab', 'data-active': String(seg === 'plan'), onClick: () => { setSeg('plan'); setMark(null) } },
+            '计划', mark === 'plan' ? h('span', { className: 'dshm-tab-dot' }) : null),
         ),
         seg === 'todo'
           ? h('div', { className: 'dshm-todo' },
@@ -900,7 +996,8 @@ window.__ModuleLoader__.load({
                 h('button', { className: 'dshm-add', 'data-ready': String(compose.trim() !== ''), title: '添加', onClick: addTodo }, h(Icon, { name: 'plus' })),
               ),
             )
-          : h('div', { className: 'dshm-goalpage', ref: goalPageRef },
+          : seg === 'goal'
+            ? h('div', { className: 'dshm-goalpage', ref: goalPageRef },
               sheet ? h(SettingsSheet, {
                 mood: data?.mood ?? 'gentle',
                 custom: data?.custom ?? '',
@@ -908,22 +1005,21 @@ window.__ModuleLoader__.load({
                 onClose: () => setSheet(false),
               }) : null,
               h('div', { className: 'dshm-goals' },
-                current !== null
-                  ? h(GoalCard, {
-                      goal: current,
-                      jobs,
-                      onReview: reviewGoal,
-                      onLog: logGoal,
-                      onDone: doneGoal,
-                      onDrop: dropGoal,
-                      onEdit: editGoal,
-                    })
-                  : null,
-                goalForm || current === null
+                ...openGoals.map((goal) => h(GoalCard, {
+                  key: goal.id,
+                  goal,
+                  jobs,
+                  onReview: reviewGoal,
+                  onLog: logGoal,
+                  onDone: doneGoal,
+                  onDrop: dropGoal,
+                  onEdit: editGoal,
+                })),
+                goalForm || openGoals.length === 0
                   ? h(GoalForm, {
-                      submitLabel: current === null ? '立下' : '保存',
+                      submitLabel: openGoals.length === 0 ? '立下' : '新建',
                       onSubmit: pushGoal,
-                      onCancel: current === null ? undefined : () => setGoalForm(false),
+                      onCancel: openGoals.length === 0 ? undefined : () => setGoalForm(false),
                     })
                   : h(IconAction, { title: '新目标', onClick: () => setGoalForm(true) }, h(Icon, { name: 'plus' })),
                 history.length === 0
@@ -949,7 +1045,16 @@ window.__ModuleLoader__.load({
                 setDraft: setNotes,
                 onRetry: retryDiary,
               }),
-            ),
+            )
+            : h(PlanPage, {
+                goals: openGoals,
+                target: planTarget,
+                plan: planBook,
+                jobs,
+                onPick: setPlanFor,
+                onGenerate: generatePlan,
+                onTick: tickPlan,
+              }),
       )
     }
 

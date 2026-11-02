@@ -57,6 +57,21 @@ function goalPatch(args) {
   return patch
 }
 
+/** One plan as lines: the goal it hangs on, then each day and its items. */
+function planLines(goal, plan) {
+  if (plan === null || plan === undefined || plan.days.length === 0) {
+    return '- ' + goal.text + '  (' + goal.id + ')  还没有计划'
+  }
+  const total = plan.days.reduce((sum, day) => sum + day.items.length, 0)
+  const head = '- ' + goal.text + '  (' + goal.id + ')'
+    + '  计划 ' + total + ' 条（' + plan.days[0].date + ' 到 ' + plan.days[plan.days.length - 1].date + '）'
+  const body = plan.days.map((day) => {
+    const items = day.items.map((item) => '    ' + (item.done ? '[x] ' : '[ ] ') + item.text + '  (' + item.id + ')')
+    return ['  ' + day.date, ...items].join('\n')
+  })
+  return [head, ...body].join('\n')
+}
+
 /**
  * Build the tool definitions around one store.
  * @param params.store - the memo store.
@@ -64,7 +79,7 @@ function goalPatch(args) {
 export function createTools({ store }) {
   const memo = {
     name: 'memo',
-    description: 'Read or change the sidebar memo panel: the todo list, and the goals the user set for herself. A todo is a one-line title plus an optional note and optional steps. op=read lists both with ids; add/edit/done/del/clear work on todos. Pass goal to work on a goal instead — that is her own target, not the session Goal tool.',
+    description: 'Read or change the sidebar memo panel: the todo list, the goals she set for herself, and the dated plan that belongs to a goal. A todo is a one-line title plus an optional note and optional steps. op=read lists all of it with ids; add/edit/done/del/clear work on todos. Pass goal to work on a goal; pass plan to write the calendar behind a goal — neither is the session Goal tool.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -88,10 +103,40 @@ export function createTools({ store }) {
             review: { type: 'string', description: 'The critique text, for review.' },
           },
         },
+        plan: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['op'],
+          description: 'The calendar behind one goal: dated items, one list per day. You write it; she only ticks items off.',
+          properties: {
+            op: { type: 'string', enum: ['read', 'set', 'add', 'done', 'drop'], description: 'read lists every plan; set replaces one goal plan; add appends days; done ticks one item; drop clears the plan.' },
+            goalId: { type: 'string', description: 'The goal id from op=read; omit for the newest open goal.' },
+            days: {
+              type: 'array',
+              description: 'The days to schedule. Give each day a date and its actions.',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['date', 'items'],
+                properties: {
+                  date: { type: 'string', description: 'YYYY-MM-DD.' },
+                  items: { type: 'array', items: { type: 'string' }, description: 'Concrete actions for that day, one per entry.' },
+                },
+              },
+            },
+            date: { type: 'string', description: 'The day of the item, for done.' },
+            id: { type: 'string', description: 'The item id or its text, for done.' },
+            done: { type: 'boolean', description: 'true ticks the item, false unticks it. Defaults to true.' },
+          },
+        },
       },
     },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: String(value) }] },
     async execute(args) {
+      const planArg = args?.plan
+      if (planArg !== undefined && planArg !== null && typeof planArg === 'object') {
+        return runPlan(planArg)
+      }
       const goalArg = args?.goal
       if (goalArg !== undefined && goalArg !== null && typeof goalArg === 'object') {
         return runGoal(goalArg)
@@ -114,7 +159,12 @@ export function createTools({ store }) {
           const goalText = goals.length === 0
             ? '还没有目标。'
             : '目标（' + openGoals.length + ' 个未完成，共 ' + goals.length + ' 个）：\n' + goals.slice(0, 8).map(goalLines).join('\n')
-          return todoText + '\n\n' + goalText
+          const planText = goals.length === 0
+            ? ''
+            : '计划：\n' + goals.slice(0, 4)
+              .map(goal => planLines(goal, (snapshot.plans ?? []).find(plan => plan.goalId === goal.id) ?? null))
+              .join('\n')
+          return [todoText, goalText, planText].filter(text => text !== '').join('\n\n')
         }
         if (op === 'add') {
           const item = await store.addTodo({ text: args?.text, note: args?.note, steps: args?.steps, by: 'model' })
@@ -159,6 +209,52 @@ export function createTools({ store }) {
       } catch (error) {
         store.endActivity('memo', 'error')
         throw error
+      }
+
+      /** The nested plan branch: the calendar the model writes for a goal. */
+      async function runPlan(plan) {
+        const op = String(plan?.op ?? '').trim()
+        store.beginActivity('memo', 'plan-' + op)
+        try {
+          if (op === 'read') {
+            const snapshot = await store.state()
+            store.endActivity('memo', 'plan-read')
+            if (snapshot.goals.length === 0) return '还没有目标，也没有计划。'
+            return snapshot.goals
+              .map(goal => planLines(goal, (snapshot.plans ?? []).find(entry => entry.goalId === goal.id) ?? null))
+              .join('\n\n')
+          }
+          if (op === 'set' || op === 'add') {
+            const item = op === 'set'
+              ? await store.savePlan({ goalId: plan.goalId, days: plan.days })
+              : await store.addPlanDays({ goalId: plan.goalId, days: plan.days })
+            const total = item.days.reduce((sum, day) => sum + day.items.length, 0)
+            store.endActivity('memo', 'plan-' + op, { ids: [item.goalId] })
+            return (op === 'set' ? '计划写好了：' : '排进去了：')
+              + item.days.length + ' 天，' + total + ' 条（' + item.days[0].date + ' 到 ' + item.days[item.days.length - 1].date + '）'
+          }
+          if (op === 'done') {
+            const date = String(plan?.date ?? '').trim()
+            if (!isDate(date)) throw new Error('plan.done 需要 date（YYYY-MM-DD）')
+            const id = String(plan?.id ?? '').trim()
+            if (id === '') throw new Error('plan.done 需要 id')
+            const next = await store.setPlanItemDone({ goalId: plan.goalId, date, id, done: plan.done !== false })
+            const day = next.days.find(entry => entry.date === date)
+            const item = (day?.items ?? []).find(entry => entry.id === id || entry.text === id)
+            store.endActivity('memo', 'plan-done', { ids: [next.goalId] })
+            return (plan.done === false ? '取消打勾：' : '打勾：') + (item?.text ?? id) + '（' + date + '）'
+          }
+          if (op === 'drop') {
+            const goal = await store.findGoal(plan?.goalId)
+            await store.removePlan(goal.id)
+            store.endActivity('memo', 'plan-drop', { ids: [goal.id] })
+            return '计划清掉了：' + goal.text
+          }
+          throw new Error('plan.op 只能是 read、set、add、done、drop')
+        } catch (error) {
+          store.endActivity('memo', 'plan-error')
+          throw error
+        }
       }
 
       /** The nested goal branch: its own activity trail and replies. */

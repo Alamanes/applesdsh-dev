@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createStore, isDate, today } from './host/store.js'
 import { createTools } from './host/tools.js'
-import { composeDiary, composeReview } from './host/scribe.js'
+import { composeDiary, composePlan, composeReview } from './host/scribe.js'
 
 const ROUTE_BASE = '/api/dsh-memo'
 /** The panel stylesheet ships as a real file and is served to the browser half. */
@@ -21,8 +21,11 @@ const AVATAR_FILE = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', '
 
 const MEMO_SECTION = [
   '## 备忘录',
-  '右侧边栏的「备忘录」有两页：清单和目标。目标是用户自己立下的，记着期限、进度和复盘；它和会话里的 Goal 工具不是一回事，别用 create_goal 去改她的目标。',
-  'memo 管待办，也读写目标（goal 参数）；op=read 同时列出待办与目标。日记在目标页里：她口述今天做了什么，你用她的第一人称写成日记，素材里有什么写什么，不编细节。面板自己也会写，别把已经写好的整页重写一遍。',
+  '右侧边栏的「备忘录」有三页：清单、目标、计划。',
+  '清单是待办，用 memo 的 op 读写：一条标题，可选的备注和步骤。',
+  '目标是她自己立下的，用 memo 的 goal 参数读写；立下之后用 log 记进展，它不是会话里的 Goal 工具，别用 create_goal 去改她的目标。',
+  '计划是她日历上的每日安排，一个目标一份，用 memo 的 plan 参数写：set 整份重排，add 往后追加，每条落到当天能做完的具体动作。她只负责勾完成，你别替她勾。她说要排日程、拆解目标、定一段时间怎么做，你就用 plan 排出来。',
+  '日记在目标页里：她口述今天做了什么，你用她的第一人称写成日记，素材里有什么写什么，不编细节。面板自己也会写，别把已经写好的整页重写一遍。',
   '用户说要记的事，直接写进去，不用再问。',
 ].join('\n')
 
@@ -73,6 +76,7 @@ export function apply(ctx, config) {
   const jobs = {
     diary: { date: '', running: false, error: '', at: 0 },
     review: { id: '', running: false, error: '', at: 0 },
+    plan: { id: '', running: false, error: '', at: 0 },
   }
   let chain = Promise.resolve()
 
@@ -124,6 +128,27 @@ export function apply(ctx, config) {
         const message = error instanceof Error ? error.message : String(error)
         jobs.review = { id: goalId, running: false, error: message, at: Date.now() }
         warn('dsh-sidebar-memo: goal review failed: ' + message)
+      }
+    })
+  }
+
+  /** Lay the next stretch of days out for one goal, keeping what is already there. */
+  function writePlanNow(id) {
+    jobs.plan = { id: String(id ?? ''), running: true, error: '', at: Date.now() }
+    return runInBackground(async () => {
+      let goalId = ''
+      try {
+        const goal = await store.findGoal(id)
+        goalId = goal.id
+        const pages = await store.diaryBetween(goal.since, today(), 10_000)
+        const plan = await store.planOf(goal.id)
+        const days = await composePlan(ctx, { goal, pages, plan, date: today(), warn })
+        await store.addPlanDays({ goalId: goal.id, days })
+        jobs.plan = { id: goal.id, running: false, error: '', at: Date.now() }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        jobs.plan = { id: goalId, running: false, error: message, at: Date.now() }
+        warn('dsh-sidebar-memo: plan write failed: ' + message)
       }
     })
   }
@@ -277,6 +302,21 @@ export function apply(ctx, config) {
           const goal = await store.findGoal(id)
           void reviewGoalNow(goal.id)
           return { goal: goal.id, ...(await state(body?.date)) }
+        }),
+        post('/plan/generate', async (body) => {
+          const goal = await store.findGoal(body?.goalId)
+          void writePlanNow(goal.id)
+          return { goal: goal.id, ...(await state(body?.date)) }
+        }),
+        post('/plan/done', async (body) => {
+          const day = isDate(body?.day) ? body.day : today()
+          await store.setPlanItemDone({
+            goalId: body?.goalId,
+            date: day,
+            id: String(body?.id ?? ''),
+            done: body?.done !== false,
+          })
+          return { ...(await state(body?.date)) }
         }),
         post('/raw', async (body) => {
           const date = isDate(body?.date) ? body.date : today()

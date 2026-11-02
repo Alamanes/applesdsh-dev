@@ -1,6 +1,7 @@
 // The two prompts the panel runs on its own: turning the user's notes into her
 // diary page, and reading a goal against the days since she set it.
 import { askOnce } from './model.js'
+import { isDate } from './store.js'
 
 const DIARY_SYSTEM = [
   '把用户口述的事写成她自己的日记：第一人称，把零散的口述组织成连贯的段落。',
@@ -13,6 +14,13 @@ const REVIEW_SYSTEM = [
   '只用日记里的事实：引用具体的日期和事情，不猜，不编，不替她表功。',
   '指出已经做到的、没做到的、和剩余时间的差距，最后给一个很小的下一步。',
   '三段以内，三百字以内，中文。',
+].join('\n')
+
+const PLAN_SYSTEM = [
+  '你负责替用户把一个目标拆成按日期排的每日安排，写进她的日历。',
+  '一天一到三条，每条是那天能做完的具体动作：动词开头，写清做什么、做多少、做到什么程度。',
+  '按她现在的进度往后排：不排今天以前的日子，不重复她已经排过的日子。',
+  '只输出 JSON，形如 {"days":[{"date":"2026-11-03","items":["…","…"]}]}。不要代码围栏，不要解释，不要别的字段。',
 ].join('\n')
 
 const VOICES = {
@@ -85,6 +93,62 @@ export async function composeReview(ctx, { goal, pages, mood, custom, warn }) {
     voice,
   ].join('\n\n')
   return askOnce(ctx, { system: REVIEW_SYSTEM, text, warn })
+}
+
+/** Compact view of the days already scheduled, newest last. */
+function planBrief(plan) {
+  const days = plan.days.slice(-21)
+  if (days.length === 0) return ''
+  return days.map(day => day.date + '：' + day.items.map(item => (item.done ? '[x] ' : '') + item.text).join('；')).join('\n')
+}
+
+/** Read the model's JSON back into dated items, dropping what cannot be used. */
+function parsePlanDays(raw, date) {
+  const text = String(raw ?? '')
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start < 0 || end <= start) throw new Error('模型没有排出可用的计划')
+  let parsed = null
+  try {
+    parsed = JSON.parse(text.slice(start, end + 1))
+  } catch (error) {
+    throw new Error('模型排的计划不是 JSON')
+  }
+  const days = []
+  for (const day of Array.isArray(parsed?.days) ? parsed.days : []) {
+    const key = String(day?.date ?? '').trim()
+    if (!isDate(key) || key < date) continue
+    const items = (Array.isArray(day?.items) ? day.items : [])
+      .map(item => String(typeof item === 'string' ? item : item?.text ?? '').trim())
+      .filter(item => item !== '')
+    if (items.length > 0) days.push({ date: key, items })
+  }
+  if (days.length === 0) throw new Error('模型排的日期都用不了')
+  return days
+}
+
+/**
+ * Lay a goal out on the calendar: the next stretch of days, one list each.
+ * @param ctx - host plugin context.
+ * @param params.goal - the goal.
+ * @param params.pages - recent diary pages.
+ * @param params.plan - the plan as it stands, may be null.
+ * @param params.date - today, YYYY-MM-DD.
+ * @param params.warn - logger.
+ */
+export async function composePlan(ctx, { goal, pages, plan, date, warn }) {
+  const diary = pages.length === 0
+    ? '这段时间还没有日记。'
+    : pages.map(page => '## ' + page.date + '\n' + clip(page.text, 4_000)).join('\n\n')
+  const text = [
+    goalBrief(goal),
+    '今天是：' + date,
+    plan === null || plan.days.length === 0 ? '还没有排过计划。' : '已经排好的日子：\n' + planBrief(plan),
+    '她最近的日记：',
+    diary,
+  ].join('\n\n')
+  const raw = await askOnce(ctx, { system: PLAN_SYSTEM, text, warn })
+  return parsePlanDays(raw, date)
 }
 
 /** The labels the panel and the prompt section use. */

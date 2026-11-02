@@ -25,6 +25,10 @@ const GOAL_LOGS_MAX = 60
 const GOAL_REVIEW_MAX = 4_000
 const GOALS_MAX = 20
 
+const PLAN_ITEM_MAX = 200
+const PLAN_ITEMS_PER_DAY = 12
+const PLAN_ITEMS_MAX = 400
+
 /** The four voices a critique can be written in. */
 export const MOODS = ['sharp', 'gentle', 'plain', 'custom']
 
@@ -105,6 +109,39 @@ function normalizeGoal(item) {
   }
 }
 
+/** One scheduled item: a short action on one day. */
+function normalizePlanItem(item) {
+  if (typeof item === 'string') return { id: newId('p'), text: clip(item, PLAN_ITEM_MAX), done: false }
+  return {
+    id: typeof item?.id === 'string' && item.id !== '' ? item.id : newId('p'),
+    text: clip(item?.text, PLAN_ITEM_MAX),
+    done: item?.done === true,
+  }
+}
+
+/** Lift stored days into date-ordered, de-duplicated days. */
+function normalizePlan(item) {
+  const byDate = new Map()
+  for (const day of Array.isArray(item?.days) ? item.days : []) {
+    if (!isDate(day?.date)) continue
+    const list = byDate.get(day.date) ?? []
+    for (const raw of Array.isArray(day.items) ? day.items : []) {
+      const entry = normalizePlanItem(raw)
+      if (entry.text !== '') list.push(entry)
+    }
+    byDate.set(day.date, list.slice(0, PLAN_ITEMS_PER_DAY))
+  }
+  const days = [...byDate.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({ date, items }))
+    .filter(day => day.items.length > 0)
+  return {
+    goalId: typeof item?.goalId === 'string' ? item.goalId : '',
+    at: typeof item?.at === 'string' ? item.at : new Date().toISOString(),
+    days,
+  }
+}
+
 async function writeAtomic(path, text) {
   await mkdir(dirname(path), { recursive: true })
   const temp = path + '.' + process.pid + '.tmp'
@@ -133,6 +170,7 @@ async function fileTime(path) {
 export function createStore({ root, warn = () => {} }) {
   const todoFile = join(root, 'todos.json')
   const goalFile = join(root, 'goals.json')
+  const planFile = join(root, 'plan.json')
   const settingsFile = join(root, 'settings.json')
   const diaryDir = join(root, 'diary')
   const rawDir = join(root, 'raw')
@@ -140,6 +178,7 @@ export function createStore({ root, warn = () => {} }) {
   let activity = { seq: 0, tool: '', op: '', ids: [], date: '', phase: 'idle', at: 0 }
   let todos = null
   let goals = null
+  let plans = null
   let settings = null
   let queue = Promise.resolve()
 
@@ -217,6 +256,108 @@ export function createStore({ root, warn = () => {} }) {
       goals: file.items,
     }, null, 2) + '\n')
     return file
+  }
+
+  /** One plan per goal: a flat list of dated items the model laid out. */
+  async function loadPlans() {
+    if (plans !== null) return plans
+    const text = await readText(planFile)
+    let parsed = null
+    if (text !== null) {
+      try {
+        parsed = JSON.parse(text)
+      } catch (error) {
+        warn('dsh-sidebar-memo: plan.json is not JSON, starting empty')
+      }
+    }
+    const items = Array.isArray(parsed?.plans) ? parsed.plans : []
+    plans = items
+      .filter(item => item !== null && typeof item === 'object')
+      .map(normalizePlan)
+      .filter(plan => plan.goalId !== '' && plan.days.length > 0)
+    return plans
+  }
+
+  async function savePlans() {
+    const list = plans ?? []
+    await writeAtomic(planFile, JSON.stringify({ version: 1, plans: list }, null, 2) + '\n')
+    return list
+  }
+
+  /** The stored plan of one goal, or null when it has none yet. */
+  async function planOf(goalId) {
+    const list = await loadPlans()
+    return list.find(plan => plan.goalId === goalId) ?? null
+  }
+
+  /** Replace the whole plan of one goal. */
+  async function savePlan({ goalId, days }) {
+    return serialize(async () => {
+      const goal = await findGoal(goalId)
+      const next = normalizePlan({ goalId: goal.id, at: new Date().toISOString(), days })
+      if (next.days.length === 0) throw new Error('计划里没有可用的日期')
+      const total = next.days.reduce((sum, day) => sum + day.items.length, 0)
+      if (total > PLAN_ITEMS_MAX) throw new Error('计划条目太多了，先收一收')
+      const list = await loadPlans()
+      plans = [...list.filter(plan => plan.goalId !== goal.id), next]
+      await savePlans()
+      return next
+    })
+  }
+
+  /** Add days to a plan without dropping what is already there. */
+  async function addPlanDays({ goalId, days }) {
+    return serialize(async () => {
+      const goal = await findGoal(goalId)
+      const list = await loadPlans()
+      const existing = list.find(plan => plan.goalId === goal.id) ?? { goalId: goal.id, days: [] }
+      const merged = new Map()
+      for (const day of normalizePlan(existing).days) merged.set(day.date, day.items.slice())
+      for (const day of normalizePlan({ days }).days) {
+        const there = merged.get(day.date) ?? []
+        const seen = new Set(there.map(item => item.text))
+        const grown = [...there, ...day.items.filter(item => !seen.has(item.text))]
+        merged.set(day.date, grown.slice(0, PLAN_ITEMS_PER_DAY))
+      }
+      const next = normalizePlan({ goalId: goal.id, at: new Date().toISOString(), days: [...merged.entries()].map(([date, items]) => ({ date, items })) })
+      if (next.days.length === 0) throw new Error('计划里没有可用的日期')
+      const total = next.days.reduce((sum, day) => sum + day.items.length, 0)
+      if (total > PLAN_ITEMS_MAX) throw new Error('计划条目太多了，先收一收')
+      plans = [...list.filter(plan => plan.goalId !== goal.id), next]
+      await savePlans()
+      return next
+    })
+  }
+
+  /** Tick one scheduled item. */
+  async function setPlanItemDone({ goalId, date, id, done }) {
+    return serialize(async () => {
+      const goal = await findGoal(goalId)
+      const list = await loadPlans()
+      const plan = list.find(item => item.goalId === goal.id)
+      if (plan === undefined) throw new Error('这个目标还没有计划')
+      const day = plan.days.find(item => item.date === date)
+      if (day === undefined) throw new Error('计划里没有这一天：' + date)
+      const item = day.items.find(entry => entry.id === id || entry.text === id)
+      if (item === undefined) throw new Error('这一天没有这条安排')
+      const days = plan.days.map((entry) => entry.date !== date ? entry : {
+        date: entry.date,
+        items: entry.items.map((row) => row.id === item.id ? { ...row, done: done === true } : row),
+      })
+      const next = { ...plan, days }
+      plans = list.map((entry) => entry.goalId === goal.id ? next : entry)
+      await savePlans()
+      return next
+    })
+  }
+
+  async function removePlan(goalId) {
+    return serialize(async () => {
+      const list = await loadPlans()
+      plans = list.filter(plan => plan.goalId !== goalId)
+      await savePlans()
+      return list.length - plans.length
+    })
   }
 
   async function loadSettings() {
@@ -333,12 +474,13 @@ export function createStore({ root, warn = () => {} }) {
 
   async function state(date) {
     const page = await diaryPage(date)
-    const [items, dates, raw, cfg, book, diaryTime] = await Promise.all([
+    const [items, dates, raw, cfg, book, planBook, diaryTime] = await Promise.all([
       loadTodos(),
       diaryDates(),
       rawState(page.date),
       loadSettings(),
       loadGoals(),
+      loadPlans(),
       fileTime(join(diaryDir, page.date + '.md')),
     ])
     const ordered = book.items.slice().sort((a, b) => {
@@ -352,6 +494,7 @@ export function createStore({ root, warn = () => {} }) {
       diaryAt: diaryTime,
       raw,
       goals: ordered,
+      plans: planBook,
       mood: cfg.mood,
       custom: cfg.custom,
       activity: { ...activity },
@@ -550,6 +693,9 @@ export function createStore({ root, warn = () => {} }) {
       const book = await loadGoals()
       book.items = book.items.filter(item => item.id !== goal.id)
       await saveGoals()
+      const list = await loadPlans()
+      plans = list.filter(plan => plan.goalId !== goal.id)
+      await savePlans()
       return goal
     })
   }
@@ -601,6 +747,11 @@ export function createStore({ root, warn = () => {} }) {
     reviewGoal,
     setGoalDone,
     removeGoal,
+    planOf,
+    savePlan,
+    addPlanDays,
+    setPlanItemDone,
+    removePlan,
     setMood,
     beginActivity,
     endActivity,
