@@ -1,0 +1,39 @@
+/** A reversible runtime-only config overlay; never edits profile files or services. */
+export function mountBundledPwsh(ctx, shells) {
+  // Upstream gated this to win32 as well. The overlay itself is platform
+  // neutral: it only points the owning `pwsh-sandbox` row at this plugin's copy
+  // when one is resolvable. Whether that row is mounted at all stays the host's
+  // decision, so on a host that disables its pwsh rows this is a no-op.
+  if (!shells.pwsh.available) return
+  ctx.inject(['loader'], loaderCtx => {
+    const loader = loaderCtx.get('loader')
+    const matches = entry => entry?.options?.id === 'pwsh-sandbox'
+      && entry.options.name === '@deepseek-ai/dsh-pwsh-sandbox'
+    const refresh = () => {
+      for (const entry of loader.entries()) {
+        if (matches(entry) && entry.fiber?.state === 2) {
+          // Public Fiber.update with noSave recomputes from the owner's latest
+          // raw config. No stored config, volatile reference, or method is changed.
+          // One row that refuses the update must not strand the rows behind it (#30): the loop
+          // continues, and the refusal is reported rather than swallowed.
+          try { entry.fiber.update(entry.options.config, true) } catch (error) {
+            loaderCtx.logger?.warn?.(`dsh-ops: pwsh executor row ${entry.options?.id ?? '(unnamed)'} rejected the update: ${error?.message ?? error}`)
+          }
+        }
+      }
+    }
+    const unhook = loaderCtx.on('internal/config', function (_raw, next) {
+      const config = next()
+      if (!matches(this.entry) || this.parent?.fiber?.entry === this.entry) return config
+      return { ...config, pwshPath: shells.pwsh.file }
+    }, { global: true, prepend: true })
+    let stopped = false
+    loaderCtx.effect(() => () => {
+      if (stopped) return
+      stopped = true
+      unhook()
+      refresh()
+    }, 'dsh-ops: restore owning PowerShell executor config')
+    refresh()
+  })
+}

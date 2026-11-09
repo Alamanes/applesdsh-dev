@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Better PTC mode",
+    "description": "Drops the run_code code card and lays out each tool call the program made as if it were a normal-mode call."
+  }
+}

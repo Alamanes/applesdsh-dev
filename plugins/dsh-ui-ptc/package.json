@@ -1,0 +1,88 @@
+{
+  "name": "dsh-ui-ptc",
+  "version": "0.3.0",
+  "private": true,
+  "description": "更好的 PTC 模式：摘掉 run_code 的代码卡片让子调用平铺显示，并内置 dsh-ops 的原生文件与 PTC 工具（vendored，代码不做改动）。独立插件。",
+  "icon": "./icon.png",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alamanes/applesdsh-dev.git",
+    "directory": "plugins/dsh-ui-ptc"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "ptc",
+    "run_code",
+    "tool-card",
+    "ops",
+    "native-tools"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./locale/*.json": {
+      "default": "./locale/*.json"
+    },
+    "./package.json": "./package.json",
+    "./ops": {
+      "default": "./vendor/dsh-ops/lib/index.js"
+    },
+    "./ops/policy": {
+      "default": "./vendor/dsh-ops/lib/policy.js"
+    },
+    "./ops/shell": {
+      "default": "./vendor/dsh-ops/lib/components/shell/index.js"
+    },
+    "./ops/shell/package.json": "./vendor/dsh-ops/lib/components/shell/package.json",
+    "./ops/file": {
+      "default": "./vendor/dsh-ops/lib/components/file/index.js"
+    },
+    "./ops/file/package.json": "./vendor/dsh-ops/lib/components/file/package.json",
+    "./ops/background": {
+      "default": "./vendor/dsh-ops/lib/components/background/index.js"
+    },
+    "./ops/background/package.json": "./vendor/dsh-ops/lib/components/background/package.json",
+    "./ops/ptc": {
+      "default": "./vendor/dsh-ops/lib/components/ptc/index.js"
+    },
+    "./ops/ptc/package.json": "./vendor/dsh-ops/lib/components/ptc/package.json",
+    "./ops/package.json": "./vendor/dsh-ops/package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "vendor",
+    "locale",
+    "cordis.patch.yml",
+    "icon.png",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "optionalDependencies": {
+    "@fastctx/darwin-arm64": "0.2.6"
+  },
+  "license": "MIT AND Apache-2.0"
+}
