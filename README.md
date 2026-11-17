@@ -13,7 +13,6 @@
 | `plugins/dsh-sidebar-memo` | `dsh-sidebar-memo` | 右侧边栏的备忘录：清单、目标与 AI 代笔的日记 | 本仓库自产 |
 | `plugins/dsh-user-memory` | `dsh-user-memory` | 单 Agent 的长期记忆：Markdown 条目、逐会话冻结进提示词、回合结束自动整理，侧栏有记忆面板 | 本仓库自产 |
 | `plugins/dsh-web-search-tavily` | `dsh-web-search-tavily` | 给 `ctx.web` 接缝加一个 Tavily 搜索后端 | 本仓库自产 |
-| `plugins/dsh-zh-prompt` | `dsh-zh-prompt` | 把第一方系统提示词换成简体中文，并注入「内部思考与最终回答使用简体中文」的语言规则 | 本仓库自产 |
 
 ## 界面套件
 
@@ -57,8 +56,7 @@
     "dsh-ops": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ops",
     "dsh-ui-suite": "file:/absolute/path/to/applesdsh-dev/plugins/dsh-ui-suite",
     "dsh-ui-quota": "github:Alamanes/applesdsh-dev#path:plugins/dsh-ui-quota",
-    "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily",
-    "dsh-zh-prompt": "github:Alamanes/applesdsh-dev#path:plugins/dsh-zh-prompt"
+    "dsh-web-search-tavily": "github:Alamanes/applesdsh-dev#path:plugins/dsh-web-search-tavily"
   },
   "dsh": {
     "profile": {
@@ -66,7 +64,6 @@
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
         "dsh-web-search-tavily",
-        "dsh-zh-prompt",
         "dsh-ops",
         "dsh-ui-suite",
         "dsh-ui-quota"
